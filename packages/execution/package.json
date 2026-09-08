@@ -1,0 +1,19 @@
+{
+  "name": "@zenith/execution",
+  "version": "4.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zenith/types": "*",
+    "@zenith/chains": "*",
+    "@zenith/tokens": "*",
+    "@zenith/security": "*",
+    "@zenith/routing": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
