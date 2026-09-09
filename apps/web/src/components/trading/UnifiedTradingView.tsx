@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
 import {
   Share2,
   Lock,
   TrendingUp,
+  TrendingDown,
   ArrowRight,
   BarChart3
 } from 'lucide-react';
 import { SwapCard } from './SwapCard';
 import { LivePriceChart } from './LivePriceChart';
+import { defaultMarketDataService, MarketStats24h } from '../../services/marketDataService';
 
 type ProTab = 'CHART' | 'ROUTING';
 
@@ -25,10 +27,47 @@ export const UnifiedTradingView: React.FC = () => {
 
   const isCrossChain = sourceChain.id !== destChain.id;
   const currentPair = `${tokenIn.symbol} / ${tokenOut.symbol}`;
-  const mock24hChange = tokenIn.change24hUSD || 3.84;
-  const mock24hHigh = (tokenIn.priceUSD || 3450) * 1.05;
-  const mock24hLow = (tokenIn.priceUSD || 3450) * 0.96;
-  const mock24hVolume = tokenIn.volume24hUSD ? `$${(tokenIn.volume24hUSD / 1e6).toFixed(1)}M` : '$142.8M';
+
+  const basePrice = tokenIn.priceUSD || (tokenIn.symbol === 'ETH' ? 3450 : tokenIn.symbol === 'SOL' ? 145 : tokenIn.symbol === 'WBTC' ? 65000 : 1);
+  const [liveStats, setLiveStats] = useState<MarketStats24h>({
+    currentPrice: basePrice,
+    change24hPercent: 2.85,
+    high24h: basePrice * 1.04,
+    low24h: basePrice * 0.96,
+    volume24hUSD: 148500000
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    defaultMarketDataService.fetch24hStats(tokenIn.symbol, 'USDT', basePrice).then((stats) => {
+      if (isMounted && stats) {
+        setLiveStats(stats);
+      }
+    });
+
+    const cleanup = defaultMarketDataService.subscribeLiveStream(
+      tokenIn.symbol,
+      'USDT',
+      '1m',
+      (livePrice) => {
+        if (isMounted) {
+          setLiveStats((prev) => ({
+            ...prev,
+            currentPrice: livePrice,
+            high24h: Math.max(prev.high24h, livePrice),
+            low24h: Math.min(prev.low24h, livePrice)
+          }));
+        }
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      cleanup();
+    };
+  }, [tokenIn.symbol, basePrice]);
+
+  const isPositive = liveStats.change24hPercent >= 0;
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-4">
@@ -94,25 +133,31 @@ export const UnifiedTradingView: React.FC = () => {
             <div>
               <span className="text-slate-400 block text-[10px]">Mark Price</span>
               <span className="font-bold text-white text-sm">
-                ${tokenIn.priceUSD?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '3,450.00'}
+                ${liveStats.currentPrice.toLocaleString(undefined, {
+                  minimumFractionDigits: liveStats.currentPrice < 1 ? 4 : 2,
+                  maximumFractionDigits: liveStats.currentPrice < 1 ? 6 : 2
+                })}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px]">24h Change</span>
-              <span className="font-bold text-emerald-400 text-sm flex items-center gap-0.5">
-                <TrendingUp className="w-3.5 h-3.5" />
-                +{mock24hChange}%
+              <span className={`font-bold text-sm flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                {isPositive ? '+' : ''}
+                {liveStats.change24hPercent.toFixed(2)}%
               </span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px]">24h High / Low</span>
               <span className="text-slate-300">
-                ${mock24hHigh.toFixed(0)} / ${mock24hLow.toFixed(0)}
+                ${liveStats.high24h.toLocaleString(undefined, { maximumFractionDigits: 2 })} / ${liveStats.low24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px]">24h Volume</span>
-              <span className="text-slate-200 font-semibold">{mock24hVolume}</span>
+              <span className="text-slate-200 font-semibold">
+                ${(liveStats.volume24hUSD / 1e6).toFixed(1)}M
+              </span>
             </div>
           </div>
         </div>
