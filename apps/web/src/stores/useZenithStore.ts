@@ -14,7 +14,7 @@ import {
   ZenithNotification
 } from '@zenith/types';
 import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
-import { DEFAULT_TOKENS, defaultTokenService } from '@zenith/tokens';
+import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData } from '@zenith/tokens';
 import { defaultZenithRouter } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
@@ -118,9 +118,16 @@ export interface ZenithState {
   transactionHistory: ReceiptView[];
   notifications: ZenithNotification[];
 
+  // Live Market Data
+  marketData: Record<string, LiveMarketData>;
+  isMarketsLoading: boolean;
+  marketsError: string | null;
+  lastMarketUpdate: number | null;
+
   setActiveTab: (tab: ZenithState['activeTab']) => void;
   setProMode: (pro: boolean) => void;
   toggleTheme: () => void;
+  fetchMarketData: () => Promise<void>;
   setSourceChain: (chain: ChainConfig) => void;
   setDestChain: (chain: ChainConfig) => void;
   setTokenIn: (token: Token) => void;
@@ -272,6 +279,11 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         isRead: false
       }
     ],
+
+    marketData: {},
+    isMarketsLoading: false,
+    marketsError: null,
+    lastMarketUpdate: null,
 
     setActiveTab: (tab) => set({ activeTab: tab }),
     setProMode: (isProMode) => set({ isProMode }),
@@ -944,6 +956,28 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       set((state) => ({
         notifications: state.notifications.map((n) => ({ ...n, isRead: true }))
       }));
+    },
+
+    fetchMarketData: async () => {
+      set({ isMarketsLoading: true, marketsError: null });
+      try {
+        const dataMap = await defaultMarketDataService.fetchMarketData();
+        const record: Record<string, LiveMarketData> = {};
+        dataMap.forEach((val, key) => {
+          record[key] = val;
+        });
+        set({
+          marketData: record,
+          isMarketsLoading: false,
+          marketsError: defaultMarketDataService.getLastError(),
+          lastMarketUpdate: Date.now()
+        });
+      } catch (err: any) {
+        set({
+          isMarketsLoading: false,
+          marketsError: err.message || 'Failed to fetch live market data'
+        });
+      }
     }
   };
 });
