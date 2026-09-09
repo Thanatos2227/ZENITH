@@ -1,37 +1,48 @@
 import React from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
-import { DEFAULT_TOKENS } from '@zenith/tokens';
+import { formatAddress } from '../../utils/walletDetector';
+import { defaultTokenService } from '@zenith/tokens';
 import { defaultChainRegistry } from '@zenith/chains';
-import { Wallet, ArrowUpRight, ShieldCheck, Zap } from 'lucide-react';
+import { Wallet, ShieldCheck, Zap, RefreshCw, Loader2 } from 'lucide-react';
 
 export const PortfolioView: React.FC = () => {
-  const { walletAddress, isWalletConnected, openWalletModal, setSourceChain, setTokenIn, setActiveTab } = useZenithStore();
+  const {
+    walletAddress,
+    isWalletConnected,
+    walletBalances,
+    isBalanceLoading,
+    sourceChain,
+    openWalletModal,
+    setSourceChain,
+    setTokenIn,
+    setActiveTab,
+    refreshBalance
+  } = useZenithStore();
 
-  const userTokens = [
-    {
-      token: DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.isNative)!,
-      balance: 4.825,
-      chainId: 'ethereum'
-    },
-    {
-      token: DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!,
-      balance: 12450.00,
-      chainId: 'ethereum'
-    },
-    {
-      token: DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'ARB')!,
-      balance: 3450.00,
-      chainId: 'arbitrum'
-    },
-    {
-      token: DEFAULT_TOKENS.find((t) => t.chainId === 'solana' && t.symbol === 'SOL')!,
-      balance: 18.45,
-      chainId: 'solana'
-    }
-  ].filter((item) => item.token !== undefined);
+  const chainTokens = isWalletConnected
+    ? defaultTokenService.getTokensForChain(sourceChain.id)
+    : [];
+
+  const userTokens = chainTokens.map((token) => {
+    const keyExact = `${sourceChain.id}:${token.address}`;
+    const keyLower = `${sourceChain.id}:${token.address.toLowerCase()}`;
+    const nativeKey = `${sourceChain.id}:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`;
+    const balStr =
+      walletBalances[keyExact] ??
+      walletBalances[keyLower] ??
+      (token.isNative ? walletBalances[nativeKey] : undefined) ??
+      '0.00';
+    const balance = parseFloat(balStr) || 0;
+    return {
+      token,
+      balance,
+      balanceStr: balStr,
+      chainId: sourceChain.id
+    };
+  });
 
   const totalValueUSD = userTokens.reduce((acc, item) => {
-    return acc + item.balance * (item.token.priceUSD || 1);
+    return acc + (item.token.priceUSD ? item.balance * item.token.priceUSD : 0);
   }, 0);
 
   const handleSwapAsset = (item: (typeof userTokens)[0]) => {
@@ -51,12 +62,14 @@ export const PortfolioView: React.FC = () => {
             <span className="font-semibold uppercase tracking-wider">Total Net Worth</span>
             <Wallet className="w-4 h-4 text-cyan-400" />
           </div>
-          <p className="text-3xl font-extrabold font-mono text-white">
-            ${isWalletConnected ? totalValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-          </p>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>{isWalletConnected ? '+$1,420.50 (4.8%) past 24h' : 'Connect wallet to view PnL'}</span>
+          <div className="flex items-baseline gap-2">
+            <p className="text-3xl font-extrabold font-mono text-white">
+              ${isWalletConnected ? totalValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+            </p>
+            {isBalanceLoading && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+            <span>{isWalletConnected ? `${sourceChain.canonicalName} Asset Valuation` : 'Connect wallet to inspect balances'}</span>
           </div>
         </div>
 
@@ -65,9 +78,11 @@ export const PortfolioView: React.FC = () => {
             <span className="font-semibold uppercase tracking-wider">Chains Active</span>
             <Zap className="w-4 h-4 text-amber-400" />
           </div>
-          <p className="text-3xl font-extrabold font-mono text-white">{isWalletConnected ? '3 Networks' : '0 Networks'}</p>
+          <p className="text-3xl font-extrabold font-mono text-white">
+            {isWalletConnected ? '1 Network' : '0 Networks'}
+          </p>
           <p className="text-xs text-slate-400 font-mono">
-            {isWalletConnected ? 'Ethereum (82%), Arbitrum (9%), Solana (9%)' : 'No active network connections'}
+            {isWalletConnected ? `Connected to ${sourceChain.canonicalName}` : 'No active network connections'}
           </p>
         </div>
 
@@ -78,8 +93,8 @@ export const PortfolioView: React.FC = () => {
           </div>
           {isWalletConnected ? (
             <>
-              <p className="text-lg font-bold font-mono text-cyan-300 truncate">
-                {walletAddress}
+              <p className="text-lg font-bold font-mono text-cyan-300 truncate" title={walletAddress}>
+                {formatAddress(walletAddress, 10, 8)}
               </p>
               <p className="text-xs text-emerald-400 font-semibold">100% Non-Custodial On-Chain</p>
             </>
@@ -99,10 +114,30 @@ export const PortfolioView: React.FC = () => {
 
       <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
         <div className="p-4 bg-[#0B111E] border-b border-slate-800 flex items-center justify-between">
-          <h3 className="font-display font-bold text-base text-white">Your Multi-Chain Assets</h3>
-          <span className="text-xs font-mono text-slate-400">
-            {isWalletConnected ? `${userTokens.length} assets held` : 'Wallet not connected'}
-          </span>
+          <div className="flex items-center gap-3">
+            <h3 className="font-display font-bold text-base text-white">Your Network Assets</h3>
+            {isWalletConnected && (
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                {sourceChain.canonicalName}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-slate-400">
+              {isWalletConnected ? `${userTokens.length} tracked tokens` : 'Wallet not connected'}
+            </span>
+            {isWalletConnected && (
+              <button
+                onClick={() => refreshBalance()}
+                disabled={isBalanceLoading}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-300 border border-slate-700 transition-colors disabled:opacity-50"
+                title="Refresh balances from blockchain"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isBalanceLoading ? 'animate-spin text-cyan-400' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {isWalletConnected ? (
@@ -121,17 +156,27 @@ export const PortfolioView: React.FC = () => {
               <tbody className="divide-y divide-slate-800/50 font-mono">
                 {userTokens.map((item, idx) => {
                   const chain = defaultChainRegistry.getChain(item.chainId);
-                  const valueUSD = item.balance * (item.token.priceUSD || 1);
+                  const valueUSD = item.token.priceUSD ? item.balance * item.token.priceUSD : 0;
 
                   return (
                     <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-4 font-sans">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={item.token.logoURI}
-                            alt={item.token.symbol}
-                            className="w-7 h-7 rounded-full"
-                          />
+                          {item.token.logoURI ? (
+                            <img
+                              src={item.token.logoURI}
+                              alt={item.token.symbol}
+                              className="w-7 h-7 rounded-full"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-white">
+                              {item.token.symbol.slice(0, 2)}
+                            </div>
+                          )}
                           <div>
                             <p className="font-bold text-sm text-white">{item.token.symbol}</p>
                             <p className="text-xs text-slate-400">{item.token.name}</p>
@@ -146,11 +191,20 @@ export const PortfolioView: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 font-bold text-white text-sm">
-                        {item.balance.toLocaleString()} {item.token.symbol}
+                        {isBalanceLoading && item.balanceStr === '0.00' ? (
+                          <span className="text-slate-500 flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                            Loading...
+                          </span>
+                        ) : (
+                          <span>
+                            {item.balance > 0 ? item.balance.toLocaleString(undefined, { maximumFractionDigits: 6 }) : '0.00'} {item.token.symbol}
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-300">
-                        ${item.token.priceUSD?.toLocaleString()}
+                        {item.token.priceUSD !== undefined ? `$${item.token.priceUSD.toLocaleString()}` : '—'}
                       </td>
 
                       <td className="py-3.5 px-4 font-bold text-cyan-300 text-sm">

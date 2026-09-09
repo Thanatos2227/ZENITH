@@ -7,11 +7,12 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@zenith/types": "*",
     "@zenith/chains": "*",
-    "@zenith/tokens": "*",
+    "@zenith/routing": "*",
     "@zenith/security": "*",
-    "@zenith/routing": "*"
+    "@zenith/tokens": "*",
+    "@zenith/types": "*",
+    "ethers": "^6.17.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

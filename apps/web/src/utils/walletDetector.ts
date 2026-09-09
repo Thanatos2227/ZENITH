@@ -1,5 +1,64 @@
 import { WalletOption, WalletType } from '@zenith/types';
 
+export const formatAddress = (address: string, prefixLen = 6, suffixLen = 4): string => {
+  if (!address) return '';
+  if (address.length <= prefixLen + suffixLen) return address;
+  return `${address.slice(0, prefixLen)}...${address.slice(-suffixLen)}`;
+};
+
+export const getInjectedEthereumProvider = (walletType: WalletType): any => {
+  if (typeof window === 'undefined') return null;
+
+  const anyWin = window as any;
+  const eth = anyWin.ethereum;
+
+  if (walletType === 'COINBASE') {
+    if (anyWin.coinbaseWalletExtension) return anyWin.coinbaseWalletExtension;
+    if (eth?.providers?.length) {
+      const p = eth.providers.find((item: any) => item.isCoinbaseWallet);
+      if (p) return p;
+    }
+    if (eth?.isCoinbaseWallet) return eth;
+  }
+
+  if (walletType === 'RABBY') {
+    if (anyWin.rabby) return anyWin.rabby;
+    if (eth?.providers?.length) {
+      const p = eth.providers.find((item: any) => item.isRabby);
+      if (p) return p;
+    }
+    if (eth?.isRabby) return eth;
+  }
+
+  if (walletType === 'OKX') {
+    if (anyWin.okxwallet) return anyWin.okxwallet;
+    if (eth?.providers?.length) {
+      const p = eth.providers.find((item: any) => item.isOKXWallet);
+      if (p) return p;
+    }
+    if (eth?.isOKXWallet) return eth;
+  }
+
+  if (walletType === 'RAINBOW') {
+    if (eth?.providers?.length) {
+      const p = eth.providers.find((item: any) => item.isRainbow);
+      if (p) return p;
+    }
+    if (eth?.isRainbow) return eth;
+  }
+
+  if (walletType === 'METAMASK') {
+    if (eth?.providers?.length) {
+      const p = eth.providers.find((item: any) => item.isMetaMask && !item.isRabby && !item.isRainbow && !item.isOKXWallet);
+      if (p) return p;
+    }
+    if (eth?.isMetaMask && !eth?.isRabby && !eth?.isRainbow && !eth?.isOKXWallet) return eth;
+  }
+
+  // Fallback to primary window.ethereum
+  return eth || null;
+};
+
 export const detectInstalledWallets = (): WalletOption[] => {
   const isClient = typeof window !== 'undefined';
 
@@ -73,48 +132,77 @@ export const detectInstalledWallets = (): WalletOption[] => {
   ];
 };
 
+export interface WalletConnectionResult {
+  address: string;
+  walletName: string;
+  rawProvider: any;
+  chainId?: number;
+}
+
 export const connectToWalletProvider = async (
   walletType: WalletType
-): Promise<{ address: string; walletName: string }> => {
+): Promise<WalletConnectionResult> => {
   const isClient = typeof window !== 'undefined';
   if (!isClient) {
-    return { address: '0x71C...392A', walletName: 'Web3 Wallet' };
+    throw new Error('Window is undefined (SSR environment)');
   }
 
-  const eth = (window as any).ethereum;
-  const solana = (window as any).phantom?.solana || (window as any).solana;
-
-  try {
-    if (walletType === 'PHANTOM' && solana) {
-      const resp = await solana.connect();
-      const pubkey = resp.publicKey.toString();
-      return {
-        address: `${pubkey.slice(0, 4)}...${pubkey.slice(-4)}`,
-        walletName: 'Phantom'
-      };
+  if (walletType === 'PHANTOM') {
+    const solana = (window as any).phantom?.solana || (window as any).solana;
+    if (!solana) {
+      throw new Error('Phantom wallet extension is not installed. Please install it to proceed.');
     }
+    const resp = await solana.connect();
+    const pubkey = resp.publicKey ? resp.publicKey.toString() : '';
+    if (!pubkey) {
+      throw new Error('Phantom wallet returned an empty public key.');
+    }
+    return {
+      address: pubkey,
+      walletName: 'Phantom',
+      rawProvider: solana
+    };
+  }
 
-    if (eth) {
-      if (eth.request) {
-        const accounts = await eth.request({ method: 'eth_requestAccounts' });
-        if (accounts && accounts.length > 0) {
-          const addr = accounts[0];
-          return {
-            address: `${addr.slice(0, 6)}...${addr.slice(-4)}`,
-            walletName: walletType
-          };
-        }
-      }
+  const rawProvider = getInjectedEthereumProvider(walletType);
+  if (!rawProvider || typeof rawProvider.request !== 'function') {
+    throw new Error(`${walletType} wallet provider was not detected. Please make sure the browser extension is installed and unlocked.`);
+  }
+
+  // Request accounts via EIP-1193
+  const accounts: string[] = await rawProvider.request({ method: 'eth_requestAccounts' });
+  if (!accounts || accounts.length === 0 || !accounts[0]) {
+    throw new Error('No accounts authorized or returned by the wallet provider.');
+  }
+
+  const fullAddress = accounts[0];
+
+  // Request initial chainId
+  let chainId: number | undefined;
+  try {
+    const hexChainId = await rawProvider.request({ method: 'eth_chainId' });
+    if (hexChainId) {
+      chainId = parseInt(hexChainId, 16);
     }
   } catch (err) {
-    console.warn('[WalletDetector] Injected connect failed, fallback to simulated account', err);
+    console.warn('[WalletDetector] Could not fetch chainId on initial connect', err);
   }
 
-  const randomHex = Array.from({ length: 4 }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase();
-  const address = walletType === 'PHANTOM' ? `7xN8...${randomHex}` : `0x${randomHex}...392A`;
+  const walletNameMap: Record<WalletType, string> = {
+    METAMASK: 'MetaMask',
+    COINBASE: 'Coinbase Wallet',
+    RABBY: 'Rabby Wallet',
+    OKX: 'OKX Wallet',
+    RAINBOW: 'Rainbow',
+    WALLETCONNECT: 'WalletConnect',
+    PHANTOM: 'Phantom',
+    INJECTED: 'Injected Web3'
+  };
 
   return {
-    address,
-    walletName: walletType
+    address: fullAddress,
+    walletName: walletNameMap[walletType] || walletType,
+    rawProvider,
+    chainId
   };
 };

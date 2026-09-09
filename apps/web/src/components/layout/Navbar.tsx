@@ -1,5 +1,6 @@
 import React from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
+import { formatAddress } from '../../utils/walletDetector';
 import {
   Zap,
   TrendingUp,
@@ -10,7 +11,8 @@ import {
   Sun,
   Moon,
   ChevronDown,
-  Wallet
+  Wallet,
+  AlertTriangle
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -24,6 +26,8 @@ export const Navbar: React.FC = () => {
     isWalletConnected,
     walletAddress,
     connectedWalletName,
+    isWrongNetwork,
+    chainId,
     openWalletModal,
     notifications,
     toggleNotificationDrawer
@@ -159,13 +163,31 @@ export const Navbar: React.FC = () => {
           </button>
 
           {isWalletConnected ? (
-            <button
-              onClick={openWalletModal}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-900 border border-cyan-500/30 hover:border-cyan-500/60 text-cyan-300 font-mono text-sm font-semibold transition-all shadow-sm"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{connectedWalletName ? `${connectedWalletName}: ` : ''}{walletAddress}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {isWrongNetwork && (
+                <div
+                  onClick={openWalletModal}
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-500/20 transition-colors animate-pulse"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Wrong Network</span>
+                </div>
+              )}
+              <button
+                onClick={openWalletModal}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-900 border font-mono text-sm font-semibold transition-all shadow-sm ${
+                  isWrongNetwork
+                    ? 'border-amber-500/50 text-amber-300 hover:border-amber-500'
+                    : 'border-cyan-500/30 hover:border-cyan-500/60 text-cyan-300'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${isWrongNetwork ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
+                <span>
+                  {connectedWalletName ? `${connectedWalletName}: ` : ''}
+                  {formatAddress(walletAddress)}
+                </span>
+              </button>
+            </div>
           ) : (
             <button
               onClick={openWalletModal}

@@ -4,25 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "dev": "npx vite",
+    "build": "npx tsc && npx vite build",
+    "preview": "npx vite preview",
+    "type-check": "npx tsc --noEmit"
   },
   "dependencies": {
-    "@zenith/types": "*",
     "@zenith/chains": "*",
-    "@zenith/tokens": "*",
-    "@zenith/security": "*",
-    "@zenith/routing": "*",
     "@zenith/execution": "*",
+    "@zenith/routing": "*",
+    "@zenith/security": "*",
+    "@zenith/tokens": "*",
+    "@zenith/types": "*",
     "@zenith/ui": "*",
+    "clsx": "^2.1.1",
+    "ethers": "^6.17.0",
     "lucide-react": "^0.378.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zustand": "^4.5.2",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.3.0"
+    "tailwind-merge": "^2.3.0",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.1",

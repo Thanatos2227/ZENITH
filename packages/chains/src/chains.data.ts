@@ -250,7 +250,9 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     nativeCurrency: { name: 'Polygon Ecosystem Token', symbol: 'POL', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/4713/small/polygon.png' },
     rpcEndpoints: [
       { url: 'https://polygon-rpc.com', priority: 1, status: 'HEALTHY' },
-      { url: 'https://rpc.ankr.com/polygon', priority: 2, status: 'HEALTHY' }
+      { url: 'https://polygon.llamarpc.com', priority: 2, status: 'HEALTHY' },
+      { url: 'https://rpc.ankr.com/polygon', priority: 3, status: 'HEALTHY' },
+      { url: 'https://1rpc.io/matic', priority: 4, status: 'HEALTHY' }
     ],
     explorer: {
       name: 'PolygonScan',

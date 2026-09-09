@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
-import { detectInstalledWallets } from '../../utils/walletDetector';
+import { detectInstalledWallets, formatAddress } from '../../utils/walletDetector';
 import { WalletOption } from '@zenith/types';
 import {
   X,
@@ -9,7 +9,8 @@ import {
   ExternalLink,
   ChevronRight,
   CheckCircle2,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 
 export const WalletModal: React.FC = () => {
@@ -21,6 +22,10 @@ export const WalletModal: React.FC = () => {
     isWalletConnected,
     walletAddress,
     connectedWalletName,
+    isWrongNetwork,
+    chainId,
+    sourceChain,
+    walletError,
     disconnectWallet
   } = useZenithStore();
 
@@ -69,21 +74,41 @@ export const WalletModal: React.FC = () => {
 
         {isWalletConnected ? (
           <div className="p-5 space-y-4">
-            <div className="p-4 rounded-xl bg-[#0B111E] border border-slate-800 space-y-2">
+            <div className="p-4 rounded-xl bg-[#0B111E] border border-slate-800 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-medium">Active Provider</span>
                 <span className="text-xs font-bold text-cyan-300 font-mono">
                   {connectedWalletName || 'Web3 Injected'}
                 </span>
               </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-medium">Account Address</span>
-                <span className="text-sm font-bold text-white font-mono">{walletAddress}</span>
+                <span className="text-xs sm:text-sm font-bold text-white font-mono" title={walletAddress}>
+                  {formatAddress(walletAddress, 10, 8)}
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-emerald-400 pt-1">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Non-Custodial Authority Active</span>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">Network</span>
+                <span className={`text-xs font-bold font-mono ${isWrongNetwork ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {isWrongNetwork
+                    ? `Unsupported (Chain ID: ${chainId ?? 'Unknown'})`
+                    : sourceChain.canonicalName}
+                </span>
               </div>
+
+              {isWrongNetwork ? (
+                <div className="flex items-center gap-1.5 text-xs text-amber-400 pt-1 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Please switch to a supported network in your wallet extension.</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400 pt-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Non-Custodial Authority Active</span>
+                </div>
+              )}
             </div>
 
             <button
@@ -98,6 +123,12 @@ export const WalletModal: React.FC = () => {
           </div>
         ) : (
           <div className="p-5 space-y-4">
+            {walletError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                <span>{walletError}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1.5 bg-[#0B111E] p-1 rounded-xl border border-slate-800 text-xs">
               <button
                 onClick={() => setActiveFilter('ALL')}

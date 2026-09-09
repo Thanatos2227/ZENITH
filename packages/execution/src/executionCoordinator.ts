@@ -20,6 +20,8 @@ export class ExecutionCoordinator {
     quote: QuoteResponse;
     userAddress: string;
     stateMachine: ExecutionStateMachine;
+    signer?: any;
+    provider?: any;
   }): Promise<ReceiptView> {
     const isCrossChain = params.quote.request.sourceChainId !== params.quote.request.destinationChainId;
     const sourceChain = defaultChainRegistry.getChain(params.quote.request.sourceChainId);
@@ -58,14 +60,6 @@ export class ExecutionCoordinator {
 
     params.stateMachine.initializeSteps(steps);
 
-    if (steps.some((s) => s.id === 'step-approve')) {
-      params.stateMachine.transitionTo('APPROVING', { id: 'step-approve', status: 'ACTIVE' });
-      await new Promise((r) => setTimeout(r, 700));
-      params.stateMachine.transitionTo('APPROVED', { id: 'step-approve', status: 'SUCCESS' });
-    }
-
-    params.stateMachine.transitionTo('SIGNING', { id: 'step-execute', status: 'ACTIVE' });
-
     let txHash = '';
     if (sourceChain.executionEnvironment === 'SOLANA') {
       const result = await this.solanaAdapter.executeSwap({
@@ -81,9 +75,23 @@ export class ExecutionCoordinator {
       const result = await this.evmAdapter.executeSwap({
         quote: params.quote,
         userAddress: params.userAddress,
+        signer: params.signer,
+        provider: params.provider,
         onStatusChange: (status, hash) => {
           if (hash) txHash = hash;
-          params.stateMachine.transitionTo(status, { id: 'step-execute', status: 'ACTIVE', txHash: hash });
+          if (status === 'APPROVING') {
+            params.stateMachine.transitionTo('APPROVING', { id: 'step-approve', status: 'ACTIVE' });
+          } else if (status === 'APPROVED') {
+            params.stateMachine.transitionTo('APPROVED', { id: 'step-approve', status: 'SUCCESS' });
+          } else if (status === 'SIGNING') {
+            params.stateMachine.transitionTo('SIGNING', { id: 'step-execute', status: 'ACTIVE' });
+          } else if (status === 'SUBMITTING' || status === 'BROADCASTED') {
+            params.stateMachine.transitionTo(status, { id: 'step-execute', status: 'ACTIVE', txHash: hash });
+          } else if (status === 'CONFIRMING') {
+            params.stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'ACTIVE', txHash: hash });
+          } else if (status === 'COMPLETED') {
+            params.stateMachine.transitionTo('COMPLETED', { id: 'step-execute', status: 'SUCCESS', txHash: hash });
+          }
         }
       });
       txHash = result.txHash;

@@ -421,6 +421,19 @@ export const DEFAULT_TOKENS: Token[] = [
     verificationTier: 'VERIFIED_CANONICAL',
     logoURI: 'https://assets.coingecko.com/coins/images/34633/small/ondo.png'
   },
+  {
+    address: '0x455e53C3640fD1f044e5522f9611D1a7E02a3a0e',
+    chainId: 'ethereum',
+    name: 'Polygon Ecosystem Token (ERC-20)',
+    symbol: 'POL',
+    decimals: 18,
+    isNative: false,
+    priceUSD: 0.44,
+    change24hUSD: 1.2,
+    volume24hUSD: 45000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/4713/small/polygon.png'
+  },
 
   // ==========================================
   // 2. BASE (Coinbase Optimistic Rollup L2)

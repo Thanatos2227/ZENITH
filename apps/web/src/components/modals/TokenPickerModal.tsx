@@ -40,7 +40,9 @@ export const TokenPickerModal: React.FC = () => {
   const activeSelected = tokenPickerTarget === 'IN' ? tokenIn : tokenOut;
   const allChains = defaultChainRegistry.getAllChains();
 
-  const tokens = defaultTokenService.searchTokens(searchQuery, targetChain.id);
+  const tokens = searchQuery.trim()
+    ? defaultTokenService.searchTokens(searchQuery)
+    : defaultTokenService.getTokensForChain(targetChain.id);
 
   const handleSelectChain = (chain: ChainConfig) => {
     if (tokenPickerTarget === 'IN') {
@@ -110,7 +112,7 @@ export const TokenPickerModal: React.FC = () => {
         <div className="p-3 bg-[#080d1a] border-b border-slate-800/80">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-medium text-[11px] uppercase tracking-wider">Switch Network ({allChains.length} Chains):</span>
+            <span className="font-medium text-[11px] uppercase tracking-wider">Filter by Network ({allChains.length} Chains):</span>
           </div>
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
             {allChains.map((c) => (
@@ -146,7 +148,7 @@ export const TokenPickerModal: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${targetChain.shortName} tokens or paste address...`}
+              placeholder="Search token symbol, name, or paste address across all chains..."
               className="w-full pl-10 pr-4 py-2.5 bg-[#0B111E] border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60"
             />
           </div>
@@ -154,10 +156,10 @@ export const TokenPickerModal: React.FC = () => {
           {/* Quick Popular Tokens */}
           {popularTokens.length > 0 && !searchQuery && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] text-slate-500 font-medium">Popular:</span>
+              <span className="text-[11px] text-slate-500 font-medium">Popular on {targetChain.shortName}:</span>
               {popularTokens.map((t) => (
                 <button
-                  key={`${t.chainId}-${t.symbol}`}
+                  key={`${t.chainId}-${t.symbol}-${t.address}`}
                   onClick={() => handleSelectToken(t)}
                   className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs text-white font-medium inline-flex items-center gap-1.5 transition-colors"
                 >
@@ -175,7 +177,7 @@ export const TokenPickerModal: React.FC = () => {
         <div className="p-2 overflow-y-auto divide-y divide-slate-800/40 flex-1">
           {tokens.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-slate-400 text-sm mb-3">No tokens found for "{searchQuery}" on {targetChain.canonicalName}</p>
+              <p className="text-slate-400 text-sm mb-3">No tokens found for "{searchQuery}"</p>
               <button
                 onClick={() => setIsImportMode(true)}
                 className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-xs font-semibold inline-flex items-center gap-1.5"
@@ -186,9 +188,10 @@ export const TokenPickerModal: React.FC = () => {
             </div>
           ) : (
             tokens.map((t) => {
-              const isSelected = activeSelected.address.toLowerCase() === t.address.toLowerCase();
+              const isSelected = activeSelected.address.toLowerCase() === t.address.toLowerCase() && activeSelected.chainId === t.chainId;
               const riskScore = t.securityProfile?.riskScore ?? 0;
               const isPositive = (t.change24hUSD || 0) >= 0;
+              const tokenChain = defaultChainRegistry.getChain(t.chainId);
 
               return (
                 <div
@@ -218,6 +221,11 @@ export const TokenPickerModal: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-sm text-white">{t.symbol}</span>
+                        {tokenChain && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-400 font-mono border border-slate-700">
+                            {tokenChain.shortName}
+                          </span>
+                        )}
                         {t.verificationTier === 'VERIFIED_CANONICAL' && (
                           <span title="Verified Canonical Token">
                             <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />

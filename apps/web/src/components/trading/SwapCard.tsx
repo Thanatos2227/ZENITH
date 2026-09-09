@@ -26,7 +26,10 @@ export const SwapCard: React.FC = () => {
     fetchQuote,
     openConfirmSheet,
     isWalletConnected,
-    openWalletModal
+    walletBalances,
+    openWalletModal,
+    chainId,
+    switchNetwork
   } = useZenithStore();
 
   const [refreshTimer, setRefreshTimer] = useState<number>(10);
@@ -53,9 +56,28 @@ export const SwapCard: React.FC = () => {
   const numAmountIn = parseFloat(amountIn) || 0;
   const tradeValueUSD = tokenIn.priceUSD ? numAmountIn * tokenIn.priceUSD : 0;
 
+  const isNetworkMismatch = isWalletConnected && chainId !== null && sourceChain.chainId !== undefined && chainId !== sourceChain.chainId;
+
+  const tokenInKey = `${sourceChain.id}:${tokenIn.address}`;
+  const tokenInKeyLower = `${sourceChain.id}:${tokenIn.address.toLowerCase()}`;
+  const tokenInBalanceStr = isWalletConnected
+    ? (walletBalances[tokenInKey] ?? walletBalances[tokenInKeyLower] ?? (tokenIn.isNative ? (walletBalances[`${sourceChain.id}:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`] ?? walletBalances[`${sourceChain.id}:0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`]) : undefined) ?? '0.00')
+    : '0.00';
+  const tokenInBalanceNum = parseFloat(tokenInBalanceStr) || 0;
+  const isInsufficientBalance = isWalletConnected && !isNetworkMismatch && tokenInBalanceNum > 0 && numAmountIn > tokenInBalanceNum;
+
   const handlePercentage = (pct: number) => {
-    const maxBal = 4.825;
-    const val = (maxBal * pct).toFixed(4);
+    if (tokenInBalanceNum <= 0) {
+      setAmountIn('0.0');
+      return;
+    }
+    if (pct === 1 && tokenIn.isNative) {
+      const gasReserve = sourceChain.id === 'polygon' ? 0.02 : 0.003;
+      const maxAmount = Math.max(0, tokenInBalanceNum - gasReserve);
+      setAmountIn(maxAmount > 0 ? maxAmount.toFixed(4) : '0.0');
+      return;
+    }
+    const val = (tokenInBalanceNum * pct).toFixed(4);
     setAmountIn(val);
   };
 
@@ -99,11 +121,6 @@ export const SwapCard: React.FC = () => {
               >
                 <img src={destChain.iconURI} alt={destChain.shortName} className="w-4 h-4 rounded-full" />
                 <span>{destChain.shortName}</span>
-                {isCrossChain && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300">
-                    Cross-Chain
-                  </span>
-                )}
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
             </div>
@@ -122,6 +139,22 @@ export const SwapCard: React.FC = () => {
           </div>
         </div>
 
+        {/* Network Mismatch Notice */}
+        {isNetworkMismatch && (
+          <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-3">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>Wallet on different chain. Switch to {sourceChain.canonicalName} to trade.</span>
+            </div>
+            <button
+              onClick={() => switchNetwork(sourceChain.chainId!)}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] shrink-0 transition-colors"
+            >
+              Switch Network
+            </button>
+          </div>
+        )}
+
         {/* Input Token Amount */}
         <div className="bg-[#0B111E] rounded-xl p-4 border border-slate-800/70 focus-within:border-cyan-500/50 transition-colors mb-2">
           <div className="flex items-center justify-between mb-2">
@@ -129,7 +162,7 @@ export const SwapCard: React.FC = () => {
               You Pay
             </span>
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <span>Bal: 4.825 {tokenIn.symbol}</span>
+              <span>Bal: {tokenInBalanceStr} {tokenIn.symbol}</span>
               <div className="flex gap-1 ml-1">
                 <button
                   onClick={() => handlePercentage(0.25)}
@@ -336,12 +369,27 @@ export const SwapCard: React.FC = () => {
             <Wallet className="w-5 h-5" />
             Connect Wallet to Trade
           </button>
+        ) : isNetworkMismatch ? (
+          <button
+            onClick={() => switchNetwork(sourceChain.chainId!)}
+            className="w-full py-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-extrabold text-base tracking-wide shadow-lg transition-all flex items-center justify-center gap-2"
+          >
+            <ShieldAlert className="w-5 h-5" />
+            Switch Network to {sourceChain.shortName}
+          </button>
         ) : !amountIn || parseFloat(amountIn) <= 0 ? (
           <button
             disabled
             className="w-full py-4 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-500 font-display font-bold text-base cursor-not-allowed flex items-center justify-center gap-2"
           >
             Enter an Amount
+          </button>
+        ) : isInsufficientBalance ? (
+          <button
+            disabled
+            className="w-full py-4 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 font-display font-bold text-base cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            Insufficient {tokenIn.symbol} Balance
           </button>
         ) : isQuoteLoading ? (
           <button
