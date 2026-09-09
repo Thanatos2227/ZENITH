@@ -100,6 +100,16 @@ export class ScoringService {
     const minReceivedBig = (rawBig * (10000n - slippageBps)) / 10000n;
     return minReceivedBig.toString();
   }
+
+  public calculateMaximumInput(
+    amountInRaw: string,
+    slippageTolerancePercent: number
+  ): string {
+    const rawBig = BigInt(amountInRaw);
+    const slippageBps = BigInt(Math.round(slippageTolerancePercent * 100));
+    const maxInputBig = (rawBig * (10000n + slippageBps)) / 10000n;
+    return maxInputBig.toString();
+  }
 }
 
 export const defaultScoringService = new ScoringService();

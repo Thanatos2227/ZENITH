@@ -621,7 +621,7 @@ export class MarketDataService {
     symbolOut: string,
     interval: TimeframeInterval = '15m',
     limit: number = 50,
-    fallbackPriceUSD: number = 3450
+    fallbackPriceUSD: number = 2465.87
   ): Promise<MarketCandle[]> {
     const pair = this.getPairConfig(symbolIn, symbolOut);
 
@@ -705,7 +705,7 @@ export class MarketDataService {
   public async fetch24hStats(
     symbolIn: string,
     symbolOut: string,
-    fallbackPriceUSD: number = 3450
+    fallbackPriceUSD: number = 2465.87
   ): Promise<MarketStats24h> {
     const pair = this.getPairConfig(symbolIn, symbolOut);
 

@@ -3,17 +3,21 @@ import { ExecutionStep, QuoteResponse, ReceiptView } from '@zenith/types';
 import { defaultEVMAdapter, EVMExecutionAdapter } from './adapters/evmAdapter';
 import { defaultSolanaAdapter, SolanaExecutionAdapter } from './adapters/solanaAdapter';
 import { ExecutionStateMachine } from './stateMachine';
+import { defaultIntentEngine, CrossChainIntentEngine } from './crosschain/intentEngine';
 
 export class ExecutionCoordinator {
   private evmAdapter: EVMExecutionAdapter;
   private solanaAdapter: SolanaExecutionAdapter;
+  private intentEngine: CrossChainIntentEngine;
 
   constructor(
     evmAdapter = defaultEVMAdapter,
-    solanaAdapter = defaultSolanaAdapter
+    solanaAdapter = defaultSolanaAdapter,
+    intentEngine = defaultIntentEngine
   ) {
     this.evmAdapter = evmAdapter;
     this.solanaAdapter = solanaAdapter;
+    this.intentEngine = intentEngine;
   }
 
   public async executeTrade(params: {
@@ -44,16 +48,16 @@ export class ExecutionCoordinator {
 
     steps.push({
       id: 'step-execute',
-      title: isCrossChain ? 'Initiate Cross-Chain Bridge Swap' : 'Execute Swap',
-      description: `Swap ${params.quote.amountInFormatted} ${params.quote.request.tokenIn.symbol} for ${params.quote.request.tokenOut.symbol}`,
+      title: isCrossChain ? 'Initiate Cross-Chain Intent Swap' : (params.quote.tradeType === 'EXACT_OUTPUT' ? 'Execute Exact-Output Swap' : 'Execute Swap'),
+      description: `Swap ${params.quote.amountInFormatted} ${params.quote.request.tokenIn.symbol} for ${params.quote.amountOutFormatted} ${params.quote.request.tokenOut.symbol}`,
       status: 'PENDING'
     });
 
     if (isCrossChain) {
       steps.push({
-        id: 'step-bridge',
-        title: 'Bridge Confirmation',
-        description: `Relaying assets to ${destChain.shortName}`,
+        id: 'step-intent-fulfill',
+        title: 'Solver Intent Fulfillment',
+        description: `Filler settling assets on ${destChain.shortName}`,
         status: 'PENDING'
       });
     }
@@ -61,6 +65,13 @@ export class ExecutionCoordinator {
     params.stateMachine.initializeSteps(steps);
 
     let txHash = '';
+
+    if (isCrossChain && params.quote.intent) {
+      this.intentEngine.registerIntent(params.quote.intent);
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'SIGNED');
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'SUBMITTED');
+    }
+
     if (sourceChain.executionEnvironment === 'SOLANA') {
       const result = await this.solanaAdapter.executeSwap({
         quote: params.quote,
@@ -99,10 +110,24 @@ export class ExecutionCoordinator {
 
     params.stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'SUCCESS', txHash });
 
-    if (isCrossChain) {
-      params.stateMachine.transitionTo('BRIDGE_IN_FLIGHT', { id: 'step-bridge', status: 'ACTIVE' });
-      await new Promise((r) => setTimeout(r, 1200));
-      params.stateMachine.transitionTo('BRIDGE_DESTINATION_CONFIRMED', { id: 'step-bridge', status: 'SUCCESS' });
+    if (isCrossChain && params.quote.intent) {
+      params.stateMachine.transitionTo('BRIDGE_IN_FLIGHT', { id: 'step-intent-fulfill', status: 'ACTIVE' });
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'ACCEPTED', { txHashSource: txHash });
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'FULFILLING');
+
+      await new Promise((r) => setTimeout(r, 600));
+
+      const destTxHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'DESTINATION_FILLED', { txHashDestination: destTxHash });
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'VERIFIED');
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'SETTLING');
+      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'SETTLED');
+
+      params.stateMachine.transitionTo('BRIDGE_DESTINATION_CONFIRMED', {
+        id: 'step-intent-fulfill',
+        status: 'SUCCESS',
+        txHash: destTxHash
+      });
     }
 
     params.stateMachine.transitionTo('COMPLETED');
@@ -129,7 +154,7 @@ export class ExecutionCoordinator {
       status: 'COMPLETED',
       explorerUrl,
       routeSummary: isCrossChain
-        ? `Swapped via ${params.quote.bestRoute.bridgeStep?.bridgeProtocol} Bridge`
+        ? `Cross-chain fill via ${params.quote.intent?.solverId || 'ZENITH Stargate Relayer'}`
         : `Swapped via ${params.quote.bestRoute.hops.map((h) => h.dexProtocol).join(' + ')}`
     };
 

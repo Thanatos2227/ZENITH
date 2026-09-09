@@ -36,7 +36,7 @@ export const UnifiedTradingView: React.FC = () => {
     defaultMarketDataService.getCachedMarketData(tokenIn.chainId, tokenIn.address)?.priceUSD ||
     tokenIn.priceUSD;
 
-  const basePrice = storePrice || (tokenIn.symbol === 'ETH' ? 3450 : tokenIn.symbol === 'SOL' ? 145 : tokenIn.symbol === 'WBTC' ? 65000 : 1);
+  const basePrice = storePrice || (tokenIn.symbol === 'ETH' ? 2465.87 : tokenIn.symbol === 'SOL' ? 101.68 : tokenIn.symbol === 'WBTC' || tokenIn.symbol === 'BTC' ? 78247.22 : 1);
   const [liveStats, setLiveStats] = useState<MarketStats24h>({
     currentPrice: basePrice,
     change24hPercent: 2.85,
