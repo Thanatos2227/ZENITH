@@ -17,6 +17,7 @@ import {
   MarketStats24h
 } from '../../services/marketDataService';
 import { TradingViewChart } from './TradingViewChart';
+import { useZenithStore } from '../../stores/useZenithStore';
 
 interface LivePriceChartProps {
   tokenIn: Token;
@@ -24,6 +25,8 @@ interface LivePriceChartProps {
 }
 
 export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOut }) => {
+  const { theme } = useZenithStore();
+  const isDark = theme === 'dark';
   const [viewEngine, setViewEngine] = useState<'NATIVE' | 'TRADINGVIEW'>('NATIVE');
   const [chartMode, setChartMode] = useState<'AREA' | 'CANDLE'>('AREA');
   const [interval, setInterval] = useState<TimeframeInterval>('15m');
@@ -466,16 +469,16 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           )}
 
           {/* SVG Interactive Real-Time Chart Canvas */}
-          <div className="relative w-full h-72 sm:h-80 bg-[#080B11]/90 rounded-xl border border-slate-800/80 overflow-hidden select-none">
+          <div className={`relative w-full h-72 sm:h-80 ${isDark ? 'bg-[#080B11]/90 border-slate-800/80' : 'bg-white/95 border-slate-200 shadow-sm'} rounded-xl border overflow-hidden select-none`}>
             {/* Horizontal Price Grid Lines */}
             <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none opacity-30">
-              <div className="w-full border-b border-dashed border-slate-700 flex justify-between text-[10px] font-mono text-slate-400">
+              <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
                 <span>${formatPriceDigits(maxPrice)}</span>
               </div>
-              <div className="w-full border-b border-dashed border-slate-700 flex justify-between text-[10px] font-mono text-slate-400">
+              <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
                 <span>${formatPriceDigits((maxPrice + minPrice) / 2)}</span>
               </div>
-              <div className="w-full border-b border-dashed border-slate-700 flex justify-between text-[10px] font-mono text-slate-400">
+              <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
                 <span>${formatPriceDigits(minPrice)}</span>
               </div>
             </div>
@@ -492,7 +495,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={isPositive ? '#00E599' : '#F43F5E'} stopOpacity="0.35" />
                   <stop offset="50%" stopColor={isPositive ? '#06B6D4' : '#E11D48'} stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#080B11" stopOpacity="0.0" />
+                  <stop offset="100%" stopColor={isDark ? '#080B11' : '#FFFFFF'} stopOpacity="0.0" />
                 </linearGradient>
 
                 {/* Glowing Line Filter */}
@@ -636,7 +639,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                     cy={points[points.length - 1].y}
                     r="4"
                     fill={isPositive ? '#00E599' : '#F43F5E'}
-                    stroke="#080B11"
+                    stroke={isDark ? '#080B11' : '#FFFFFF'}
                     strokeWidth="1.5"
                   />
                 </g>
@@ -651,7 +654,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                     y1={paddingY}
                     x2={mousePos.x}
                     y2={chartHeight - paddingY}
-                    stroke="#94A3B8"
+                    stroke={isDark ? '#94A3B8' : '#64748B'}
                     strokeWidth="1"
                     strokeDasharray="2 2"
                     opacity="0.7"
@@ -662,13 +665,13 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                     y1={mousePos.y}
                     x2={chartWidth - paddingX}
                     y2={mousePos.y}
-                    stroke="#94A3B8"
+                    stroke={isDark ? '#94A3B8' : '#64748B'}
                     strokeWidth="1"
                     strokeDasharray="2 2"
                     opacity="0.7"
                   />
                   {/* Center Target Dot */}
-                  <circle cx={mousePos.x} cy={mousePos.y} r="3.5" fill="#38BDF8" stroke="#080B11" strokeWidth="1" />
+                  <circle cx={mousePos.x} cy={mousePos.y} r="3.5" fill="#38BDF8" stroke={isDark ? '#080B11' : '#FFFFFF'} strokeWidth="1" />
                 </g>
               )}
             </svg>

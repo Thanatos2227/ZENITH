@@ -17,7 +17,55 @@ import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 import { DEFAULT_TOKENS, defaultTokenService } from '@zenith/tokens';
 import { defaultZenithRouter } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
+import { defaultThemeManager } from '@zenith/ui';
 import { connectToWalletProvider, formatAddress } from '../utils/walletDetector';
+
+const THEME_STORAGE_KEY = 'zenith-theme';
+
+export const getStoredTheme = (): 'dark' | 'light' => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (stored === 'light' || stored === 'dark') {
+        return stored;
+      }
+    } catch (e) {
+      // Ignore localStorage access errors
+    }
+  }
+  return 'dark';
+};
+
+export const applyThemeToDom = (theme: 'dark' | 'light'): void => {
+  if (typeof document !== 'undefined') {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+      root.setAttribute('data-theme', 'dark');
+      if (document.body) {
+        document.body.classList.add('dark');
+        document.body.classList.remove('light');
+      }
+    } else {
+      root.classList.remove('dark');
+      root.classList.add('light');
+      root.setAttribute('data-theme', 'light');
+      if (document.body) {
+        document.body.classList.remove('dark');
+        document.body.classList.add('light');
+      }
+    }
+  }
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (e) {}
+  }
+
+  defaultThemeManager.setTheme(theme);
+};
 
 export interface ZenithState {
   activeTab: 'TRADE' | 'MARKETS' | 'PORTFOLIO' | 'HISTORY' | 'SETTINGS';
@@ -169,7 +217,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
   return {
     activeTab: 'TRADE',
     isProMode: true,
-    theme: 'dark',
+    theme: getStoredTheme(),
 
     sourceChain: defaultEthChain,
     destChain: defaultEthChain,
@@ -229,9 +277,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     setProMode: (isProMode) => set({ isProMode }),
     toggleTheme: () => {
       const nextTheme = get().theme === 'dark' ? 'light' : 'dark';
-      if (typeof document !== 'undefined') {
-        document.documentElement.classList.toggle('dark', nextTheme === 'dark');
-      }
+      applyThemeToDom(nextTheme);
       set({ theme: nextTheme });
     },
 
@@ -901,3 +947,8 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     }
   };
 });
+
+if (typeof window !== 'undefined') {
+  applyThemeToDom(getStoredTheme());
+}
+

@@ -3,16 +3,54 @@
 @tailwind utilities;
 
 @layer base {
+  :root, html.dark {
+    --zenith-bg-main: #080B11;
+    --zenith-bg-card: #0F172A;
+    --zenith-bg-card-glass: rgba(15, 23, 42, 0.72);
+    --zenith-bg-surface: #1E293B;
+    --zenith-bg-input: #0B111E;
+    --zenith-border-subtle: rgba(51, 65, 85, 0.6);
+    --zenith-border-card: #1e293b;
+    --zenith-text-primary: #F8FAFC;
+    --zenith-text-secondary: #94A3B8;
+    --zenith-text-muted: #64748B;
+    --zenith-glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    --zenith-scrollbar-track: #080B11;
+    --zenith-scrollbar-thumb: #334155;
+    --zenith-scrollbar-thumb-hover: #475569;
+  }
+
+  html.light, html[data-theme='light'] {
+    --zenith-bg-main: #F8FAFC;
+    --zenith-bg-card: #FFFFFF;
+    --zenith-bg-card-glass: rgba(255, 255, 255, 0.90);
+    --zenith-bg-surface: #F1F5F9;
+    --zenith-bg-input: #F1F5F9;
+    --zenith-border-subtle: rgba(203, 213, 225, 0.8);
+    --zenith-border-card: #E2E8F0;
+    --zenith-text-primary: #0F172A;
+    --zenith-text-secondary: #475569;
+    --zenith-text-muted: #64748B;
+    --zenith-glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+    --zenith-scrollbar-track: #F8FAFC;
+    --zenith-scrollbar-thumb: #CBD5E1;
+    --zenith-scrollbar-thumb-hover: #94A3B8;
+  }
+
   body {
-    @apply bg-[#080B11] text-slate-100 antialiased font-sans;
+    background-color: var(--zenith-bg-main);
+    color: var(--zenith-text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
 .glass-panel {
-  background: rgba(15, 23, 42, 0.72);
+  background: var(--zenith-bg-card-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(51, 65, 85, 0.6);
+  border: 1px solid var(--zenith-border-subtle);
+  box-shadow: var(--zenith-glass-shadow);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .glass-panel-hover {
@@ -34,17 +72,147 @@
   -webkit-text-fill-color: transparent;
 }
 
+/* ==============================================================================
+   LIGHT THEME OVERRIDES (Comprehensive across the entire ZENITH application)
+   ============================================================================== */
+
+html.light body,
+html[data-theme='light'] body {
+  background-color: #F8FAFC;
+  color: #0F172A;
+}
+
+/* Backgrounds */
+html.light .bg-\[\#080B11\] {
+  background-color: #F8FAFC !important;
+}
+html.light .bg-\[\#080B11\]\/90,
+html.light .bg-\[\#080B11\]\/85 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+html.light .border-\[\#080B11\] {
+  border-color: #F8FAFC !important;
+}
+html.light .bg-\[\#0B111E\] {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* Elevated Surfaces, Cards & Pills */
+html.light .bg-slate-900 {
+  background-color: #FFFFFF !important;
+}
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/70,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/40 {
+  background-color: rgba(241, 245, 249, 0.92) !important;
+}
+
+html.light .bg-slate-950 {
+  background-color: #F8FAFC !important;
+}
+
+html.light .bg-slate-800 {
+  background-color: #F1F5F9 !important;
+}
+html.light .bg-slate-800\/90,
+html.light .bg-slate-800\/80,
+html.light .bg-slate-800\/70,
+html.light .bg-slate-800\/60,
+html.light .bg-slate-800\/40 {
+  background-color: rgba(226, 232, 240, 0.85) !important;
+}
+
+/* Hovers */
+html.light .hover\:bg-slate-800:hover,
+html.light .hover\:bg-slate-800\/70:hover,
+html.light .hover\:bg-slate-800\/60:hover,
+html.light .hover\:bg-slate-800\/40:hover {
+  background-color: #E2E8F0 !important;
+}
+html.light .hover\:bg-slate-700:hover,
+html.light .hover\:bg-slate-700\/90:hover {
+  background-color: #CBD5E1 !important;
+}
+
+/* Borders */
+html.light .border-slate-800,
+html.light .border-slate-800\/80,
+html.light .border-slate-800\/70,
+html.light .border-slate-800\/60,
+html.light .border-slate-800\/50 {
+  border-color: #E2E8F0 !important;
+}
+
+html.light .border-slate-700,
+html.light .border-slate-700\/80,
+html.light .border-slate-700\/50 {
+  border-color: #CBD5E1 !important;
+}
+
+html.light .hover\:border-slate-700:hover,
+html.light .hover\:border-slate-800:hover {
+  border-color: #94A3B8 !important;
+}
+
+html.light .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #E2E8F0 !important;
+}
+
+/* Text adjustments in light mode */
+html.light .text-white:not(.bg-indigo-500):not(.bg-emerald-500):not(.bg-red-500):not(.bg-cyan-500):not(.bg-purple-500):not(.bg-amber-500):not(.text-slate-950) {
+  color: #0F172A !important;
+}
+
+html.light .text-slate-100 {
+  color: #0F172A !important;
+}
+html.light .text-slate-200 {
+  color: #1E293B !important;
+}
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+html.light .text-slate-400 {
+  color: #64748B !important;
+}
+
+html.light .hover\:text-white:hover {
+  color: #0F172A !important;
+}
+
+html.light input.placeholder-slate-500::placeholder,
+html.light input.placeholder-slate-600::placeholder,
+html.light input::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Modal Backdrops in Light Mode */
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/60,
+html.light .bg-black\/70,
+html.light .bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #080B11;
+  background: var(--zenith-scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--zenith-scrollbar-thumb);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--zenith-scrollbar-thumb-hover);
 }
+
