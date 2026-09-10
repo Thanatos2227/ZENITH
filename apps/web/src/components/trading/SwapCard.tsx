@@ -338,18 +338,36 @@ export const SwapCard: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between">
+              <span className="text-slate-400">Swap Fee (LP)</span>
+              <span className="font-mono text-slate-200">
+                {quote.swapFee
+                  ? `${quote.swapFee.feeAmountFormatted} ${tokenIn.symbol} (~$${quote.swapFee.feeUSD < 0.01 ? quote.swapFee.feeUSD.toFixed(4) : quote.swapFee.feeUSD.toFixed(2)})`
+                  : '0.30%'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Platform Fee</span>
+              <span className="font-mono text-slate-200">
+                {quote.protocolFee
+                  ? `${quote.protocolFee.feeAmountFormatted} ${tokenIn.symbol} (~$${quote.protocolFee.feeUSD < 0.01 ? quote.protocolFee.feeUSD.toFixed(4) : quote.protocolFee.feeUSD.toFixed(2)})`
+                  : '0.05%'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Network Fee (Est.)</span>
+              <span className="font-mono text-emerald-400 font-semibold">
+                ~${quote.bestRoute.gasCostUSD < 0.01 ? quote.bestRoute.gasCostUSD.toFixed(4) : quote.bestRoute.gasCostUSD.toFixed(2)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
               <span className="text-slate-400">Route</span>
               <span className="font-mono text-cyan-300 font-medium">
                 {isCrossChain
                   ? `${quote.bestRoute.bridgeStep?.bridgeProtocol} Bridge`
                   : quote.bestRoute.hops.map((h) => h.dexProtocol).join(' → ')}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Network Gas ({sourceChain.shortName})</span>
-              <span className="font-mono text-emerald-400 font-semibold">
-                ~${quote.bestRoute.gasCostUSD < 0.01 ? quote.bestRoute.gasCostUSD.toFixed(4) : quote.bestRoute.gasCostUSD.toFixed(2)}
               </span>
             </div>
           </div>

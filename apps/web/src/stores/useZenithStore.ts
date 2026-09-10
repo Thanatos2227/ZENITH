@@ -170,6 +170,8 @@ let activeInjectedProvider: any = null;
 let activeAccountsChangedListener: ((accounts: string[]) => void) | null = null;
 let activeChainChangedListener: ((hexChainId: string) => void) | null = null;
 let isMarketStoreListenerRegistered = false;
+let quoteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let activeQuoteRequestId = 0;
 
 const cleanupWalletListeners = () => {
   if (activeInjectedProvider) {
@@ -489,7 +491,22 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         return;
       }
       set({ amountIn: validation.sanitized });
-      get().fetchQuote();
+
+      // Clear any pending debounce timer
+      if (quoteDebounceTimer) {
+        clearTimeout(quoteDebounceTimer);
+        quoteDebounceTimer = null;
+      }
+
+      if (validation.numericValue <= 0) {
+        set({ quote: null, isQuoteLoading: false, quoteError: null });
+        return;
+      }
+
+      // 350ms debounce so rapid typing does not trigger network requests on every keystroke
+      quoteDebounceTimer = setTimeout(() => {
+        get().fetchQuote();
+      }, 350);
     },
 
     setSlippage: (preset, customPercent) => {
@@ -853,6 +870,12 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     toggleNotificationDrawer: () => set((state) => ({ isNotificationDrawerOpen: !state.isNotificationDrawerOpen })),
 
     fetchQuote: async () => {
+      // Clear pending debounce timer if fetchQuote is invoked explicitly (e.g. token switch, network change, manual refresh)
+      if (quoteDebounceTimer) {
+        clearTimeout(quoteDebounceTimer);
+        quoteDebounceTimer = null;
+      }
+
       const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset } = get();
       
       const validation = validateAndSanitizeAmount(amountIn);
@@ -862,6 +885,8 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       }
 
       const cleanAmount = validation.sanitized;
+      // Increment quote request sequence counter to discard stale responses
+      const currentRequestId = ++activeQuoteRequestId;
 
       set({ isQuoteLoading: true, quoteError: null });
 
@@ -883,6 +908,11 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           gasPreset
         });
 
+        // Stale response guard: discard if a newer quote request was initiated
+        if (currentRequestId !== activeQuoteRequestId) {
+          return;
+        }
+
         set({
           quote,
           isQuoteLoading: false,
@@ -890,6 +920,11 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           quoteError: null
         });
       } catch (err: any) {
+        // Stale response guard
+        if (currentRequestId !== activeQuoteRequestId) {
+          return;
+        }
+
         set({
           quote: null,
           isQuoteLoading: false,

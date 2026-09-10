@@ -224,6 +224,13 @@ export interface ProtocolFee {
   treasuryRecipient: string;
 }
 
+export interface SwapFee {
+  feeBps: number;
+  feeAmountRaw: string;
+  feeAmountFormatted: string;
+  feeUSD: number;
+}
+
 export type TradeType = 'EXACT_INPUT' | 'EXACT_OUTPUT';
 
 export interface ConstantProductPoolState {
@@ -324,8 +331,10 @@ export interface QuoteResponse {
   maximumInputRaw?: string;
   maximumInputFormatted?: string;
   executionPrice: number;
+  referencePrice?: number;
   priceImpact: PriceImpact;
   protocolFee: ProtocolFee;
+  swapFee?: SwapFee;
   effectiveExecutionScore: number;
   quoteTimestamp: number;
   expiresAt: number;
