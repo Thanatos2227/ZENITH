@@ -33,9 +33,14 @@ export const MarketsView: React.FC = () => {
   const [tierFilter, setTierFilter] = useState('ALL');
   const [chainFilter, setChainFilter] = useState('ALL');
 
+  // Poll for live market data every 20 seconds
   useEffect(() => {
     fetchMarketData();
-  }, []);
+    const interval = setInterval(() => {
+      fetchMarketData();
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [fetchMarketData]);
 
   const filteredTokens = DEFAULT_TOKENS.filter((t) => {
     const chain = defaultChainRegistry.getChain(t.chainId);
@@ -98,16 +103,26 @@ export const MarketsView: React.FC = () => {
     return `$${cap.toLocaleString()}`;
   };
 
-  // Compute live total 24h market volume across tracked tokens
-  const totalVolumeUSD = Object.values(marketData).reduce((acc, m) => acc + (m.volume24hUSD || 0), 0);
-  const totalVolumeFormatted =
-    totalVolumeUSD > 0
-      ? totalVolumeUSD >= 1e9
-        ? `$${(totalVolumeUSD / 1e9).toFixed(1)} Billion`
-        : `$${(totalVolumeUSD / 1e6).toFixed(1)} Million`
-      : '$48.2 Billion';
+  // Compute live total 24h market volume across unique market assets (deduplicating multi-chain assets)
+  const seenAssets = new Set<string>();
+  let uniqueTotalVolumeUSD = 0;
 
-  const isLiveStream = marketDataStatus === 'LIVE';
+  Object.entries(marketData).forEach(([key, m]) => {
+    if (m && typeof m.volume24hUSD === 'number' && m.volume24hUSD > 0) {
+      const assetId = m.symbol ? m.symbol.toUpperCase() : key;
+      if (!seenAssets.has(assetId)) {
+        seenAssets.add(assetId);
+        uniqueTotalVolumeUSD += m.volume24hUSD;
+      }
+    }
+  });
+
+  const totalVolumeFormatted =
+    uniqueTotalVolumeUSD > 0
+      ? uniqueTotalVolumeUSD >= 1e9
+        ? `$${(uniqueTotalVolumeUSD / 1e9).toFixed(1)} Billion`
+        : `$${(uniqueTotalVolumeUSD / 1e6).toFixed(1)} Million`
+      : '—';
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
@@ -115,15 +130,25 @@ export const MarketsView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="font-display font-extrabold text-2xl text-white">Multi-Chain Markets</h2>
-            {isLiveStream ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                🟢 LIVE STREAM
+            {marketDataStatus === 'LIVE' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                🟢 LIVE FEED
+              </span>
+            ) : marketDataStatus === 'FALLBACK' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-[10px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                🟡 BINANCE FALLBACK
+              </span>
+            ) : marketDataStatus === 'STALE' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 font-mono text-[10px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-orange-400" />
+                🟠 STALE CACHE
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-[10px] font-bold">
-                <span className="w-2 h-2 rounded-full bg-amber-400" />
-                🟡 CACHED
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 font-mono text-[10px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                🔴 OFFLINE / UNAVAILABLE
               </span>
             )}
           </div>
@@ -220,12 +245,13 @@ export const MarketsView: React.FC = () => {
                 const tokenKey = `${t.chainId.toLowerCase()}:${t.address.toLowerCase()}`;
                 const live = marketData[tokenKey] || marketData[t.symbol.toLowerCase()];
 
-                const currentPrice = live?.priceUSD ?? t.priceUSD ?? 0;
-                const change24h = live?.change24hUSD ?? t.change24hUSD ?? 0;
-                const volume24h = live?.volume24hUSD ?? t.volume24hUSD ?? 0;
-                const marketCapUSD = live?.marketCapUSD;
-
-                const isPositive = change24h >= 0;
+                // No static price fallback! If live is null or not provided, it is unavailable
+                const currentPrice = (live?.priceUSD !== undefined && live.priceUSD !== null && live.priceUSD > 0) ? live.priceUSD : null;
+                const change24h = (live?.change24hUSD !== undefined && live.change24hUSD !== null) ? live.change24hUSD : null;
+                const volume24h = (live?.volume24hUSD !== undefined && live.volume24hUSD !== null && live.volume24hUSD > 0) ? live.volume24hUSD : null;
+                const marketCapUSD = live?.marketCapUSD ?? null;
+                const isAvailable = currentPrice !== null;
+                const isPositive = change24h !== null && change24h >= 0;
                 const riskScore = t.securityProfile?.riskScore ?? 0;
 
                 return (
@@ -273,23 +299,27 @@ export const MarketsView: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4 font-bold text-white text-sm">
-                      ${formatPrice(currentPrice)}
+                      {currentPrice !== null ? `$${formatPrice(currentPrice)}` : <span className="text-slate-500 font-normal">Unavailable</span>}
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1 font-bold ${
-                          isPositive ? 'text-emerald-400' : 'text-red-400'
-                        }`}
-                      >
-                        {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                        {isPositive ? '+' : ''}
-                        {change24h.toFixed(2)}%
-                      </span>
+                      {change24h !== null ? (
+                        <span
+                          className={`inline-flex items-center gap-1 font-bold ${
+                            isPositive ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                          {isPositive ? '+' : ''}
+                          {change24h.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">—</span>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 text-slate-300">
-                      {formatVolume(volume24h)}
+                      {volume24h !== null ? formatVolume(volume24h) : <span className="text-slate-500">—</span>}
                     </td>
 
                     <td className="py-3.5 px-4 text-slate-200 font-semibold">
@@ -314,7 +344,8 @@ export const MarketsView: React.FC = () => {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => handleTrade(t)}
-                        className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold font-sans text-xs transition-colors inline-flex items-center gap-1"
+                        disabled={!isAvailable}
+                        className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold font-sans text-xs transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:hover:bg-cyan-500/20"
                       >
                         Trade
                         <ArrowRight className="w-3 h-3" />
