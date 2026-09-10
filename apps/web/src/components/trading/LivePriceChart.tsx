@@ -4,7 +4,10 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
-  RefreshCw
+  RefreshCw,
+  WifiOff,
+  Wifi,
+  AlertTriangle
 } from 'lucide-react';
 import {
   defaultMarketDataService,
@@ -28,6 +31,9 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     defaultMarketDataService.getCachedMarketData(tokenIn.chainId, tokenIn.address)?.priceUSD ||
     tokenIn.priceUSD;
 
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
   const [chartMode, setChartMode] = useState<'AREA' | 'CANDLE'>('AREA');
   const [showEMA, setShowEMA] = useState<boolean>(true);
   const [showVolume, setShowVolume] = useState<boolean>(true);
@@ -94,6 +100,15 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   }, []);
 
   const initMarketData = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setIsOnline(false);
+      setWsStatus('DISCONNECTED');
+      if (candles.length === 0) {
+        setCandles(generateSynthetic1mCandles(latestPriceRef.current || baseRate, 45));
+      }
+      return;
+    }
+
     setIsLoading(true);
     try {
       const [fetchedCandles, fetchedStats] = await Promise.all([
@@ -119,13 +134,39 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     } finally {
       setIsLoading(false);
     }
-  }, [tokenIn.symbol, tokenOut.symbol, baseRate, generateSynthetic1mCandles]);
+  }, [tokenIn.symbol, tokenOut.symbol, baseRate, generateSynthetic1mCandles, candles.length]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setWsStatus('CONNECTING');
+      initMarketData();
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      setWsStatus('DISCONNECTED');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [initMarketData]);
 
   useEffect(() => {
     initMarketData();
   }, [initMarketData]);
 
   useEffect(() => {
+    if (!isOnline) {
+      setWsStatus('DISCONNECTED');
+      return;
+    }
+
     const cleanup = defaultMarketDataService.subscribeLiveStream(
       tokenIn.symbol,
       tokenOut.symbol,
@@ -171,9 +212,12 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return () => {
       cleanup();
     };
-  }, [tokenIn.symbol, tokenOut.symbol]);
+  }, [tokenIn.symbol, tokenOut.symbol, isOnline]);
 
   useEffect(() => {
+    // If there is no network connection, completely halt live interval updates
+    if (!isOnline) return;
+
     const intervalTimer = setInterval(() => {
       setCandles((prev) => {
         if (prev.length === 0) return prev;
@@ -210,7 +254,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           };
           return [...prev.slice(0, lastIndex), updatedLast];
         } else {
-
           const newCandle: MarketCandle = {
             timestamp: currentMinuteBucket,
             timeLabel,
@@ -228,7 +271,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return () => {
       clearInterval(intervalTimer);
     };
-  }, []);
+  }, [isOnline]);
 
   const currentPrice = storePrice || candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
   const firstPrice = candles[0]?.open || baseRate;
@@ -358,21 +401,34 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
               {tokenIn.symbol}/{tokenOut.symbol}
             </span>
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-wider ${
-                wsStatus === 'CONNECTED'
+              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
+                !isOnline
+                  ? 'bg-rose-950/70 border-rose-500/40 text-rose-300'
+                  : wsStatus === 'CONNECTED'
                   ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
                   : 'bg-amber-950/60 border-amber-500/30 text-amber-400'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full ${wsStatus === 'CONNECTED' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
-              <span>{wsStatus === 'CONNECTED' ? 'LIVE WS' : 'SYNCING'}</span>
+              {!isOnline ? (
+                <>
+                  <WifiOff className="w-2.5 h-2.5 text-rose-400" />
+                  <span>OFFLINE</span>
+                </>
+              ) : (
+                <>
+                  <span className={`w-2 h-2 rounded-full ${wsStatus === 'CONNECTED' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                  <span>{wsStatus === 'CONNECTED' ? 'LIVE WS' : 'SYNCING'}</span>
+                </>
+              )}
             </div>
           </div>
 
           <div className="flex items-baseline gap-2">
             <span
               className={`font-mono font-bold text-lg sm:text-xl tracking-tight transition-colors duration-300 ${
-                isTickUp === true
+                !isOnline
+                  ? 'text-slate-300'
+                  : isTickUp === true
                   ? 'text-emerald-400'
                   : isTickUp === false
                   ? 'text-red-400'
@@ -396,9 +452,13 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
 
         <div className="flex flex-wrap items-center gap-2">
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold text-xs shadow-sm">
-            <Activity className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-mono">Zenith Live • 1m</span>
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold text-xs shadow-sm transition-colors ${
+            !isOnline
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+          }`}>
+            <Activity className={`w-3.5 h-3.5 ${!isOnline ? 'text-rose-400' : 'text-cyan-400'}`} />
+            <span className="font-mono">{!isOnline ? 'Feed Paused (Offline)' : 'Zenith Live • 1m'}</span>
           </div>
 
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
@@ -449,7 +509,12 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           </button>
 
           <button
-            onClick={initMarketData}
+            onClick={() => {
+              if (typeof navigator !== 'undefined' && navigator.onLine) {
+                setIsOnline(true);
+              }
+              initMarketData();
+            }}
             className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition-colors"
             title="Refresh Live Data"
           >
@@ -457,6 +522,32 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           </button>
         </div>
       </div>
+
+      {!isOnline && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-rose-950/60 via-slate-900/80 to-rose-950/40 border border-rose-500/40 text-rose-200 text-xs font-mono shadow-lg animate-in fade-in duration-300">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1 rounded-lg bg-rose-500/20 text-rose-400">
+              <WifiOff className="w-4 h-4 animate-pulse" />
+            </div>
+            <div>
+              <p className="font-bold text-rose-200">No Network Connection Detected</p>
+              <p className="text-[11px] text-rose-300/80">Live chart updates & real-time tick streaming are stopped. Displaying last cached price state.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (typeof navigator !== 'undefined' && navigator.onLine) {
+                setIsOnline(true);
+              }
+              initMarketData();
+            }}
+            className="self-end sm:self-center px-3 py-1.5 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-rose-100 border border-rose-500/40 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 shadow-sm"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            Retry Connection
+          </button>
+        </div>
+      )}
 
       {displayedCandle && (
         <div className="flex flex-wrap items-center gap-4 text-xs font-mono bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800/80">
@@ -489,12 +580,46 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           <div className="ml-auto text-[11px] text-slate-500 hidden sm:flex items-center gap-2">
             <span>Ticks: {tickCounter}</span>
             <span className="text-slate-600">|</span>
-            <span className="text-cyan-400">1m Duration</span>
+            <span className={!isOnline ? "text-rose-400 font-bold" : "text-cyan-400"}>
+              {!isOnline ? "PAUSED (OFFLINE)" : "1m Duration"}
+            </span>
           </div>
         </div>
       )}
 
       <div className={`relative w-full h-72 sm:h-80 ${isDark ? 'bg-[#080B11]/90 border-slate-800/80' : 'bg-white/95 border-slate-200 shadow-sm'} rounded-xl border overflow-hidden select-none`}>
+
+        {!isOnline && (
+          <div className="absolute inset-0 z-20 backdrop-blur-[2px] bg-slate-950/75 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-3 shadow-lg shadow-rose-950/60">
+              <WifiOff className="w-6 h-6 animate-pulse" />
+            </div>
+            <h3 className="text-base font-bold text-white tracking-wide mb-1 font-display">
+              Live Chart Stopped — No Network
+            </h3>
+            <p className="text-xs text-slate-300 max-w-md mb-4 leading-relaxed font-sans">
+              Real-time candlestick calculations and live price feeds are stopped because there is no network connection. Please check your internet connection to resume real-time feeds.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => {
+                  if (typeof navigator !== 'undefined' && navigator.onLine) {
+                    setIsOnline(true);
+                  }
+                  initMarketData();
+                }}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                Reconnect Feed
+              </button>
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/90 border border-slate-700/80 text-[11px] font-mono text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                <span>Offline Safe Mode</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none opacity-30">
           <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
@@ -642,14 +767,16 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                 opacity="0.6"
               />
 
-              <circle
-                cx={points[points.length - 1].x}
-                cy={points[points.length - 1].y}
-                r="7"
-                fill={isPositive ? '#00E599' : '#F43F5E'}
-                opacity="0.3"
-                className="animate-ping"
-              />
+              {isOnline && (
+                <circle
+                  cx={points[points.length - 1].x}
+                  cy={points[points.length - 1].y}
+                  r="7"
+                  fill={isPositive ? '#00E599' : '#F43F5E'}
+                  opacity="0.3"
+                  className="animate-ping"
+                />
+              )}
               <circle
                 cx={points[points.length - 1].x}
                 cy={points[points.length - 1].y}

@@ -37,6 +37,24 @@ export const UnifiedTradingView: React.FC = () => {
     tokenIn.priceUSD;
 
   const basePrice = storePrice || (tokenIn.symbol === 'ETH' ? 2465.87 : tokenIn.symbol === 'SOL' ? 101.68 : tokenIn.symbol === 'WBTC' || tokenIn.symbol === 'BTC' ? 78247.22 : 1);
+
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const [liveStats, setLiveStats] = useState<MarketStats24h>({
     currentPrice: basePrice,
     change24hPercent: 2.85,
@@ -46,6 +64,8 @@ export const UnifiedTradingView: React.FC = () => {
   });
 
   useEffect(() => {
+    if (!isOnline) return;
+
     let isMounted = true;
     defaultMarketDataService.fetch24hStats(tokenIn.symbol, 'USDT', basePrice).then((stats) => {
       if (isMounted && stats) {
@@ -76,7 +96,7 @@ export const UnifiedTradingView: React.FC = () => {
       isMounted = false;
       cleanup();
     };
-  }, [tokenIn.symbol, basePrice]);
+  }, [tokenIn.symbol, basePrice, isOnline]);
 
   const markPrice = storePrice || liveStats.currentPrice;
   const isPositive = liveStats.change24hPercent >= 0;
