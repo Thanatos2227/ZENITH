@@ -38,11 +38,8 @@ export class CrossChainIntentEngine {
   ];
 
   private intentStore: Map<string, CrossChainIntent> = new Map();
-  private processedNonces: Set<string> = new Set(); // userAddress:nonce
+  private processedNonces: Set<string> = new Set();
 
-  /**
-   * Evaluates competitive quotes from the solver/filler network
-   */
   public async getCompetitiveQuotes(intent: CrossChainIntent): Promise<SolverFillQuote[]> {
     const rawDestAmount = BigInt(intent.minDestinationAmountRaw);
     const tokenOutDecimals = intent.destinationToken.decimals || 18;
@@ -50,7 +47,7 @@ export class CrossChainIntentEngine {
     return this.solvers
       .filter((s) => s.isActive)
       .map((solver) => {
-        // Slight bonus or competitive fill from solvers
+
         const bonusBps = solver.id === 'solver-zenith-alpha' ? 3n : 1n;
         const adjustedAmountBig = rawDestAmount + (rawDestAmount * bonusBps / 10000n);
         const formatted = (Number(adjustedAmountBig) / 10 ** tokenOutDecimals).toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -69,9 +66,6 @@ export class CrossChainIntentEngine {
       .sort((a, b) => b.solverReputationScore - a.solverReputationScore);
   }
 
-  /**
-   * Registers a new intent with replay and nonce protection
-   */
   public registerIntent(intent: CrossChainIntent): void {
     const nonceKey = `${intent.recipient.toLowerCase()}:${intent.nonce}`;
     if (this.processedNonces.has(nonceKey)) {
@@ -86,9 +80,6 @@ export class CrossChainIntentEngine {
     this.intentStore.set(intent.orderId, { ...intent, status: 'CREATED' });
   }
 
-  /**
-   * Transitions an intent through the settlement state machine
-   */
   public updateIntentState(
     orderId: string,
     newState: SettlementState,
@@ -99,7 +90,6 @@ export class CrossChainIntentEngine {
       throw new Error(`[CrossChainIntentEngine] Intent ${orderId} not found`);
     }
 
-    // Validate valid state transitions
     this.validateStateTransition(existing.status, newState);
 
     const updated: CrossChainIntent = {
@@ -114,9 +104,6 @@ export class CrossChainIntentEngine {
     return updated;
   }
 
-  /**
-   * Deterministic recovery / refund handler
-   */
   public processRefund(orderId: string, reason: string): CrossChainIntent {
     const intent = this.intentStore.get(orderId);
     if (!intent) {
@@ -128,7 +115,7 @@ export class CrossChainIntentEngine {
     }
 
     this.updateIntentState(orderId, 'REFUND_PENDING');
-    // Simulate smart contract escrow unlock and return
+
     const finalized = this.updateIntentState(orderId, 'REFUNDED');
     console.warn(`[CrossChainIntentEngine] Refunded ${orderId}. Reason: ${reason}`);
     return finalized;

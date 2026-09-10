@@ -1,9 +1,7 @@
 import { ChainConfig } from '@zenith/types';
 
 export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
-  // =========================================================================
-  // TIER 1 — CORE / FULL PRODUCTION (8 Networks)
-  // =========================================================================
+
   ethereum: {
     id: 'ethereum',
     chainId: 1,
@@ -471,9 +469,6 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/4128/small/solana.png'
   },
 
-  // =========================================================================
-  // TIER 2 — FULL TRADING / EXPANDING PRODUCTION (22 Networks)
-  // =========================================================================
   unichain: {
     id: 'unichain',
     chainId: 130,
@@ -1068,9 +1063,6 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/12882/small/injective_logo.png'
   },
 
-  // =========================================================================
-  // TIER 3 — EXPERIMENTAL / LIMITED PRODUCTION (17 Networks)
-  // =========================================================================
   arbitrumnova: {
     id: 'arbitrumnova',
     chainId: 42170,
@@ -1557,9 +1549,6 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png'
   },
 
-  // =========================================================================
-  // TIER 4 — RESEARCH / ADAPTER READY (5 Target Networks)
-  // =========================================================================
   bitcoin: {
     id: 'bitcoin',
     chainId: 0,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.24;
 
 import "./interfaces/IERC20.sol";
@@ -7,11 +7,6 @@ import "./interfaces/IZenithRouter.sol";
 import "./ZenithFeeManager.sol";
 import "./ZenithCircuitBreaker.sol";
 
-/**
- * @title ZenithRouter
- * @notice Modern Uniswap-style swap router with on-chain slippage, deadline protection,
- *         safe token transfers, protocol fee deduction, multi-hop, and native asset wrapping.
- */
 contract ZenithRouter is IZenithRouter {
     ZenithFeeManager public immutable feeManager;
     ZenithCircuitBreaker public immutable circuitBreaker;
@@ -49,10 +44,6 @@ contract ZenithRouter is IZenithRouter {
 
     receive() external payable {}
 
-    /// ====================================================================
-    /// SAFE ERC20 HELPERS (Handles non-standard tokens like USDT)
-    /// ====================================================================
-
     function _safeTransfer(address token, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, to, value)
@@ -73,10 +64,6 @@ contract ZenithRouter is IZenithRouter {
         );
         require(success && (data.length == 0 || abi.decode(data, (bool))), "ZenithRouter: Approve failed");
     }
-
-    /// ====================================================================
-    /// SWAP EXECUTION ENTRYPOINTS
-    /// ====================================================================
 
     function exactInputSingle(ExactInputSingleParams calldata params)
         external
@@ -109,13 +96,11 @@ contract ZenithRouter is IZenithRouter {
             _safeTransferFrom(params.tokenIn, msg.sender, address(this), netAmountIn);
         }
 
-        // Output balance checkpoint
         uint256 balanceBefore = params.tokenOut == address(0)
             ? address(this).balance
             : IERC20(params.tokenOut).balanceOf(address(this));
 
-        // Transfer tokens to recipient or convert if needed
-        amountOut = netAmountIn; // Placeholder execution rate or DEX route handler
+        amountOut = netAmountIn;
 
         require(amountOut >= params.amountOutMinimum, "ZenithRouter: Slippage limit exceeded");
 

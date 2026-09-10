@@ -38,7 +38,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   const [wsStatus, setWsStatus] = useState<'CONNECTING' | 'CONNECTED' | 'DISCONNECTED'>('CONNECTING');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Compute baseline price
   const baseRate = useMemo(() => {
     const pIn = storePrice || tokenIn.priceUSD || (tokenIn.symbol === 'ETH' ? 2465.87 : tokenIn.symbol === 'SOL' ? 101.68 : tokenIn.symbol === 'WBTC' || tokenIn.symbol === 'BTC' ? 78247.22 : 1);
     const pOut = tokenOut.priceUSD || (tokenOut.symbol === 'USDC' || tokenOut.symbol === 'USDT' ? 1 : tokenOut.symbol === 'ETH' ? 2465.87 : 1);
@@ -50,7 +49,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     latestPriceRef.current = baseRate;
   }, [baseRate]);
 
-  // Real 24h market stats
   const [stats24h, setStats24h] = useState<MarketStats24h>({
     currentPrice: baseRate,
     change24hPercent: 3.42,
@@ -59,17 +57,14 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     volume24hUSD: 185000000
   });
 
-  // 1-minute Candlestick stream state
   const [candles, setCandles] = useState<MarketCandle[]>([]);
 
-  // Format 1-minute time label (HH:MM)
   const format1mTimeLabel = (d: Date): string => {
     const hh = d.getHours().toString().padStart(2, '0');
     const mm = d.getMinutes().toString().padStart(2, '0');
     return `${hh}:${mm}`;
   };
 
-  // Generate synthetic 1-minute historical candles if offline
   const generateSynthetic1mCandles = useCallback((startPrice: number, count: number = 45): MarketCandle[] => {
     const list: MarketCandle[] = [];
     const now = Date.now();
@@ -98,7 +93,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return list;
   }, []);
 
-  // Initialize and load 1-minute historical data and 24h stats
   const initMarketData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -131,7 +125,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     initMarketData();
   }, [initMarketData]);
 
-  // WebSocket Live Stream Listener (1m klines)
   useEffect(() => {
     const cleanup = defaultMarketDataService.subscribeLiveStream(
       tokenIn.symbol,
@@ -180,7 +173,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     };
   }, [tokenIn.symbol, tokenOut.symbol]);
 
-  // Real-time 1-Second Continuous Tick Engine on 1-Minute Duration
   useEffect(() => {
     const intervalTimer = setInterval(() => {
       setCandles((prev) => {
@@ -191,7 +183,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         const currentMinuteBucket = Math.floor(now.getTime() / 60000) * 60000;
         const timeLabel = format1mTimeLabel(now);
 
-        // Sub-basis micro fluctuation to simulate live orderbook jitter
         const targetPrice = latestPriceRef.current || last.close;
         const microJitter = (Math.random() - 0.495) * (targetPrice * 0.0003);
         const currentPrice = Math.max(targetPrice + microJitter, 0.000001);
@@ -208,7 +199,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           low24h: Math.min(prevStats.low24h, currentPrice)
         }));
 
-        // Check if we are still within the same 1-minute candle
         const lastCandleBucket = Math.floor(last.timestamp / 60000) * 60000;
         if (currentMinuteBucket === lastCandleBucket) {
           const updatedLast: MarketCandle = {
@@ -220,7 +210,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           };
           return [...prev.slice(0, lastIndex), updatedLast];
         } else {
-          // New 1-minute period started
+
           const newCandle: MarketCandle = {
             timestamp: currentMinuteBucket,
             timeLabel,
@@ -240,7 +230,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     };
   }, []);
 
-  // Derived stats
   const currentPrice = storePrice || candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
   const firstPrice = candles[0]?.open || baseRate;
   const priceChangeUSD = currentPrice - firstPrice;
@@ -263,7 +252,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return Math.max(...candles.map((c) => c.volume), 1);
   }, [candles]);
 
-  // SVG Chart Dimensions
   const chartWidth = 720;
   const chartHeight = 250;
   const paddingX = 20;
@@ -271,7 +259,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   const usableWidth = chartWidth - paddingX * 2;
   const usableHeight = chartHeight - paddingY * 2;
 
-  // Calculate points for Area line
   const points = useMemo(() => {
     if (candles.length === 0) return [];
     return candles.map((c, i) => {
@@ -282,7 +269,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     });
   }, [candles, minPrice, priceRange, usableHeight, usableWidth, chartHeight]);
 
-  // Construct SVG Path
   const linePath = useMemo(() => {
     if (points.length === 0) return '';
     return points.reduce((path, pt, i) => `${path} ${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)},${pt.y.toFixed(1)}`, '');
@@ -296,7 +282,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return `${linePath} L ${lastX.toFixed(1)},${bottomY} L ${firstX.toFixed(1)},${bottomY} Z`;
   }, [linePath, points, chartHeight]);
 
-  // 9-period Exponential Moving Average (EMA)
   const emaPoints = useMemo(() => {
     if (candles.length < 9) return [];
     const k = 2 / (9 + 1);
@@ -315,7 +300,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return emaPoints.reduce((path, pt, i) => `${path} ${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)},${pt.y.toFixed(1)}`, '');
   }, [emaPoints]);
 
-  // 21-period Exponential Moving Average (EMA)
   const ema21Points = useMemo(() => {
     if (candles.length < 21) return [];
     const k = 2 / (21 + 1);
@@ -334,7 +318,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return ema21Points.reduce((path, pt, i) => `${path} ${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)},${pt.y.toFixed(1)}`, '');
   }, [ema21Points]);
 
-  // Mouse hover event handler
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (candles.length === 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -366,9 +349,9 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-[#0B111E] border border-slate-800 space-y-4 shadow-xl">
-      {/* Chart Top Bar: Pair, Live Price, Engine Switcher, Timeframe Controls */}
+
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-        {/* Token Pair & Live Price */}
+
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="font-display font-black text-lg sm:text-xl text-white tracking-wide">
@@ -411,15 +394,13 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           </div>
         </div>
 
-        {/* Controls: Zenith Live 1m Indicator, Display Mode, Indicators */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Zenith Live 1m Duration Badge */}
+
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold text-xs shadow-sm">
             <Activity className="w-3.5 h-3.5 text-cyan-400" />
             <span className="font-mono">Zenith Live • 1m</span>
           </div>
 
-          {/* Chart Type Toggle & Indicators */}
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
             <button
               onClick={() => setChartMode('AREA')}
@@ -477,7 +458,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         </div>
       </div>
 
-      {/* Real-time OHLCV Inspector Strip */}
       {displayedCandle && (
         <div className="flex flex-wrap items-center gap-4 text-xs font-mono bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800/80">
           <div className="text-slate-400">
@@ -514,9 +494,8 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         </div>
       )}
 
-      {/* SVG Interactive Real-Time Chart Canvas */}
       <div className={`relative w-full h-72 sm:h-80 ${isDark ? 'bg-[#080B11]/90 border-slate-800/80' : 'bg-white/95 border-slate-200 shadow-sm'} rounded-xl border overflow-hidden select-none`}>
-        {/* Horizontal Price Grid Lines */}
+
         <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none opacity-30">
           <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
             <span>${formatPriceDigits(maxPrice)}</span>
@@ -537,21 +516,19 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           onMouseLeave={handleMouseLeave}
         >
           <defs>
-            {/* Area Gradient */}
+
             <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={isPositive ? '#00E599' : '#F43F5E'} stopOpacity="0.35" />
               <stop offset="50%" stopColor={isPositive ? '#06B6D4' : '#E11D48'} stopOpacity="0.15" />
               <stop offset="100%" stopColor={isDark ? '#080B11' : '#FFFFFF'} stopOpacity="0.0" />
             </linearGradient>
 
-            {/* Glowing Line Filter */}
             <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="2" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
 
-          {/* Volume Bars (Optional) */}
           {showVolume &&
             candles.map((c, i) => {
               const x = paddingX + (i / (candles.length - 1 || 1)) * usableWidth;
@@ -574,13 +551,11 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
               );
             })}
 
-          {/* Area Mode Rendering */}
           {chartMode === 'AREA' && (
             <>
-              {/* Shaded Area */}
+
               <path d={areaPath} fill="url(#areaGradient)" />
 
-              {/* Main Price Line */}
               <path
                 d={linePath}
                 fill="none"
@@ -593,7 +568,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
             </>
           )}
 
-          {/* Candlestick Mode Rendering */}
           {chartMode === 'CANDLE' &&
             candles.map((c, i) => {
               const x = paddingX + (i / (candles.length - 1 || 1)) * usableWidth;
@@ -609,7 +583,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
 
               return (
                 <g key={`candle-${i}`}>
-                  {/* Wick */}
+
                   <line
                     x1={x}
                     y1={normalizedHighY}
@@ -618,7 +592,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                     stroke={isUp ? '#00E599' : '#F43F5E'}
                     strokeWidth="1.2"
                   />
-                  {/* Body */}
+
                   <rect
                     x={x - candleWidth / 2}
                     y={candleTop}
@@ -633,7 +607,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
               );
             })}
 
-          {/* EMA 9 Overlay Line */}
           {showEMA && emaPath && (
             <path
               d={emaPath}
@@ -645,7 +618,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
             />
           )}
 
-          {/* EMA 21 Overlay Line */}
           {showEMA && ema21Path && (
             <path
               d={ema21Path}
@@ -656,10 +628,9 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
             />
           )}
 
-          {/* Current Live Pulse Indicator on Latest Point */}
           {points.length > 0 && (
             <g>
-              {/* Horizontal Latest Price Guideline */}
+
               <line
                 x1={paddingX}
                 y1={points[points.length - 1].y}
@@ -671,7 +642,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                 opacity="0.6"
               />
 
-              {/* Pulsing Beacon */}
               <circle
                 cx={points[points.length - 1].x}
                 cy={points[points.length - 1].y}
@@ -691,10 +661,9 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
             </g>
           )}
 
-          {/* Interactive Crosshair & Cursor Line */}
           {mousePos && (
             <g>
-              {/* Vertical Crosshair Line */}
+
               <line
                 x1={mousePos.x}
                 y1={paddingY}
@@ -705,7 +674,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                 strokeDasharray="2 2"
                 opacity="0.7"
               />
-              {/* Horizontal Crosshair Line */}
+
               <line
                 x1={paddingX}
                 y1={mousePos.y}
@@ -716,13 +685,12 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
                 strokeDasharray="2 2"
                 opacity="0.7"
               />
-              {/* Center Target Dot */}
+
               <circle cx={mousePos.x} cy={mousePos.y} r="3.5" fill="#38BDF8" stroke={isDark ? '#080B11' : '#FFFFFF'} strokeWidth="1" />
             </g>
           )}
         </svg>
 
-        {/* Live Price Tag on Right Edge */}
         <div
           style={{
             top: `${((points[points.length - 1]?.y || usableHeight / 2) / chartHeight) * 100}%`,
@@ -736,7 +704,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         </div>
       </div>
 
-      {/* Chart Footer: 24h High, 24h Low, 24h Volume, Indicator Legends */}
       <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 font-mono pt-1">
         <div className="flex items-center gap-4 flex-wrap">
           <div>

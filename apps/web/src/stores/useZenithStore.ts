@@ -30,7 +30,7 @@ export const getStoredTheme = (): 'dark' | 'light' => {
         return stored;
       }
     } catch (e) {
-      // Ignore localStorage access errors
+
     }
   }
   return 'dark';
@@ -90,7 +90,6 @@ export interface ZenithState {
   walletBalances: Record<string, string>;
   isBalanceLoading: boolean;
 
-  // Web3 Connection State
   provider: BrowserProvider | null;
   signer: JsonRpcSigner | null;
   chainId: number | null;
@@ -118,7 +117,6 @@ export interface ZenithState {
   transactionHistory: ReceiptView[];
   notifications: ZenithNotification[];
 
-  // Live Market Data
   marketData: Record<string, LiveMarketData>;
   isMarketsLoading: boolean;
   marketsError: string | null;
@@ -185,11 +183,6 @@ const cleanupWalletListeners = () => {
   activeChainChangedListener = null;
 };
 
-/**
- * Resolves a reliable ethers Provider for any supported chain.
- * If the connected wallet's chainId matches the target chain, uses the injected BrowserProvider.
- * Otherwise, resolves the healthy public RPC for that chain.
- */
 const getChainRpcProvider = (
   chainIdStr: string,
   activeChainId: number | null,
@@ -200,12 +193,10 @@ const getChainRpcProvider = (
     return injectedProvider || new JsonRpcProvider('https://eth.llamarpc.com');
   }
 
-  // If the user's wallet is currently connected on this exact chain, use the injected BrowserProvider
   if (injectedProvider && activeChainId !== null && chain.chainId === activeChainId) {
     return injectedProvider;
   }
 
-  // Otherwise, use a configured read-only JsonRpcProvider for this chain's RPC endpoint
   try {
     const rpcUrl = defaultChainRegistry.getHealthyRPC(chain.id);
     return new JsonRpcProvider(rpcUrl, chain.chainId ? { chainId: chain.chainId, name: chain.id } : undefined);
@@ -523,7 +514,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         let initialDestChain = get().destChain;
 
         if (walletType !== 'PHANTOM') {
-          // Initialize ethers v6 BrowserProvider
+
           provider = new BrowserProvider(rawProvider, 'any');
           try {
             signer = await provider.getSigner();
@@ -541,7 +532,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
             }
           }
 
-          // Validate network against Zenith supported chains
           if (connectedChainId !== null) {
             const allChains = defaultChainRegistry.getAllChains();
             matchedChain = allChains.find((c) => c.chainId === connectedChainId);
@@ -593,11 +583,9 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           });
         }
 
-        // Fetch live balances from the chain
         await get().refreshBalance();
         get().fetchQuote();
 
-        // Register EIP-1193 lifecycle event listeners
         if (rawProvider && typeof rawProvider.on === 'function') {
           activeInjectedProvider = rawProvider;
 
@@ -640,7 +628,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
             const chainMatch = allChains.find((c) => c.chainId === newChainId);
             const wrongNet = !chainMatch;
 
-            // Re-instantiate provider upon chain change
             const newProvider = new BrowserProvider(rawProvider, 'any');
             const newSigner = await newProvider.getSigner().catch(() => null);
 
@@ -741,10 +728,9 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const newBalances: Record<string, string> = { ...get().walletBalances };
 
       try {
-        // Resolve chain-aware provider for the active sourceChain
+
         const chainProvider = getChainRpcProvider(sourceChain.id, chainId, provider);
 
-        // 1. Fetch native currency balance on the active sourceChain from the real blockchain
         const nativeToken = defaultTokenService.getNativeToken(sourceChain.id);
         if (nativeToken) {
           try {
@@ -759,7 +745,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           }
         }
 
-        // 2. Fetch ERC-20 token balances for all tokens on the active sourceChain
         const chainTokens = defaultTokenService.getTokensForChain(sourceChain.id);
         const erc20Tokens = chainTokens.filter(
           (t) => !t.isNative && t.address.startsWith('0x') && t.address.length === 42
@@ -805,7 +790,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           params: [{ chainId: hexChainId }]
         });
       } catch (switchErr: any) {
-        // Error 4902 means the chain has not been added to MetaMask
+
         if (switchErr.code === 4902 || switchErr?.data?.originalError?.code === 4902) {
           const chain = defaultChainRegistry.getAllChains().find((c) => c.chainId === targetChainId);
           if (chain && chain.rpcEndpoints.length > 0) {
@@ -918,7 +903,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         return;
       }
 
-      // Pre-flight balance check
       const tokenInKey = `${sourceChain.id}:${quote.request.tokenIn.address}`;
       const userBalanceStr = walletBalances[tokenInKey] || '0';
       const userBalanceNum = parseFloat(userBalanceStr);
@@ -949,7 +933,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           transactionHistory: [receipt, ...state.transactionHistory]
         }));
 
-        // Refresh live blockchain balances after confirmation
         await get().refreshBalance();
 
         get().addNotification({
@@ -962,7 +945,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       } catch (err: any) {
         set({ isConfirmSheetOpen: false });
 
-        // Distinguish user rejection from execution error
         const errMsg = err?.message || String(err);
         const isUserRejected =
           err?.code === 4001 ||
@@ -1052,7 +1034,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           record[key] = val;
         });
 
-        // Register listener for continuous live WebSocket tick updates (registered once)
         if (!isMarketStoreListenerRegistered) {
           isMarketStoreListenerRegistered = true;
           defaultMarketDataService.addStoreTickListener((chainId, address, data) => {
@@ -1092,4 +1073,3 @@ export const useZenithStore = create<ZenithState>((set, get) => {
 if (typeof window !== 'undefined') {
   applyThemeToDom(getStoredTheme());
 }
-

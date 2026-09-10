@@ -49,7 +49,7 @@ export const MarketsView: React.FC = () => {
       (chain && chain.canonicalName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesChain = chainFilter === 'ALL' || t.chainId.toLowerCase() === chainFilter.toLowerCase();
-    
+
     let matchesType = true;
     if (networkTypeFilter === 'EVM') {
       matchesType = chain?.executionEnvironment === 'EVM';
@@ -110,7 +110,6 @@ export const MarketsView: React.FC = () => {
     return `$${cap.toLocaleString()}`;
   };
 
-  // Compute live total 24h market volume across tracked tokens
   const totalVolumeUSD = Object.values(marketData).reduce((acc, m) => acc + (m.volume24hUSD || 0), 0);
   const totalVolumeFormatted =
     totalVolumeUSD > 0
@@ -167,7 +166,6 @@ export const MarketsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Warning Notice if any error */}
       {marketsError && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
@@ -175,7 +173,6 @@ export const MarketsView: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Row */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="relative w-full md:w-80 shrink-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -343,4 +340,3 @@ export const MarketsView: React.FC = () => {
     </div>
   );
 };
-

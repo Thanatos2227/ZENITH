@@ -4,7 +4,7 @@ import { DEFAULT_TOKENS } from './defaultTokens';
 export interface LiveMarketData {
   symbol?: string;
   priceUSD: number;
-  change24hUSD: number; // 24h percent change (%)
+  change24hUSD: number;
   volume24hUSD: number;
   marketCapUSD?: number | null;
   high24h?: number;
@@ -35,7 +35,6 @@ export interface MarketStats24h {
 
 export type TimeframeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
-// Verified circulating supply numbers for calculating Market Cap (Price * Supply)
 export const VERIFIED_CIRCULATING_SUPPLY: Record<string, number> = {
   BTC: 19750000,
   WBTC: 19750000,
@@ -96,7 +95,6 @@ export const VERIFIED_CIRCULATING_SUPPLY: Record<string, number> = {
   USDE: 3200000000
 };
 
-// Standardized symbol mapping to live market pairs
 const BINANCE_SYMBOL_MAP: Record<string, string> = {
   ETH: 'ETH',
   WETH: 'ETH',
@@ -163,7 +161,6 @@ const BINANCE_SYMBOL_MAP: Record<string, string> = {
   USDE: 'USDE'
 };
 
-// CoinGecko IDs for multi-provider fallback
 export const COINGECKO_ID_MAP: Record<string, string> = {
   BTC: 'bitcoin',
   WBTC: 'wrapped-bitcoin',
@@ -256,7 +253,6 @@ export class MarketDataService {
   private inFlightPromise: Promise<Map<string, LiveMarketData>> | null = null;
   private lastError: string | null = null;
 
-  // WebSockets and background interval state
   private activeSockets: WebSocket[] = [];
   private globalWsStatus: 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED' = 'DISCONNECTED';
   private reconnectTimer: any = null;
@@ -273,7 +269,7 @@ export class MarketDataService {
   }
 
   constructor() {
-    // Seed cache initially from canonical token list
+
     DEFAULT_TOKENS.forEach((t) => {
       const key = this.getKey(t.chainId, t.address);
       const sym = t.symbol.toUpperCase();
@@ -335,9 +331,6 @@ export class MarketDataService {
     };
   }
 
-  /**
-   * Primary entry point: Fetch live multi-provider REST market data snapshot and attach live streams.
-   */
   public async fetchMarketData(tokens: Token[] = DEFAULT_TOKENS): Promise<Map<string, LiveMarketData>> {
     this.trackedTokens = tokens;
     if (this.inFlightPromise) {
@@ -351,15 +344,10 @@ export class MarketDataService {
     return this.inFlightPromise;
   }
 
-  /**
-   * High-resilience Multi-Provider Live Aggregator:
-   * Concurrently races Binance Global, Binance US, CoinGecko, CryptoCompare & CoinCap with fast timeouts.
-   */
   private async executeMultiProviderFetch(tokens: Token[]): Promise<Map<string, LiveMarketData>> {
     const tickerMap = new Map<string, TickerSnapshot>();
     let successfulSource = 'INITIAL_SEED';
 
-    // 1. Try Binance Global & Binance US in parallel
     const binancePromises = [
       this.fetchBinanceREST('https://api.binance.com/api/v3/ticker/24hr'),
       this.fetchBinanceREST('https://api.binance.us/api/v3/ticker/24hr')
@@ -378,10 +366,9 @@ export class MarketDataService {
         }
       }
     } catch {
-      // Continue to secondary providers
+
     }
 
-    // 2. If missing major assets or Binance blocked, query CoinGecko / CryptoCompare / CoinCap
     if (tickerMap.size < 10) {
       const fallbackPromises = [
         this.fetchCoinGeckoMarkets(),
@@ -404,18 +391,16 @@ export class MarketDataService {
           }
         }
       } catch {
-        // Fallback to cached entries
+
       }
     }
 
     const now = Date.now();
 
-    // Map fetched real market data onto every token across all networks
     tokens.forEach((t) => {
       const sym = t.symbol.toUpperCase();
       const baseSymbol = this.resolveSymbol(sym);
 
-      // Stablecoins handling: $1.00 USD peg
       if (STABLECOINS.has(sym) || STABLECOINS.has(baseSymbol)) {
         const key = this.getKey(t.chainId, t.address);
         const supply = VERIFIED_CIRCULATING_SUPPLY[sym] || VERIFIED_CIRCULATING_SUPPLY[baseSymbol] || 35000000000;
@@ -466,7 +451,7 @@ export class MarketDataService {
         if (baseSymbol) this.cache.set(baseSymbol.toLowerCase(), data);
         this.notifyStoreListeners(t.chainId, t.address, data);
       } else {
-        // Ensure baseline fallback has complete data
+
         const key = this.getKey(t.chainId, t.address);
         const existing = this.cache.get(key);
         if (existing) {
@@ -481,16 +466,12 @@ export class MarketDataService {
     this.lastFetchTime = now;
     this.lastError = null;
 
-    // Start live WebSocket stream and automated background polling
     this.startGlobalWebSocket(tokens);
     this.ensureBackgroundPolling();
 
     return this.cache;
   }
 
-  /**
-   * Helper to fetch Binance REST ticker
-   */
   private async fetchBinanceREST(url: string): Promise<Map<string, TickerSnapshot>> {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeout = controller ? setTimeout(() => controller.abort(), 3500) : null;
@@ -535,9 +516,6 @@ export class MarketDataService {
     }
   }
 
-  /**
-   * Helper to fetch CoinGecko Markets
-   */
   private async fetchCoinGeckoMarkets(): Promise<Map<string, TickerSnapshot>> {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeout = controller ? setTimeout(() => controller.abort(), 4000) : null;
@@ -582,9 +560,6 @@ export class MarketDataService {
     }
   }
 
-  /**
-   * Helper to fetch CryptoCompare prices
-   */
   private async fetchCryptoComparePrices(): Promise<Map<string, TickerSnapshot>> {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeout = controller ? setTimeout(() => controller.abort(), 3500) : null;
@@ -623,9 +598,6 @@ export class MarketDataService {
     }
   }
 
-  /**
-   * Helper to fetch CoinCap assets
-   */
   private async fetchCoinCapAssets(): Promise<Map<string, TickerSnapshot>> {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeout = controller ? setTimeout(() => controller.abort(), 3500) : null;
@@ -668,9 +640,6 @@ export class MarketDataService {
     }
   }
 
-  /**
-   * Continuous background polling to guarantee prices stay accurate even if WebSockets are blocked
-   */
   private ensureBackgroundPolling(): void {
     if (typeof window === 'undefined') return;
     if (this.pollingTimer) return;
@@ -680,10 +649,6 @@ export class MarketDataService {
     }, 12000);
   }
 
-  /**
-   * Starts/attaches continuous Binance WebSocket stream matching Trade View's exact `@kline_1m` stream format.
-   * Streams live kline ticks for ALL supported token symbols continuously.
-   */
   public startGlobalWebSocket(tokens: Token[] = this.trackedTokens): void {
     this.trackedTokens = tokens;
 
@@ -835,7 +800,7 @@ export class MarketDataService {
               }
             });
           } catch {
-            // Ignore parse errors
+
           }
         };
 
@@ -1014,7 +979,7 @@ export class MarketDataService {
         }
       }
     } catch {
-      // Fallback to synthetic candles
+
     }
 
     return this.generateSyntheticCandles(fallbackPriceUSD, interval, limit);
@@ -1072,7 +1037,7 @@ export class MarketDataService {
         }
       }
     } catch {
-      // Fallback
+
     }
 
     return {

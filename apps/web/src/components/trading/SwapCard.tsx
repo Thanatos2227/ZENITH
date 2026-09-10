@@ -88,7 +88,7 @@ export const SwapCard: React.FC = () => {
 
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/60">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Source Network Picker Button */}
+
             <button
               onClick={() => openChainPicker('SOURCE')}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/60 text-xs font-semibold text-slate-200 transition-all hover:bg-slate-800/70 shadow-sm"
@@ -102,7 +102,6 @@ export const SwapCard: React.FC = () => {
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
-            {/* Cross-Chain Destination Picker */}
             <div className="flex items-center gap-1.5">
               <ArrowRight className={`w-3.5 h-3.5 ${isCrossChain ? 'text-cyan-400' : 'text-slate-600'}`} />
               <button
@@ -134,7 +133,6 @@ export const SwapCard: React.FC = () => {
           </div>
         </div>
 
-        {/* Network Mismatch Notice */}
         {isNetworkMismatch && (
           <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-3">
             <div className="flex items-center gap-2">
@@ -150,7 +148,6 @@ export const SwapCard: React.FC = () => {
           </div>
         )}
 
-        {/* Input Token Amount */}
         <div className="bg-[#0B111E] rounded-xl p-4 border border-slate-800/70 focus-within:border-cyan-500/50 transition-colors mb-2">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -216,7 +213,6 @@ export const SwapCard: React.FC = () => {
           </div>
         </div>
 
-        {/* Switch Direction Button */}
         <div className="flex justify-center -my-2.5 relative z-10">
           <button
             onClick={switchTokens}
@@ -227,7 +223,6 @@ export const SwapCard: React.FC = () => {
           </button>
         </div>
 
-        {/* Output Token Amount */}
         <div className="bg-[#0B111E] rounded-xl p-4 border border-slate-800/70 mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -281,7 +276,6 @@ export const SwapCard: React.FC = () => {
           </div>
         </div>
 
-        {/* Execution Summary Breakdown */}
         {quote && (
           <div className="space-y-2 mb-4 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50 text-xs">
             <div className="flex items-center justify-between">

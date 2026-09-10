@@ -54,7 +54,6 @@ export class ZenithRouter {
     let minimumReceivedRaw: string = '0';
     let minimumReceivedNum: number = 0;
 
-    // AMM Simulation pool reserves (e.g. simulated deep DEX pool: $10M pool)
     const simulatedPoolReserveIn = BigInt(Math.floor((5000000 / priceInUSD) * 10 ** tokenInDecimals));
     const simulatedPoolReserveOut = BigInt(Math.floor((5000000 / priceOutUSD) * 10 ** tokenOutDecimals));
 
@@ -69,12 +68,11 @@ export class ZenithRouter {
       });
       const netAmountInBig = amountInBig - BigInt(protocolFee.feeAmountRaw);
 
-      // Calculate output using Constant-Product AMM formula (x * y = k)
       amountOutBig = ConstantProductMath.getAmountOut(
         netAmountInBig,
         simulatedPoolReserveIn,
         simulatedPoolReserveOut,
-        30 // 30 bps pool fee (0.3%)
+        30
       );
 
       amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
@@ -85,7 +83,7 @@ export class ZenithRouter {
       );
       minimumReceivedNum = Number(BigInt(minimumReceivedRaw)) / 10 ** tokenOutDecimals;
     } else {
-      // EXACT_OUTPUT
+
       amountOutBig = BigInt(request.amountOutRaw || '0');
       amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
 
@@ -96,7 +94,7 @@ export class ZenithRouter {
         30
       );
 
-      const feeBps = 5n; // 5 bps protocol fee
+      const feeBps = 5n;
       amountInBig = (rawAmountInRequired * 10000n) / (10000n - feeBps);
       amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
 
@@ -127,7 +125,6 @@ export class ZenithRouter {
       amountInNum
     });
 
-    // Discover Routes (Direct, Multi-Hop, Split, Cross-Chain)
     let routes: SwapRoute[] = [];
     if (isCrossChain) {
       routes = this.bridgeAggregator.findCrossChainRoutes({
@@ -177,9 +174,8 @@ export class ZenithRouter {
     const quoteTimestamp = Date.now();
     const freshnessSeconds = 10;
     const expiresAt = quoteTimestamp + freshnessSeconds * 1000;
-    const deadline = quoteTimestamp + (request.deadlineSeconds || 1200) * 1000; // 20 min default deadline
+    const deadline = quoteTimestamp + (request.deadlineSeconds || 1200) * 1000;
 
-    // Simulation Pre-flight
     const simulationPreview = await this.simulationEngine.simulateSwap({
       chainId: request.sourceChainId,
       userAddress: request.userWalletAddress || '0x000000000000000000000000000000000000dEaD',
@@ -191,7 +187,6 @@ export class ZenithRouter {
       slippageTolerancePercent: request.slippageTolerancePercent
     });
 
-    // Generate Intent if Cross-Chain
     let intent: CrossChainIntent | undefined;
     if (isCrossChain) {
       const orderId = `intent_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

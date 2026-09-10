@@ -1,9 +1,7 @@
 import { Token } from '@zenith/types';
 
 export const DEFAULT_TOKENS: Token[] = [
-  // ==========================================
-  // BITCOIN (UTXO Network)
-  // ==========================================
+
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'bitcoin',
@@ -80,9 +78,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/34320/small/pups.png'
   },
 
-  // ==========================================
-  // TRON (TVM Network)
-  // ==========================================
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'tron',
@@ -185,9 +180,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/11095/small/JUST.jpg'
   },
 
-  // ==========================================
-  // 1. ETHEREUM (Canonical L1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'ethereum',
@@ -435,9 +427,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/4713/small/polygon.png'
   },
 
-  // ==========================================
-  // 2. BASE (Coinbase Optimistic Rollup L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'base',
@@ -548,9 +537,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/38605/small/virtual.png'
   },
 
-  // ==========================================
-  // 3. ARBITRUM ONE (Nitro L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'arbitrum',
@@ -649,9 +635,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/15069/small/pendle.png'
   },
 
-  // ==========================================
-  // 4. SOLANA (High Throughput SVM L1)
-  // ==========================================
   {
     address: '11111111111111111111111111111111',
     chainId: 'solana',
@@ -800,9 +783,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/33760/small/popcat.jpg'
   },
 
-  // ==========================================
-  // 5. ROBINHOOD CHAIN (Arbitrum Orbit RWA)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'robinhood',
@@ -890,9 +870,6 @@ export const DEFAULT_TOKENS: Token[] = [
     tags: ['RWA', 'COMMODITY', 'ACCREDITED']
   },
 
-  // ==========================================
-  // 6. UNICHAIN (Uniswap Rollup L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'unichain',
@@ -955,9 +932,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png'
   },
 
-  // ==========================================
-  // 7. TEMPO (Payments L1/L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'tempo',
@@ -1007,9 +981,6 @@ export const DEFAULT_TOKENS: Token[] = [
     verificationTier: 'VERIFIED_CANONICAL'
   },
 
-  // ==========================================
-  // 8. MONAD (Parallel EVM High-Throughput L1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'monad',
@@ -1070,9 +1041,6 @@ export const DEFAULT_TOKENS: Token[] = [
     verificationTier: 'COMMUNITY_VERIFIED'
   },
 
-  // ==========================================
-  // 9. POLYGON POS (EVM L1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'polygon',
@@ -1147,9 +1115,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/13970/small/quick.png'
   },
 
-  // ==========================================
-  // 10. X LAYER (OKX ZK L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'xlayer',
@@ -1200,9 +1165,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/2518/small/weth.png'
   },
 
-  // ==========================================
-  // 11. OPTIMISM (Optimism L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'optimism',
@@ -1265,9 +1227,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/25783/small/velo.png'
   },
 
-  // ==========================================
-  // 12. BNB CHAIN (BNB Smart Chain EVM)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'bnb',
@@ -1354,9 +1313,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/16746/small/FLOKI.png'
   },
 
-  // ==========================================
-  // 13. AVALANCHE C-CHAIN (EVM Subnet)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'avalanche',
@@ -1431,9 +1387,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/17569/small/joe_200x200.png'
   },
 
-  // ==========================================
-  // 14. LINEA (ConsenSys ZK L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'linea',
@@ -1496,9 +1449,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/36888/small/foxy.png'
   },
 
-  // ==========================================
-  // 15. WORLD CHAIN (Optimistic L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'worldchain',
@@ -1549,9 +1499,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/325/small/Tether.png'
   },
 
-  // ==========================================
-  // 16. ZKSYNC ERA (ZK L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'zksync',
@@ -1613,9 +1560,6 @@ export const DEFAULT_TOKENS: Token[] = [
     verificationTier: 'COMMUNITY_VERIFIED'
   },
 
-  // ==========================================
-  // 17. MEGAETH (Real-Time Sub-millisecond L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'megaeth',
@@ -1665,9 +1609,6 @@ export const DEFAULT_TOKENS: Token[] = [
     verificationTier: 'VERIFIED_CANONICAL'
   },
 
-  // ==========================================
-  // 18. SONEIUM (Sony Optimistic L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'soneium',
@@ -1729,9 +1670,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/22617/small/astr.png'
   },
 
-  // ==========================================
-  // 19. ZORA NETWORK (Creator L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'zora',
@@ -1780,9 +1718,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png'
   },
 
-  // ==========================================
-  // 20. CELO (Mobile-First Carbon-Negative L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'celo',
@@ -1844,9 +1779,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/325/small/Tether.png'
   },
 
-  // ==========================================
-  // 21. BLAST (Native Yield L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'blast',
@@ -1908,9 +1840,6 @@ export const DEFAULT_TOKENS: Token[] = [
     verificationTier: 'COMMUNITY_VERIFIED'
   },
 
-  // ==========================================
-  // SCROLL (ZK Rollup L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'scroll',
@@ -1949,9 +1878,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/32280/small/scroll.png'
   },
 
-  // ==========================================
-  // MANTLE (Optimistic L2)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'mantle',
@@ -1978,9 +1904,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png'
   },
 
-  // ==========================================
-  // GNOSIS (Layer 1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'gnosis',
@@ -2007,9 +1930,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/662/small/gnosis_logo.png'
   },
 
-  // ==========================================
-  // SONIC (Layer 1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'sonic',
@@ -2036,9 +1956,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png'
   },
 
-  // ==========================================
-  // BERACHAIN (Layer 1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'berachain',
@@ -2065,9 +1982,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/29729/small/berachain.png'
   },
 
-  // ==========================================
-  // CRONOS (Layer 1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'cronos',
@@ -2082,9 +1996,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/7310/small/cro_token_logo.png'
   },
 
-  // ==========================================
-  // SEI (Parallel EVM Layer 1)
-  // ==========================================
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'sei',
@@ -2099,9 +2010,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/28205/small/Sei_Logo_-_Transparent.png'
   },
 
-  // ==========================================
-  // SUI (Move Layer 1)
-  // ==========================================
   {
     address: '0x0000000000000000000000000000000000000002',
     chainId: 'sui',
@@ -2128,9 +2036,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png'
   },
 
-  // ==========================================
-  // APTOS (Move Layer 1)
-  // ==========================================
   {
     address: '0x1::aptos_coin::AptosCoin',
     chainId: 'aptos',
@@ -2145,9 +2050,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/26455/small/aptos_round.png'
   },
 
-  // ==========================================
-  // NEAR (Layer 1)
-  // ==========================================
   {
     address: 'wrap.near',
     chainId: 'near',
@@ -2162,9 +2064,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/10365/small/near.png'
   },
 
-  // ==========================================
-  // COSMOS HUB (Layer 1)
-  // ==========================================
   {
     address: 'uatom',
     chainId: 'cosmoshub',
@@ -2179,9 +2078,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/1481/small/cosmos_hub.png'
   },
 
-  // ==========================================
-  // OSMOSIS (Layer 1)
-  // ==========================================
   {
     address: 'uosmo',
     chainId: 'osmosis',
@@ -2196,9 +2092,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/16724/small/osmo.png'
   },
 
-  // ==========================================
-  // INJECTIVE (Layer 1)
-  // ==========================================
   {
     address: 'inj',
     chainId: 'injective',
@@ -2213,9 +2106,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/12882/small/injective_logo.png'
   },
 
-  // ==========================================
-  // TON (Layer 1)
-  // ==========================================
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'ton',
@@ -2242,9 +2132,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/325/small/Tether.png'
   },
 
-  // ==========================================
-  // HEDERA (Layer 1)
-  // ==========================================
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'hedera',
@@ -2259,9 +2146,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/3688/small/hbar.png'
   },
 
-  // ==========================================
-  // ALGORAND (Layer 1)
-  // ==========================================
   {
     address: '0',
     chainId: 'algorand',
@@ -2276,9 +2160,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/4380/small/download.png'
   },
 
-  // ==========================================
-  // STELLAR (Payments Network)
-  // ==========================================
   {
     address: 'native',
     chainId: 'stellar',
@@ -2293,9 +2174,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/100/small/Stellar_symbol_black_RGB.png'
   },
 
-  // ==========================================
-  // XRP LEDGER (Payments Network)
-  // ==========================================
   {
     address: 'XRP',
     chainId: 'xrpl',
@@ -2310,9 +2188,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png'
   },
 
-  // ==========================================
-  // CARDANO (Layer 1)
-  // ==========================================
   {
     address: 'lovelace',
     chainId: 'cardano',
@@ -2327,9 +2202,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/975/small/cardano.png'
   },
 
-  // ==========================================
-  // POLKADOT (Substrate Layer 1)
-  // ==========================================
   {
     address: 'DOT',
     chainId: 'polkadot',
@@ -2344,9 +2216,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/12171/small/polkadot.png'
   },
 
-  // ==========================================
-  // INTERNET COMPUTER (ICP Layer 1)
-  // ==========================================
   {
     address: 'icp-ledger',
     chainId: 'icp',
@@ -2361,9 +2230,6 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/14495/small/Internet_Computer_logo.png'
   },
 
-  // ==========================================
-  // DOGECOIN (Layer 1)
-  // ==========================================
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'dogecoin',
@@ -2378,4 +2244,3 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png'
   }
 ];
-

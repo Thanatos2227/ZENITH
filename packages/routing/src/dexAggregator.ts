@@ -20,7 +20,6 @@ export class DEXAggregator {
     const directGasUnits = defaultChainRegistry.getGasUnits(chainId, false);
     const directGasCostUSD = defaultChainRegistry.getEstimatedGasCostUSD(chainId, 'SWAP', params.gasPreset);
 
-    // 1. Direct Single-Hop Route
     const directHops: RouteHop[] = [
       {
         dexProtocol: directDEX,
@@ -41,7 +40,6 @@ export class DEXAggregator {
       estimatedGasUnits: directGasUnits
     });
 
-    // 2. Multi-Hop Route via Connector Token (e.g., TokenIn -> WETH/USDC -> TokenOut)
     const isDirectStablePair =
       (params.tokenIn.symbol === 'USDC' && params.tokenOut.symbol === 'USDT') ||
       (params.tokenIn.symbol === 'USDT' && params.tokenOut.symbol === 'USDC') ||
@@ -59,7 +57,7 @@ export class DEXAggregator {
         priceUSD: 2465.87
       };
 
-      const multiHopGasUnits = directGasUnits * 14n / 10n; // ~40% additional gas for 2 hops
+      const multiHopGasUnits = directGasUnits * 14n / 10n;
       const multiHopGasCostUSD = directGasCostUSD * 1.4;
 
       const multiHops: RouteHop[] = [
@@ -92,7 +90,6 @@ export class DEXAggregator {
       });
     }
 
-    // 3. Dynamic Split-Route across primary and secondary liquidity pools for large trades
     if (params.amountInNum * (params.tokenIn.priceUSD || 1) > 1500) {
       const secondaryDEX = this.selectSecondaryDEX(chainId);
       const splitGasUnits = defaultChainRegistry.getGasUnits(chainId, true);

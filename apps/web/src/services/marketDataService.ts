@@ -11,4 +11,3 @@ export type {
   TimeframeInterval,
   StoreTickCallback
 } from '@zenith/tokens';
-

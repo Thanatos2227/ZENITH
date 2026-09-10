@@ -19,26 +19,24 @@ export interface EVMExecutionResult {
   revertReason?: string;
 }
 
-// Canonical DEX Routers (Uniswap V3 SwapRouter02 / Pancake / TraderJoe)
 export const CANONICAL_ROUTERS: Record<number, string> = {
-  1: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Ethereum (Uniswap V3 SwapRouter02)
-  137: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Polygon (Uniswap V3 SwapRouter02)
-  8453: '0x2626664c2603336E57B271c5C0b26F421741e481', // Base (Uniswap V3 SwapRouter02)
-  42161: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Arbitrum One (Uniswap V3 SwapRouter02)
-  10: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Optimism (Uniswap V3 SwapRouter02)
-  56: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4', // BNB Chain (PancakeSwap V3 Router)
-  43114: '0x60aE616a2155Ee3d9A68541Ba4544862310933d4' // Avalanche (Trader Joe V2 Router)
+  1: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+  137: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+  8453: '0x2626664c2603336E57B271c5C0b26F421741e481',
+  42161: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+  10: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+  56: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4',
+  43114: '0x60aE616a2155Ee3d9A68541Ba4544862310933d4'
 };
 
-// Canonical Wrapped Native Token Addresses
 export const WRAPPED_NATIVE_TOKENS: Record<number, string> = {
-  1: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
-  137: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', // WMATIC / WPOL
-  8453: '0x4200000000000000000000000000000000000006', // WETH (Base)
-  42161: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1', // WETH (Arbitrum)
-  10: '0x4200000000000000000000000000000000000006', // WETH (Optimism)
-  56: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
-  43114: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7' // WAVAX
+  1: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+  137: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+  8453: '0x4200000000000000000000000000000000000006',
+  42161: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+  10: '0x4200000000000000000000000000000000000006',
+  56: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+  43114: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7'
 };
 
 const SWAP_ROUTER_ABI = [
@@ -88,7 +86,6 @@ export class EVMExecutionAdapter {
   public async executeSwap(params: EVMExecutionParams): Promise<EVMExecutionResult> {
     const { quote, userAddress, signer } = params;
 
-    // In non-browser / unit-test environments where signer is not injected, return simulated result
     if (!signer) {
       params.onStatusChange?.('SIGNING');
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -122,7 +119,6 @@ export class EVMExecutionAdapter {
     const minAmountOutRaw = BigInt(quote.minimumReceivedRaw || '0');
     const deadline = Math.floor((quote.deadline || (Date.now() + 1200000)) / 1000);
 
-    // 1. Check ERC-20 token allowance and request real approval if necessary
     if (!tokenIn.isNative) {
       const currentAllowance = await this.checkAllowance({
         tokenAddress: tokenIn.address,
@@ -140,7 +136,6 @@ export class EVMExecutionAdapter {
       }
     }
 
-    // 2. Prepare real Uniswap V3 swap execution transaction
     params.onStatusChange?.('SIGNING');
 
     const routerContract = new Contract(routerAddress, SWAP_ROUTER_ABI, signer);
@@ -148,7 +143,6 @@ export class EVMExecutionAdapter {
     const actualTokenIn = tokenIn.isNative ? wrappedNative : tokenIn.address;
     const actualTokenOut = tokenOut.isNative ? wrappedNative : tokenOut.address;
 
-    // Determine fee tier: use route hop fee tier or default to 3000 (0.3%)
     const feeTier = quote.bestRoute.hops[0]?.feeTierBps ? quote.bestRoute.hops[0].feeTierBps * 100 : 3000;
 
     let tx: any;

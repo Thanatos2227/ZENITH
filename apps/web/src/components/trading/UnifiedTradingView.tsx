@@ -83,7 +83,7 @@ export const UnifiedTradingView: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-4">
-      {/* Top Header Bar: Pair Stats, Global Network Context & Automated Protection Status */}
+
       <div className="glass-panel rounded-2xl p-4 border border-slate-800/80 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-3">
@@ -161,7 +161,6 @@ export const UnifiedTradingView: React.FC = () => {
           </div>
         </div>
 
-        {/* Protection Status Badge */}
         <div className="flex items-center gap-3 text-xs font-mono">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300">
             <Lock className="w-3.5 h-3.5 text-cyan-400" />
@@ -170,12 +169,11 @@ export const UnifiedTradingView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Flagship Grid: Left 7 Cols (Live Chart & Route Topology) + Right 5 Cols (Swap Engine) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left / Center: Live Real-Time Chart & Route Mapping */}
+
         <div className="lg:col-span-7 space-y-4">
           <div className="glass-panel rounded-2xl p-5 border border-slate-800 shadow-xl">
-            {/* Analytics Tab Header */}
+
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <button
@@ -213,14 +211,12 @@ export const UnifiedTradingView: React.FC = () => {
               )}
             </div>
 
-            {/* Tab 1: Live Real-Time Streaming Chart */}
             {activeProTab === 'CHART' && (
               <div className="animate-in fade-in duration-300">
                 <LivePriceChart tokenIn={tokenIn} tokenOut={tokenOut} />
               </div>
             )}
 
-            {/* Tab 2: Route & Liquidity Topology */}
             {activeProTab === 'ROUTING' && quote && (
               <div className="space-y-4 animate-in fade-in duration-300">
                 <div className="p-4 rounded-xl bg-[#0B111E] border border-slate-800">
@@ -276,7 +272,6 @@ export const UnifiedTradingView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Liquidity Split Depth */}
                 <div className="p-4 rounded-xl bg-[#0B111E] border border-slate-800">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                     Ranked Liquidity Pathways & Quotes
@@ -317,7 +312,6 @@ export const UnifiedTradingView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Area: The Core Swap Execution Card */}
         <div className="lg:col-span-5">
           <SwapCard />
         </div>

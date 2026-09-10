@@ -79,7 +79,7 @@ export const ChainPickerModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-3xl glass-panel rounded-2xl border border-slate-700/80 shadow-modal overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
+
         <div className="flex items-center justify-between p-5 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2">
@@ -102,7 +102,6 @@ export const ChainPickerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Search & Network Filters */}
         <div className="p-4 border-b border-slate-800/80 space-y-3 bg-[#080D1A]/50">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -137,7 +136,6 @@ export const ChainPickerModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Chain Grid */}
         <div className="p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] scrollbar-thin">
           {filteredChains.map((c) => {
             const isSelected = currentSelected.id === c.id;
@@ -195,7 +193,6 @@ export const ChainPickerModal: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Capabilities & Standards Footer */}
                 <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
                   <div className="flex items-center gap-1.5 text-slate-400 flex-wrap">
                     {isSwapSupported ? (
@@ -228,7 +225,6 @@ export const ChainPickerModal: React.FC = () => {
           })}
         </div>
 
-        {/* Footer info */}
         <div className="p-3 bg-[#080D1A] border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 px-5">
           <div className="flex items-center gap-2">
             <Shield className="w-3.5 h-3.5 text-emerald-400" />

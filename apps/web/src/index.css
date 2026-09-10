@@ -72,17 +72,12 @@
   -webkit-text-fill-color: transparent;
 }
 
-/* ==============================================================================
-   LIGHT THEME OVERRIDES (Comprehensive across the entire ZENITH application)
-   ============================================================================== */
-
 html.light body,
 html[data-theme='light'] body {
   background-color: #F8FAFC;
   color: #0F172A;
 }
 
-/* Backgrounds */
 html.light .bg-\[\#080B11\] {
   background-color: #F8FAFC !important;
 }
@@ -98,7 +93,6 @@ html.light .bg-\[\#0B111E\] {
   border-color: #CBD5E1 !important;
 }
 
-/* Elevated Surfaces, Cards & Pills */
 html.light .bg-slate-900 {
   background-color: #FFFFFF !important;
 }
@@ -126,7 +120,6 @@ html.light .bg-slate-800\/40 {
   background-color: rgba(226, 232, 240, 0.85) !important;
 }
 
-/* Hovers */
 html.light .hover\:bg-slate-800:hover,
 html.light .hover\:bg-slate-800\/70:hover,
 html.light .hover\:bg-slate-800\/60:hover,
@@ -138,7 +131,6 @@ html.light .hover\:bg-slate-700\/90:hover {
   background-color: #CBD5E1 !important;
 }
 
-/* Borders */
 html.light .border-slate-800,
 html.light .border-slate-800\/80,
 html.light .border-slate-800\/70,
@@ -164,7 +156,6 @@ html.light .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
   border-color: #E2E8F0 !important;
 }
 
-/* Text adjustments in light mode */
 html.light .text-white:not(.bg-indigo-500):not(.bg-emerald-500):not(.bg-red-500):not(.bg-cyan-500):not(.bg-purple-500):not(.bg-amber-500):not(.text-slate-950) {
   color: #0F172A !important;
 }
@@ -192,7 +183,6 @@ html.light input::placeholder {
   color: #94A3B8 !important;
 }
 
-/* Modal Backdrops in Light Mode */
 html.light .bg-slate-950\/80,
 html.light .bg-slate-950\/60,
 html.light .bg-black\/70,
@@ -200,7 +190,6 @@ html.light .bg-black\/60 {
   background-color: rgba(15, 23, 42, 0.45) !important;
 }
 
-/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -215,4 +204,3 @@ html.light .bg-black\/60 {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--zenith-scrollbar-thumb-hover);
 }
-

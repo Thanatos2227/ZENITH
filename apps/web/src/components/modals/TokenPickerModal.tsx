@@ -85,14 +85,13 @@ export const TokenPickerModal: React.FC = () => {
     }
   };
 
-  // Popular tokens for current chain
   const chainTokens = defaultTokenService.getTokensForChain(targetChain.id);
   const popularTokens = chainTokens.slice(0, 5);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-lg glass-panel rounded-2xl border border-slate-700/80 shadow-modal overflow-hidden flex flex-col max-h-[85vh]">
-        {/* Header */}
+
         <div className="flex items-center justify-between p-5 border-b border-slate-800">
           <div>
             <h3 className="font-display font-bold text-lg text-white">Select a Token</h3>
@@ -108,7 +107,6 @@ export const TokenPickerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Network Selector Tabs */}
         <div className="p-3 bg-[#080d1a] border-b border-slate-800/80">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
@@ -140,7 +138,6 @@ export const TokenPickerModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="p-4 border-b border-slate-800/80 space-y-3">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -153,7 +150,6 @@ export const TokenPickerModal: React.FC = () => {
             />
           </div>
 
-          {/* Quick Popular Tokens */}
           {popularTokens.length > 0 && !searchQuery && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] text-slate-500 font-medium">Popular on {targetChain.shortName}:</span>
@@ -173,7 +169,6 @@ export const TokenPickerModal: React.FC = () => {
           )}
         </div>
 
-        {/* Token List */}
         <div className="p-2 overflow-y-auto divide-y divide-slate-800/40 flex-1">
           {tokens.length === 0 ? (
             <div className="py-8 text-center">
@@ -276,7 +271,6 @@ export const TokenPickerModal: React.FC = () => {
           )}
         </div>
 
-        {/* Custom Token Import Panel */}
         {isImportMode && (
           <form onSubmit={handleImportCustom} className="p-4 bg-[#0B111E] border-t border-slate-800 space-y-3">
             <div className="flex items-center justify-between">

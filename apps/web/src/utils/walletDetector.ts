@@ -55,7 +55,6 @@ export const getInjectedEthereumProvider = (walletType: WalletType): any => {
     if (eth?.isMetaMask && !eth?.isRabby && !eth?.isRainbow && !eth?.isOKXWallet) return eth;
   }
 
-  // Fallback to primary window.ethereum
   return eth || null;
 };
 
@@ -169,7 +168,6 @@ export const connectToWalletProvider = async (
     throw new Error(`${walletType} wallet provider was not detected. Please make sure the browser extension is installed and unlocked.`);
   }
 
-  // Request accounts via EIP-1193
   const accounts: string[] = await rawProvider.request({ method: 'eth_requestAccounts' });
   if (!accounts || accounts.length === 0 || !accounts[0]) {
     throw new Error('No accounts authorized or returned by the wallet provider.');
@@ -177,7 +175,6 @@ export const connectToWalletProvider = async (
 
   const fullAddress = accounts[0];
 
-  // Request initial chainId
   let chainId: number | undefined;
   try {
     const hexChainId = await rawProvider.request({ method: 'eth_chainId' });

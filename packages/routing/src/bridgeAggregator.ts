@@ -19,7 +19,6 @@ export class BridgeAggregator {
     const destGas = defaultChainRegistry.getEstimatedGasCostUSD(params.destinationChainId, 'SWAP', params.gasPreset);
     const sourceGasUnits = defaultChainRegistry.getGasUnits(params.sourceChainId, false);
 
-    // Stargate route
     const stargateRelayerFeeUSD = 0.80;
     const stargateTotalGasUSD = Number((sourceGas + destGas * 0.5 + stargateRelayerFeeUSD).toFixed(3));
 
@@ -55,7 +54,6 @@ export class BridgeAggregator {
       estimatedGasUnits: sourceGasUnits + 80000n
     });
 
-    // Across route
     const acrossRelayerFeeUSD = 0.65;
     const acrossTotalGasUSD = Number((sourceGas + destGas * 0.4 + acrossRelayerFeeUSD).toFixed(3));
 

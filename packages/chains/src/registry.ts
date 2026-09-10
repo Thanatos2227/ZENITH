@@ -17,7 +17,7 @@ export interface NetworkGasProfile {
 }
 
 export const NETWORK_GAS_PROFILES: Record<string, NetworkGasProfile> = {
-  // Tier 1
+
   ethereum: { swapGasUnits: 140000, avgGasPriceGwei: 18, typicalSwapUSD: 4.85, typicalSplitSwapUSD: 8.50, bridgeRelayUSD: 6.20 },
   base: { swapGasUnits: 120000, avgGasPriceGwei: 0.05, typicalSwapUSD: 0.015, typicalSplitSwapUSD: 0.028, bridgeRelayUSD: 0.45 },
   arbitrum: { swapGasUnits: 130000, avgGasPriceGwei: 0.1, typicalSwapUSD: 0.022, typicalSplitSwapUSD: 0.038, bridgeRelayUSD: 0.55 },
@@ -27,7 +27,6 @@ export const NETWORK_GAS_PROFILES: Record<string, NetworkGasProfile> = {
   avalanche: { swapGasUnits: 140000, avgGasPriceGwei: 25, typicalSwapUSD: 0.14, typicalSplitSwapUSD: 0.25, bridgeRelayUSD: 0.90 },
   solana: { swapGasUnits: 5000, avgGasPriceGwei: 0.001, typicalSwapUSD: 0.0012, typicalSplitSwapUSD: 0.0022, bridgeRelayUSD: 0.35 },
 
-  // Tier 2
   unichain: { swapGasUnits: 110000, avgGasPriceGwei: 0.04, typicalSwapUSD: 0.012, typicalSplitSwapUSD: 0.020, bridgeRelayUSD: 0.40 },
   linea: { swapGasUnits: 145000, avgGasPriceGwei: 0.15, typicalSwapUSD: 0.038, typicalSplitSwapUSD: 0.065, bridgeRelayUSD: 0.75 },
   zksync: { swapGasUnits: 160000, avgGasPriceGwei: 0.12, typicalSwapUSD: 0.032, typicalSplitSwapUSD: 0.055, bridgeRelayUSD: 0.70 },
@@ -51,7 +50,6 @@ export const NETWORK_GAS_PROFILES: Record<string, NetworkGasProfile> = {
   osmosis: { swapGasUnits: 120000, avgGasPriceGwei: 0.002, typicalSwapUSD: 0.008, typicalSplitSwapUSD: 0.014, bridgeRelayUSD: 0.30 },
   injective: { swapGasUnits: 80000, avgGasPriceGwei: 0.001, typicalSwapUSD: 0.0020, typicalSplitSwapUSD: 0.0035, bridgeRelayUSD: 0.25 },
 
-  // Tier 3
   arbitrumnova: { swapGasUnits: 110000, avgGasPriceGwei: 0.01, typicalSwapUSD: 0.005, typicalSplitSwapUSD: 0.009, bridgeRelayUSD: 0.40 },
   polygonzkevm: { swapGasUnits: 150000, avgGasPriceGwei: 0.12, typicalSwapUSD: 0.035, typicalSplitSwapUSD: 0.060, bridgeRelayUSD: 0.70 },
   mode: { swapGasUnits: 120000, avgGasPriceGwei: 0.04, typicalSwapUSD: 0.015, typicalSplitSwapUSD: 0.028, bridgeRelayUSD: 0.45 },
@@ -70,7 +68,6 @@ export const NETWORK_GAS_PROFILES: Record<string, NetworkGasProfile> = {
   polkadot: { swapGasUnits: 150000, avgGasPriceGwei: 0.01, typicalSwapUSD: 0.08, typicalSplitSwapUSD: 0.14, bridgeRelayUSD: 0.70 },
   icp: { swapGasUnits: 10000, avgGasPriceGwei: 0.0001, typicalSwapUSD: 0.0008, typicalSplitSwapUSD: 0.0014, bridgeRelayUSD: 0.20 },
 
-  // Tier 4
   bitcoin: { swapGasUnits: 250, avgGasPriceGwei: 15, typicalSwapUSD: 2.10, typicalSplitSwapUSD: 3.50, bridgeRelayUSD: 4.80 },
   monad: { swapGasUnits: 80000, avgGasPriceGwei: 0.005, typicalSwapUSD: 0.0028, typicalSplitSwapUSD: 0.0045, bridgeRelayUSD: 0.30 },
   robinhood: { swapGasUnits: 95000, avgGasPriceGwei: 0.02, typicalSwapUSD: 0.0095, typicalSplitSwapUSD: 0.016, bridgeRelayUSD: 0.40 },
@@ -206,11 +203,9 @@ export class ChainRegistry {
       baseCost = profile.bridgeRelayUSD;
     }
 
-    // Dynamic real-time gas oscillation based on live network block cadence & micro-fluctuations (±4%)
     const timeSeed = Date.now() / 15000;
     const dynamicJitter = 1 + Math.sin(timeSeed + chainId.length) * 0.04;
 
-    // Multiplier for transaction urgency
     const priorityMultiplier = priorityPreset === 'INSTANT' ? 1.4 : priorityPreset === 'FAST' ? 1.2 : 1.0;
 
     const dynamicUSD = baseCost * dynamicJitter * priorityMultiplier;
