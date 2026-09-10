@@ -643,10 +643,14 @@ export class MarketDataService {
               const volume = parseFloat(k[5]);
 
               if (pair.invertRate) {
-                open = open > 0 ? 1 / open : 0;
-                high = low > 0 ? 1 / low : 0;
-                low = high > 0 ? 1 / high : 0;
-                close = close > 0 ? 1 / close : 0;
+                const origOpen = open;
+                const origHigh = high;
+                const origLow = low;
+                const origClose = close;
+                open = origOpen > 0 ? 1 / origOpen : 0;
+                high = origLow > 0 ? 1 / origLow : 0;
+                low = origHigh > 0 ? 1 / origHigh : 0;
+                close = origClose > 0 ? 1 / origClose : 0;
               }
 
               return { timestamp: ts, timeLabel, open, high, low, close, volume };
@@ -844,7 +848,7 @@ export class MarketDataService {
       const timeLabel = this.formatTimeLabel(d, interval);
       const volatility = lastClose * 0.003;
       const open = lastClose;
-      const delta = (Math.random() - 0.48) * volatility;
+      const delta = (Math.random() - 0.5) * volatility;
       const close = Math.max(open + delta, 0.000001);
       const high = Math.max(open, close) + Math.random() * volatility * 0.5;
       const low = Math.min(open, close) - Math.random() * volatility * 0.5;

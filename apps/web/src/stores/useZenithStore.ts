@@ -15,7 +15,7 @@ import {
 } from '@zenith/types';
 import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData } from '@zenith/tokens';
-import { defaultZenithRouter } from '@zenith/routing';
+import { defaultZenithRouter, validateAndSanitizeAmount } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
 import { connectToWalletProvider, formatAddress } from '../utils/walletDetector';
@@ -482,8 +482,13 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       get().refreshBalance();
     },
 
-    setAmountIn: (amountIn) => {
-      set({ amountIn });
+    setAmountIn: (rawAmountIn) => {
+      const validation = validateAndSanitizeAmount(rawAmountIn);
+      if (!validation.isValid) {
+        // Reject amounts exceeding 9,999,999.999 or invalid numeric inputs
+        return;
+      }
+      set({ amountIn: validation.sanitized });
       get().fetchQuote();
     },
 
@@ -849,20 +854,22 @@ export const useZenithStore = create<ZenithState>((set, get) => {
 
     fetchQuote: async () => {
       const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset } = get();
-      const cleanAmount = amountIn.replace(/,/g, '').trim();
-      const numAmount = parseFloat(cleanAmount);
-
-      if (isNaN(numAmount) || numAmount <= 0) {
+      
+      const validation = validateAndSanitizeAmount(amountIn);
+      if (!validation.isValid || validation.numericValue <= 0) {
         set({ quote: null, quoteError: null, isQuoteLoading: false });
         return;
       }
+
+      const cleanAmount = validation.sanitized;
 
       set({ isQuoteLoading: true, quoteError: null });
 
       try {
         const decimals = tokenIn.decimals || 18;
         const [wholePart = '0', fracPart = ''] = cleanAmount.split('.');
-        const paddedFrac = fracPart.padEnd(decimals, '0').slice(0, decimals);
+        const truncatedFrac = fracPart.slice(0, 3);
+        const paddedFrac = truncatedFrac.padEnd(decimals, '0').slice(0, decimals);
         const rawAmountIn = (wholePart + paddedFrac).replace(/^0+/, '') || '0';
 
         const quote = await defaultZenithRouter.getQuote({
@@ -1060,13 +1067,23 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           });
         }
 
+        const currentTokenIn = get().tokenIn;
+        const currentTokenOut = get().tokenOut;
+        const livePriceIn = resolveTokenLivePrice(currentTokenIn, record);
+        const livePriceOut = resolveTokenLivePrice(currentTokenOut, record);
+
         set({
           marketData: record,
+          tokenIn: livePriceIn ? { ...currentTokenIn, priceUSD: livePriceIn } : currentTokenIn,
+          tokenOut: livePriceOut ? { ...currentTokenOut, priceUSD: livePriceOut } : currentTokenOut,
           isMarketsLoading: false,
           marketsError: defaultMarketDataService.getLastError(),
           lastMarketUpdate: Date.now(),
           marketDataStatus: defaultMarketDataService.getWsStatus() === 'CONNECTED' ? 'LIVE' : 'CACHED'
         });
+
+        // Refresh quote with live market prices
+        get().fetchQuote();
       } catch (err: any) {
         set({
           isMarketsLoading: false,

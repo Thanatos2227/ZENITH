@@ -1,4 +1,5 @@
 import { PriceImpact, ProtocolFee, Token } from '@zenith/types';
+import { MAX_SWAP_AMOUNT_NUM } from './amountValidation';
 
 export class ScoringService {
   private static PROTOCOL_FEE_BPS = 5;
@@ -48,6 +49,9 @@ export class ScoringService {
     amountInRaw: string;
     amountInNum: number;
   }): ProtocolFee {
+    if (params.amountInNum > MAX_SWAP_AMOUNT_NUM) {
+      throw new Error(`Amount (${params.amountInNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
+    }
     const feeBps = ScoringService.PROTOCOL_FEE_BPS;
     const rawBigInt = BigInt(params.amountInRaw);
     const feeAmountRaw = ((rawBigInt * BigInt(feeBps)) / 10000n).toString();

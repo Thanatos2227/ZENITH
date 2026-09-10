@@ -5,6 +5,7 @@ import { defaultBridgeAggregator, BridgeAggregator } from './bridgeAggregator';
 import { defaultScoringService, ScoringService } from './scoring';
 import { defaultSimulationEngine, SimulationEngine } from '@zenith/security';
 import { ConstantProductMath } from './math/ammMath';
+import { MAX_SWAP_AMOUNT_NUM } from './amountValidation';
 
 export class ZenithRouter {
   private dexAggregator: DEXAggregator;
@@ -61,6 +62,9 @@ export class ZenithRouter {
     if (tradeType === 'EXACT_INPUT') {
       amountInBig = BigInt(request.amountInRaw || '0');
       amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
+      if (amountInNum > MAX_SWAP_AMOUNT_NUM) {
+        throw new Error(`Swap amount (${amountInNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
+      }
 
       const protocolFee = this.scoringService.calculateProtocolFee({
         tokenIn: request.tokenIn,
@@ -88,6 +92,9 @@ export class ZenithRouter {
       // EXACT_OUTPUT
       amountOutBig = BigInt(request.amountOutRaw || '0');
       amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
+      if (amountOutNum > MAX_SWAP_AMOUNT_NUM) {
+        throw new Error(`Swap amount (${amountOutNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
+      }
 
       const rawAmountInRequired = ConstantProductMath.getAmountIn(
         amountOutBig,

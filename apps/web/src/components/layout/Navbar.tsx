@@ -35,99 +35,68 @@ export const Navbar: React.FC = () => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  const navItems: Array<{ id: 'TRADE' | 'MARKETS' | 'PORTFOLIO' | 'HISTORY' | 'SETTINGS'; label: string; icon: React.FC<{ className?: string }> }> = [
+    { id: 'TRADE', label: 'Trade', icon: Zap },
+    { id: 'MARKETS', label: 'Markets', icon: TrendingUp },
+    { id: 'PORTFOLIO', label: 'Portfolio', icon: PieChart },
+    { id: 'HISTORY', label: 'History', icon: History },
+    { id: 'SETTINGS', label: 'Settings', icon: Settings }
+  ];
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-[#080B11]/85 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-8">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-800/90 bg-[#080B11]/90 backdrop-blur-md transition-colors duration-200">
+      {/* Primary Top Bar */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-3">
+        {/* Left Side: Brand Logo + Desktop Nav */}
+        <div className="flex items-center gap-4 xl:gap-8">
           <div
             onClick={() => setActiveTab('TRADE')}
-            className="flex items-center gap-3 cursor-pointer group select-none"
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center shadow-glow-cyan">
-              <Zap className="w-6 h-6 text-slate-950 fill-slate-950 transform group-hover:scale-110 transition-transform" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl gradient-brand flex items-center justify-center shadow-glow-cyan">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 fill-slate-950 transform group-hover:scale-110 transition-transform" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-display font-black text-xl tracking-wider text-white">
+                <span className="font-display font-black text-lg sm:text-xl tracking-wider text-white">
                   ZENITH
                 </span>
-                <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                   v4
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-medium tracking-tight -mt-0.5">
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium tracking-tight -mt-0.5">
                 Trade Beyond Limits
               </p>
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-1">
-            <button
-              onClick={() => setActiveTab('TRADE')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === 'TRADE'
-                  ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              Trade
-            </button>
-
-            <button
-              onClick={() => setActiveTab('MARKETS')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === 'MARKETS'
-                  ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              Markets
-            </button>
-
-            <button
-              onClick={() => setActiveTab('PORTFOLIO')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === 'PORTFOLIO'
-                  ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <PieChart className="w-4 h-4" />
-              Portfolio
-            </button>
-
-            <button
-              onClick={() => setActiveTab('HISTORY')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === 'HISTORY'
-                  ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <History className="w-4 h-4" />
-              History
-            </button>
-
-            <button
-              onClick={() => setActiveTab('SETTINGS')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === 'SETTINGS'
-                  ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </button>
+          {/* Desktop Navigation (visible on xl screens >= 1280px) */}
+          <nav className="hidden xl:flex items-center gap-1">
+            {navItems.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                  activeTab === id
+                    ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right Side: Network Selector, Controls & Connected Wallet */}
+        <div className="flex items-center flex-wrap gap-2 sm:gap-3 shrink-0">
+          {/* Network Selector Button */}
           <button
             onClick={() => openChainPicker('SOURCE')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors text-sm font-medium text-slate-200"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors text-xs sm:text-sm font-medium text-slate-200 shrink-0 shadow-sm"
+            title={`Active Network: ${sourceChain.canonicalName}`}
           >
             <img
               src={sourceChain.iconURI}
@@ -137,14 +106,16 @@ export const Navbar: React.FC = () => {
                 (e.target as HTMLImageElement).src = 'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
               }}
             />
-            <span className="hidden sm:inline">{sourceChain.shortName}</span>
+            <span className="font-semibold">{sourceChain.shortName}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
+          {/* Notifications Button */}
           <button
             onClick={toggleNotificationDrawer}
-            className="relative p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-cyan-400 transition-colors"
+            className="relative p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-cyan-400 transition-colors shrink-0"
             aria-label="Notifications"
+            title="Notifications"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
@@ -154,9 +125,10 @@ export const Navbar: React.FC = () => {
             )}
           </button>
 
+          {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-yellow-400 transition-colors"
+            className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-yellow-400 transition-colors shrink-0"
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
@@ -167,24 +139,27 @@ export const Navbar: React.FC = () => {
             )}
           </button>
 
+          {/* Wallet Connection Status & Button */}
           {isWalletConnected ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {isWrongNetwork && (
                 <div
                   onClick={openWalletModal}
-                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-500/20 transition-colors animate-pulse"
+                  className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-500/20 transition-colors animate-pulse shrink-0"
+                  title="Chain mismatch between wallet and selected swap network"
                 >
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Wrong Network</span>
+                  <span className="font-mono">Wrong Network</span>
                 </div>
               )}
               <button
                 onClick={openWalletModal}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-900 border font-mono text-sm font-semibold transition-all shadow-sm ${
+                className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg bg-slate-900 border font-mono text-xs sm:text-sm font-semibold transition-all shadow-sm whitespace-nowrap shrink-0 ${
                   isWrongNetwork
                     ? 'border-amber-500/50 text-amber-300 hover:border-amber-500'
                     : 'border-cyan-500/30 hover:border-cyan-500/60 text-cyan-300'
                 }`}
+                title={`Connected: ${connectedWalletName || 'Wallet'} (${walletAddress})`}
               >
                 <span className={`w-2 h-2 rounded-full ${isWrongNetwork ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
                 <span>
@@ -196,12 +171,32 @@ export const Navbar: React.FC = () => {
           ) : (
             <button
               onClick={openWalletModal}
-              className="gradient-brand text-slate-950 px-4 py-1.5 rounded-lg font-bold text-sm shadow-glow-cyan hover:opacity-95 transition-all flex items-center gap-1.5"
+              className="gradient-brand text-slate-950 px-3.5 sm:px-4 py-1.5 rounded-lg font-bold text-xs sm:text-sm shadow-glow-cyan hover:opacity-95 transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               <Wallet className="w-4 h-4" />
               Connect Wallet
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Sub-Nav Bar for Split-Screen & Narrow Widths (< xl screens) */}
+      <div className="xl:hidden w-full border-t border-slate-800/70 bg-[#080B11]/95 px-3 sm:px-6 py-1.5">
+        <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {navItems.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                activeTab === id
+                  ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
     </header>

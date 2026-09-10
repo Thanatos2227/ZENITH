@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useZenithStore } from './stores/useZenithStore';
 import { Navbar } from './components/layout/Navbar';
 import { UnifiedTradingView } from './components/trading/UnifiedTradingView';
@@ -15,8 +15,12 @@ import { NotificationCenter } from './components/notifications/NotificationCente
 import { ShieldCheck, Lock, Globe } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { activeTab, theme } = useZenithStore();
+  const { activeTab, theme, fetchMarketData } = useZenithStore();
   const isDark = theme === 'dark';
+
+  useEffect(() => {
+    fetchMarketData();
+  }, [fetchMarketData]);
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#080B11] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'} font-sans selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-200`}>
@@ -41,7 +45,7 @@ export const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className={`font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>All 21 Networks Operational</span>
+            <span className={`font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>All 52 Networks Operational</span>
             <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>|</span>
             <span className="font-mono text-cyan-400">MEV Protected</span>
           </div>

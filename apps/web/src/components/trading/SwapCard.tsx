@@ -9,6 +9,11 @@ import {
   ArrowRight,
   Wallet
 } from 'lucide-react';
+import {
+  validateAndSanitizeAmount,
+  truncateToThreeDecimals,
+  MAX_SWAP_AMOUNT_NUM
+} from '../../utils/amountValidation';
 
 export const SwapCard: React.FC = () => {
   const {
@@ -71,14 +76,31 @@ export const SwapCard: React.FC = () => {
       setAmountIn('0.0');
       return;
     }
+    let target = tokenInBalanceNum * pct;
     if (pct === 1 && tokenIn.isNative) {
       const gasReserve = sourceChain.id === 'polygon' ? 0.02 : 0.003;
-      const maxAmount = Math.max(0, tokenInBalanceNum - gasReserve);
-      setAmountIn(maxAmount > 0 ? maxAmount.toFixed(4) : '0.0');
+      target = Math.max(0, tokenInBalanceNum - gasReserve);
+    }
+    if (target > MAX_SWAP_AMOUNT_NUM) {
+      target = MAX_SWAP_AMOUNT_NUM;
+    }
+    const val = truncateToThreeDecimals(target);
+    setAmountIn(val);
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const validation = validateAndSanitizeAmount(raw);
+    if (!validation.isValid) {
+      // Reject invalid values by restoring the previous valid DOM value
+      e.target.value = amountIn;
       return;
     }
-    const val = (tokenInBalanceNum * pct).toFixed(4);
-    setAmountIn(val);
+    // Truncate in-place if decimal precision exceeded 3 places
+    if (validation.isTruncated || validation.sanitized !== raw) {
+      e.target.value = validation.sanitized;
+    }
+    setAmountIn(validation.sanitized);
   };
 
   return (
@@ -188,10 +210,14 @@ export const SwapCard: React.FC = () => {
 
           <div className="flex items-center justify-between gap-3">
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={amountIn}
-              onChange={(e) => setAmountIn(e.target.value)}
+              onChange={handleAmountChange}
               placeholder="0.0"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               className="w-full bg-transparent text-2xl sm:text-3xl font-bold font-mono text-white placeholder-slate-600 focus:outline-none"
             />
 

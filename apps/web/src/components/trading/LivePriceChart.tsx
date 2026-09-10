@@ -46,8 +46,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   }, [tokenIn, tokenOut, storePrice]);
 
   const latestPriceRef = useRef<number>(baseRate);
+  const authoritativePriceRef = useRef<number>(baseRate);
   useEffect(() => {
     latestPriceRef.current = baseRate;
+    authoritativePriceRef.current = baseRate;
   }, [baseRate]);
 
   // Real 24h market stats
@@ -81,7 +83,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       const timeLabel = format1mTimeLabel(d);
       const volatility = lastClose * 0.0025;
       const open = lastClose;
-      const delta = (Math.random() - 0.48) * volatility;
+      const delta = (Math.random() - 0.5) * volatility;
       const close = Math.max(open + delta, 0.000001);
       const high = Math.max(open, close) + Math.random() * volatility * 0.4;
       const low = Math.min(open, close) - Math.random() * volatility * 0.4;
@@ -110,6 +112,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       if (fetchedStats) {
         setStats24h(fetchedStats);
         if (fetchedStats.currentPrice > 0) {
+          authoritativePriceRef.current = fetchedStats.currentPrice;
           latestPriceRef.current = fetchedStats.currentPrice;
         }
       }
@@ -117,7 +120,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       if (fetchedCandles && fetchedCandles.length > 0) {
         setCandles(fetchedCandles);
       } else {
-        setCandles(generateSynthetic1mCandles(latestPriceRef.current || baseRate, 45));
+        setCandles(generateSynthetic1mCandles(authoritativePriceRef.current || baseRate, 45));
       }
     } catch (err) {
       console.error('Error fetching market data:', err);
@@ -139,6 +142,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       '1m',
       (livePrice, tickCandle) => {
         if (livePrice > 0) {
+          authoritativePriceRef.current = livePrice;
           latestPriceRef.current = livePrice;
           setStats24h((prevStats) => ({
             ...prevStats,
@@ -191,10 +195,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         const currentMinuteBucket = Math.floor(now.getTime() / 60000) * 60000;
         const timeLabel = format1mTimeLabel(now);
 
-        // Sub-basis micro fluctuation to simulate live orderbook jitter
-        const targetPrice = latestPriceRef.current || last.close;
-        const microJitter = (Math.random() - 0.495) * (targetPrice * 0.0003);
-        const currentPrice = Math.max(targetPrice + microJitter, 0.000001);
+        // Sub-basis micro fluctuation anchored to the true market price with zero mean
+        const anchor = authoritativePriceRef.current || last.close || baseRate;
+        const microJitter = (Math.random() - 0.5) * (anchor * 0.0003);
+        const currentPrice = Math.max(anchor + microJitter, 0.000001);
         latestPriceRef.current = currentPrice;
 
         const isUp = currentPrice >= last.close;
@@ -238,10 +242,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return () => {
       clearInterval(intervalTimer);
     };
-  }, []);
+  }, [baseRate]);
 
   // Derived stats
-  const currentPrice = storePrice || candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
+  const currentPrice = latestPriceRef.current || candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
   const firstPrice = candles[0]?.open || baseRate;
   const priceChangeUSD = currentPrice - firstPrice;
   const priceChangePercent = stats24h.change24hPercent !== undefined ? stats24h.change24hPercent : (firstPrice > 0 ? (priceChangeUSD / firstPrice) * 100 : 0);
@@ -506,7 +510,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
               <span className="text-indigo-300">{displayedCandle.volume.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
             </div>
           )}
-          <div className="ml-auto text-[11px] text-slate-500 hidden sm:flex items-center gap-2">
+          <div className="sm:ml-auto text-[11px] text-slate-500 flex items-center gap-2">
             <span>Ticks: {tickCounter}</span>
             <span className="text-slate-600">|</span>
             <span className="text-cyan-400">1m Duration</span>
