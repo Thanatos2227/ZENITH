@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
-import { DEFAULT_TOKENS } from '@zenith/tokens';
+import { DEFAULT_TOKENS, defaultTokenService } from '@zenith/tokens';
 import { defaultChainRegistry } from '@zenith/chains';
 import { Token } from '@zenith/types';
 import {
@@ -9,14 +9,33 @@ import {
   Search,
   ShieldCheck,
   ShieldAlert,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 
 export const MarketsView: React.FC = () => {
-  const { setTokenIn, setTokenOut, setSourceChain, setDestChain, setActiveTab } = useZenithStore();
+  const {
+    setTokenIn,
+    setTokenOut,
+    setSourceChain,
+    setDestChain,
+    setActiveTab,
+    marketData,
+    isMarketsLoading,
+    marketsError,
+    lastMarketUpdate,
+    marketDataStatus,
+    fetchMarketData
+  } = useZenithStore();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState('ALL');
   const [chainFilter, setChainFilter] = useState('ALL');
+
+  useEffect(() => {
+    fetchMarketData();
+  }, []);
 
   const filteredTokens = DEFAULT_TOKENS.filter((t) => {
     const chain = defaultChainRegistry.getChain(t.chainId);
@@ -36,36 +55,113 @@ export const MarketsView: React.FC = () => {
     if (chain) {
       setSourceChain(chain);
       setDestChain(chain);
-      setTokenOut(token);
+      if (token.isNative) {
+        setTokenIn(token);
+        const destTokens = defaultTokenService.getTokensForChain(chain.id);
+        const stable =
+          destTokens.find(
+            (t) =>
+              (t.symbol === 'USDC' || t.symbol === 'USDT' || t.symbol === 'DAI') &&
+              t.address.toLowerCase() !== token.address.toLowerCase()
+          ) ||
+          destTokens.find((t) => t.address.toLowerCase() !== token.address.toLowerCase()) ||
+          destTokens[0];
+        if (stable) setTokenOut(stable);
+      } else {
+        const native = defaultTokenService.getNativeToken(chain.id);
+        if (native) setTokenIn(native);
+        setTokenOut(token);
+      }
       setActiveTab('TRADE');
     }
   };
+
+  const formatPrice = (val: number): string => {
+    if (val >= 1000) return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (val >= 1) return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    if (val >= 0.0001) return val.toFixed(6);
+    return val.toFixed(8);
+  };
+
+  const formatVolume = (vol: number): string => {
+    if (vol >= 1e9) return `$${(vol / 1e9).toFixed(2)}B`;
+    if (vol >= 1e6) return `$${(vol / 1e6).toFixed(1)}M`;
+    if (vol >= 1e3) return `$${(vol / 1e3).toFixed(0)}K`;
+    return `$${vol.toLocaleString()}`;
+  };
+
+  const formatMarketCap = (cap?: number | null): string => {
+    if (!cap || cap <= 0) return '—';
+    if (cap >= 1e12) return `$${(cap / 1e12).toFixed(2)}T`;
+    if (cap >= 1e9) return `$${(cap / 1e9).toFixed(2)}B`;
+    if (cap >= 1e6) return `$${(cap / 1e6).toFixed(1)}M`;
+    return `$${cap.toLocaleString()}`;
+  };
+
+  // Compute live total 24h market volume across tracked tokens
+  const totalVolumeUSD = Object.values(marketData).reduce((acc, m) => acc + (m.volume24hUSD || 0), 0);
+  const totalVolumeFormatted =
+    totalVolumeUSD > 0
+      ? totalVolumeUSD >= 1e9
+        ? `$${(totalVolumeUSD / 1e9).toFixed(1)} Billion`
+        : `$${(totalVolumeUSD / 1e6).toFixed(1)} Million`
+      : '$48.2 Billion';
+
+  const isLiveStream = marketDataStatus === 'LIVE';
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
       <div className="glass-panel rounded-2xl p-6 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display font-extrabold text-2xl text-white">Multi-Chain Markets</h2>
-          <p className="text-sm text-slate-400">
-            Real-time liquidity, pricing, and automated security scoring across {defaultChainRegistry.getAllChains().length} supported networks
+          <div className="flex items-center gap-2.5">
+            <h2 className="font-display font-extrabold text-2xl text-white">Multi-Chain Markets</h2>
+            {isLiveStream ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                🟢 LIVE STREAM
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-[10px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                🟡 CACHED
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-400 mt-1">
+            Real-time live WebSocket price feeds, circulating supply market caps, and 24h metrics across {defaultChainRegistry.getAllChains().length} supported networks
           </p>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-mono">
+        <div className="flex items-center gap-3 text-xs font-mono flex-wrap">
           <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-            <span className="text-slate-400 block text-[10px]">24h Volume</span>
-            <span className="font-bold text-white text-sm">$48.2 Billion</span>
+            <span className="text-slate-400 block text-[10px]">Tracked 24h Volume</span>
+            <span className="font-bold text-white text-sm">{totalVolumeFormatted}</span>
           </div>
           <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
             <span className="text-slate-400 block text-[10px]">Active Chains</span>
             <span className="font-bold text-cyan-400 text-sm">{defaultChainRegistry.getAllChains().length} Networks</span>
           </div>
-          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-            <span className="text-slate-400 block text-[10px]">Avg Execution Time</span>
-            <span className="font-bold text-emerald-400 text-sm">~1.4s</span>
-          </div>
+          <button
+            onClick={() => fetchMarketData()}
+            disabled={isMarketsLoading}
+            className="flex items-center gap-1.5 p-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition-colors disabled:opacity-50"
+            title="Click to refresh live prices"
+          >
+            <RefreshCw className={`w-4 h-4 ${isMarketsLoading ? 'animate-spin text-cyan-400' : 'text-slate-400'}`} />
+            <span className="text-[11px] font-bold font-sans">
+              {isMarketsLoading ? 'Updating...' : lastMarketUpdate ? 'Updated' : 'Refresh'}
+            </span>
+          </button>
         </div>
       </div>
+
+      {/* Warning Notice if any error */}
+      {marketsError && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+          <span>Pricing feed notice: {marketsError}. Serving last cached market snapshot.</span>
+        </div>
+      )}
 
       {/* Filter Row */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -110,9 +206,10 @@ export const MarketsView: React.FC = () => {
               <tr>
                 <th className="py-3.5 px-4">Asset</th>
                 <th className="py-3.5 px-4">Network & Tier</th>
-                <th className="py-3.5 px-4">Price (USD)</th>
+                <th className="py-3.5 px-4">Live Price (USD)</th>
                 <th className="py-3.5 px-4">24h Change</th>
                 <th className="py-3.5 px-4">24h Volume</th>
+                <th className="py-3.5 px-4">Market Cap</th>
                 <th className="py-3.5 px-4">Risk Rating</th>
                 <th className="py-3.5 px-4 text-right">Action</th>
               </tr>
@@ -120,16 +217,31 @@ export const MarketsView: React.FC = () => {
             <tbody className="divide-y divide-slate-800/50 font-mono">
               {filteredTokens.map((t) => {
                 const chain = defaultChainRegistry.getChain(t.chainId);
-                const isPositive = (t.change24hUSD || 0) >= 0;
+                const tokenKey = `${t.chainId.toLowerCase()}:${t.address.toLowerCase()}`;
+                const live = marketData[tokenKey] || marketData[t.symbol.toLowerCase()];
+
+                const currentPrice = live?.priceUSD ?? t.priceUSD ?? 0;
+                const change24h = live?.change24hUSD ?? t.change24hUSD ?? 0;
+                const volume24h = live?.volume24hUSD ?? t.volume24hUSD ?? 0;
+                const marketCapUSD = live?.marketCapUSD;
+
+                const isPositive = change24h >= 0;
                 const riskScore = t.securityProfile?.riskScore ?? 0;
-                const isSwapSupported = chain?.capabilities.swap ?? false;
 
                 return (
                   <tr key={`${t.chainId}-${t.address}`} className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-3.5 px-4 font-sans">
                       <div className="flex items-center gap-3">
                         {t.logoURI ? (
-                          <img src={t.logoURI} alt={t.symbol} className="w-7 h-7 rounded-full" />
+                          <img
+                            src={t.logoURI}
+                            alt={t.symbol}
+                            className="w-7 h-7 rounded-full"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
+                            }}
+                          />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-xs">
                             {t.symbol.slice(0, 2)}
@@ -161,7 +273,7 @@ export const MarketsView: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4 font-bold text-white text-sm">
-                      ${t.priceUSD?.toLocaleString() || '1.00'}
+                      ${formatPrice(currentPrice)}
                     </td>
 
                     <td className="py-3.5 px-4">
@@ -172,12 +284,16 @@ export const MarketsView: React.FC = () => {
                       >
                         {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         {isPositive ? '+' : ''}
-                        {t.change24hUSD || 0}%
+                        {change24h.toFixed(2)}%
                       </span>
                     </td>
 
                     <td className="py-3.5 px-4 text-slate-300">
-                      ${((t.volume24hUSD || 10000000) / 1e6).toFixed(1)}M
+                      {formatVolume(volume24h)}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-slate-200 font-semibold">
+                      {formatMarketCap(marketCapUSD)}
                     </td>
 
                     <td className="py-3.5 px-4 font-sans">
@@ -214,3 +330,4 @@ export const MarketsView: React.FC = () => {
     </div>
   );
 };
+

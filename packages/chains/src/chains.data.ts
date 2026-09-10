@@ -1530,6 +1530,33 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/14495/small/Internet_Computer_logo.png'
   },
 
+  dogecoin: {
+    id: 'dogecoin',
+    chainId: 0,
+    canonicalName: 'Dogecoin',
+    shortName: 'Dogecoin',
+    executionEnvironment: 'UTXO',
+    category: 'LAYER_1',
+    tier: 'TIER_3',
+    operationalStatus: 'HEALTHY',
+    supportedStandards: ['DOGE'],
+    nativeCurrency: { name: 'Dogecoin', symbol: 'DOGE', decimals: 8, logoURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png' },
+    rpcEndpoints: [{ url: 'https://dogechain.info/api', priority: 1, status: 'HEALTHY' }],
+    explorer: { name: 'DogeChain', baseUrl: 'https://dogechain.info', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
+    finality: { reorgSafetyBlocks: 6, instantFinality: false, typicalBlockTimeSec: 60, safeFinalityTimeSec: 360 },
+    capabilities: {
+      wallet: true, tokenDiscovery: true, tokenRisk: true, priceData: true, liquidityDiscovery: true,
+      swap: true, smartRouting: true, simulation: false, portfolio: true, history: true,
+      mevProtection: false, crossChain: false, zenithLiquidity: false, api: true, sdk: true,
+      hasSubSecondBlocks: false
+    },
+    regulatoryScope: { jurisdictionGated: false },
+    liquidityMaturity: 'DEEP',
+    productionStatus: 'ACTIVE',
+    color: '#C2A633',
+    iconURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png'
+  },
+
   // =========================================================================
   // TIER 4 — RESEARCH / ADAPTER READY (5 Target Networks)
   // =========================================================================

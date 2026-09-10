@@ -42,8 +42,10 @@ export const WRAPPED_NATIVE_TOKENS: Record<number, string> = {
 };
 
 const SWAP_ROUTER_ABI = [
-  'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)',
-  'function exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum)) external payable returns (uint256 amountOut)',
+  'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)',
+  'function exactInput((bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum)) external payable returns (uint256 amountOut)',
+  'function exactOutputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountIn)',
+  'function exactOutput((bytes path, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum)) external payable returns (uint256 amountIn)',
   'function multicall(bytes[] calldata data) external payable returns (bytes[] memory results)',
   'function unwrapWETH9(uint256 amountMinimum, address recipient) external payable',
   'function refundETH() external payable'
@@ -116,8 +118,9 @@ export class EVMExecutionAdapter {
 
     const tokenIn = quote.request.tokenIn;
     const tokenOut = quote.request.tokenOut;
-    const amountInRaw = BigInt(quote.request.amountInRaw || '0');
+    const amountInRaw = BigInt(quote.amountInRaw || '0');
     const minAmountOutRaw = BigInt(quote.minimumReceivedRaw || '0');
+    const deadline = Math.floor((quote.deadline || (Date.now() + 1200000)) / 1000);
 
     // 1. Check ERC-20 token allowance and request real approval if necessary
     if (!tokenIn.isNative) {
@@ -148,22 +151,39 @@ export class EVMExecutionAdapter {
     // Determine fee tier: use route hop fee tier or default to 3000 (0.3%)
     const feeTier = quote.bestRoute.hops[0]?.feeTierBps ? quote.bestRoute.hops[0].feeTierBps * 100 : 3000;
 
-    const swapParams = {
-      tokenIn: actualTokenIn,
-      tokenOut: actualTokenOut,
-      fee: feeTier,
-      recipient: userAddress,
-      amountIn: amountInRaw,
-      amountOutMinimum: minAmountOutRaw,
-      sqrtPriceLimitX96: 0n
-    };
-
+    let tx: any;
     const valueToSend = tokenIn.isNative ? amountInRaw : 0n;
 
-    // Send real blockchain transaction via connected signer (MetaMask prompt)
-    const tx = await routerContract.exactInputSingle(swapParams, {
-      value: valueToSend
-    });
+    if (quote.tradeType === 'EXACT_OUTPUT') {
+      const maxAmountInRaw = BigInt(quote.maximumInputRaw || quote.amountInRaw);
+      const exactOutputParams = {
+        tokenIn: actualTokenIn,
+        tokenOut: actualTokenOut,
+        fee: feeTier,
+        recipient: userAddress,
+        deadline,
+        amountOut: BigInt(quote.amountOutRaw),
+        amountInMaximum: maxAmountInRaw,
+        sqrtPriceLimitX96: 0n
+      };
+      tx = await routerContract.exactOutputSingle(exactOutputParams, {
+        value: valueToSend
+      });
+    } else {
+      const exactInputParams = {
+        tokenIn: actualTokenIn,
+        tokenOut: actualTokenOut,
+        fee: feeTier,
+        recipient: userAddress,
+        deadline,
+        amountIn: amountInRaw,
+        amountOutMinimum: minAmountOutRaw,
+        sqrtPriceLimitX96: 0n
+      };
+      tx = await routerContract.exactInputSingle(exactInputParams, {
+        value: valueToSend
+      });
+    }
 
     const txHash = tx.hash;
     params.onStatusChange?.('SUBMITTING', txHash);
@@ -185,4 +205,3 @@ export class EVMExecutionAdapter {
 }
 
 export const defaultEVMAdapter = new EVMExecutionAdapter();
-

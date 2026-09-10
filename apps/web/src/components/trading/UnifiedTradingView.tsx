@@ -20,7 +20,8 @@ export const UnifiedTradingView: React.FC = () => {
     destChain,
     tokenIn,
     tokenOut,
-    quote
+    quote,
+    marketData
   } = useZenithStore();
 
   const [activeProTab, setActiveProTab] = useState<ProTab>('CHART');
@@ -28,7 +29,14 @@ export const UnifiedTradingView: React.FC = () => {
   const isCrossChain = sourceChain.id !== destChain.id;
   const currentPair = `${tokenIn.symbol} / ${tokenOut.symbol}`;
 
-  const basePrice = tokenIn.priceUSD || (tokenIn.symbol === 'ETH' ? 3450 : tokenIn.symbol === 'SOL' ? 145 : tokenIn.symbol === 'WBTC' ? 65000 : 1);
+  const tokenKey = `${tokenIn.chainId.toLowerCase()}:${tokenIn.address.toLowerCase()}`;
+  const storePrice =
+    marketData[tokenKey]?.priceUSD ||
+    marketData[tokenIn.symbol.toLowerCase()]?.priceUSD ||
+    defaultMarketDataService.getCachedMarketData(tokenIn.chainId, tokenIn.address)?.priceUSD ||
+    tokenIn.priceUSD;
+
+  const basePrice = storePrice || (tokenIn.symbol === 'ETH' ? 2465.87 : tokenIn.symbol === 'SOL' ? 101.68 : tokenIn.symbol === 'WBTC' || tokenIn.symbol === 'BTC' ? 78247.22 : 1);
   const [liveStats, setLiveStats] = useState<MarketStats24h>({
     currentPrice: basePrice,
     change24hPercent: 2.85,
@@ -41,7 +49,10 @@ export const UnifiedTradingView: React.FC = () => {
     let isMounted = true;
     defaultMarketDataService.fetch24hStats(tokenIn.symbol, 'USDT', basePrice).then((stats) => {
       if (isMounted && stats) {
-        setLiveStats(stats);
+        setLiveStats((prev) => ({
+          ...stats,
+          currentPrice: prev.currentPrice || stats.currentPrice
+        }));
       }
     });
 
@@ -67,6 +78,7 @@ export const UnifiedTradingView: React.FC = () => {
     };
   }, [tokenIn.symbol, basePrice]);
 
+  const markPrice = storePrice || liveStats.currentPrice;
   const isPositive = liveStats.change24hPercent >= 0;
 
   return (
@@ -133,10 +145,7 @@ export const UnifiedTradingView: React.FC = () => {
             <div>
               <span className="text-slate-400 block text-[10px]">Mark Price</span>
               <span className="font-bold text-white text-sm">
-                ${liveStats.currentPrice.toLocaleString(undefined, {
-                  minimumFractionDigits: liveStats.currentPrice < 1 ? 4 : 2,
-                  maximumFractionDigits: liveStats.currentPrice < 1 ? 6 : 2
-                })}
+                ${markPrice >= 1000 ? markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : markPrice >= 1 ? markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : markPrice >= 0.0001 ? markPrice.toFixed(6) : markPrice.toFixed(8)}
               </span>
             </div>
             <div>

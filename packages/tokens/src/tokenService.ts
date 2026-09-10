@@ -6,7 +6,7 @@ export class TokenService {
   private chainTokenIndex: Map<string, Token[]> = new Map();
 
   constructor(customTokens?: Token[]) {
-    const list = [...DEFAULT_TOKENS, ...(customTokens || [])];
+    const list = customTokens || DEFAULT_TOKENS;
     list.forEach((t) => this.addToken(t));
   }
 
@@ -15,29 +15,19 @@ export class TokenService {
   }
 
   public addToken(token: Token): void {
-    if (!token.chainId || !token.address || !token.symbol || !token.name) {
-      throw new Error('[TokenService] Token must include chainId, address, name, and symbol');
-    }
+    const key = this.getTokenKey(token.chainId, token.address);
+    this.tokens.set(key, token);
 
-    const normalizedToken: Token = {
-      ...token,
-      chainId: token.chainId.toLowerCase(),
-      symbol: token.symbol.toUpperCase(),
-      enabled: token.enabled !== false
-    };
-    const key = this.getTokenKey(normalizedToken.chainId, normalizedToken.address);
-    this.tokens.set(key, normalizedToken);
-
-    const chainList = this.chainTokenIndex.get(normalizedToken.chainId) || [];
+    const chainList = this.chainTokenIndex.get(token.chainId.toLowerCase()) || [];
     const existingIdx = chainList.findIndex(
-      (t) => t.address.toLowerCase() === normalizedToken.address.toLowerCase()
+      (t) => t.address.toLowerCase() === token.address.toLowerCase()
     );
     if (existingIdx >= 0) {
-      chainList[existingIdx] = normalizedToken;
+      chainList[existingIdx] = token;
     } else {
-      chainList.push(normalizedToken);
+      chainList.push(token);
     }
-    this.chainTokenIndex.set(normalizedToken.chainId, chainList);
+    this.chainTokenIndex.set(token.chainId.toLowerCase(), chainList);
   }
 
   public getToken(chainId: string, address: string): Token | undefined {
@@ -50,7 +40,7 @@ export class TokenService {
   }
 
   public getTokensForChain(chainId: string): Token[] {
-    return (this.chainTokenIndex.get(chainId.toLowerCase()) || []).filter((token) => token.enabled !== false);
+    return this.chainTokenIndex.get(chainId.toLowerCase()) || [];
   }
 
   public searchTokens(query: string, chainId?: string): Token[] {
@@ -59,14 +49,12 @@ export class TokenService {
       return chainId ? this.getTokensForChain(chainId) : Array.from(this.tokens.values());
     }
 
-    const searchPool = chainId
-      ? this.getTokensForChain(chainId)
-      : Array.from(this.tokens.values()).filter((token) => token.enabled !== false);
+    const searchPool = chainId ? this.getTokensForChain(chainId) : Array.from(this.tokens.values());
     return searchPool.filter(
       (t) =>
         t.symbol.toLowerCase().includes(q) ||
         t.name.toLowerCase().includes(q) ||
-        t.address.toLowerCase().includes(q)
+        t.address.toLowerCase() === q
     );
   }
 
@@ -78,11 +66,6 @@ export class TokenService {
     decimals: number;
     securityProfile?: TokenSecurityProfile;
   }): Token {
-    const chain = params.chainId.toLowerCase();
-    if (!this.chainTokenIndex.has(chain)) {
-      throw new Error(`[TokenService] Unsupported network: ${params.chainId}`);
-    }
-
     const isEVM = params.address.startsWith('0x');
     if (isEVM && params.address.length !== 42) {
       throw new Error(`[TokenService] Invalid EVM token address format: ${params.address}`);
@@ -90,11 +73,10 @@ export class TokenService {
 
     const importedToken: Token = {
       address: params.address,
-      chainId: chain,
+      chainId: params.chainId,
       name: params.name,
       symbol: params.symbol.toUpperCase(),
       decimals: params.decimals,
-      enabled: true,
       verificationTier: 'UNVERIFIED',
       securityProfile: params.securityProfile || {
         isHoneypot: false,

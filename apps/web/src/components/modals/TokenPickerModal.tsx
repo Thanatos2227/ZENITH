@@ -41,7 +41,7 @@ export const TokenPickerModal: React.FC = () => {
   const allChains = defaultChainRegistry.getAllChains();
 
   const tokens = searchQuery.trim()
-    ? defaultTokenService.searchTokens(searchQuery, targetChain.id)
+    ? defaultTokenService.searchTokens(searchQuery)
     : defaultTokenService.getTokensForChain(targetChain.id);
 
   const handleSelectChain = (chain: ChainConfig) => {

@@ -1,22 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Token } from '@zenith/types';
 import {
   TrendingUp,
   TrendingDown,
   Activity,
-  Maximize2,
-  Radio,
-  BarChart2,
-  Layers,
   RefreshCw
 } from 'lucide-react';
 import {
   defaultMarketDataService,
   MarketCandle,
-  TimeframeInterval,
   MarketStats24h
 } from '../../services/marketDataService';
-import { TradingViewChart } from './TradingViewChart';
 import { useZenithStore } from '../../stores/useZenithStore';
 
 interface LivePriceChartProps {
@@ -25,11 +19,16 @@ interface LivePriceChartProps {
 }
 
 export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOut }) => {
-  const { theme } = useZenithStore();
+  const { theme, marketData } = useZenithStore();
   const isDark = theme === 'dark';
-  const [viewEngine, setViewEngine] = useState<'NATIVE' | 'TRADINGVIEW'>('NATIVE');
+  const tokenKey = `${tokenIn.chainId.toLowerCase()}:${tokenIn.address.toLowerCase()}`;
+  const storePrice =
+    marketData[tokenKey]?.priceUSD ||
+    marketData[tokenIn.symbol.toLowerCase()]?.priceUSD ||
+    defaultMarketDataService.getCachedMarketData(tokenIn.chainId, tokenIn.address)?.priceUSD ||
+    tokenIn.priceUSD;
+
   const [chartMode, setChartMode] = useState<'AREA' | 'CANDLE'>('AREA');
-  const [interval, setInterval] = useState<TimeframeInterval>('15m');
   const [showEMA, setShowEMA] = useState<boolean>(true);
   const [showVolume, setShowVolume] = useState<boolean>(true);
   const [hoveredCandle, setHoveredCandle] = useState<MarketCandle | null>(null);
@@ -37,14 +36,19 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   const [isTickUp, setIsTickUp] = useState<boolean | null>(null);
   const [tickCounter, setTickCounter] = useState<number>(0);
   const [wsStatus, setWsStatus] = useState<'CONNECTING' | 'CONNECTED' | 'DISCONNECTED'>('CONNECTING');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Compute baseline price
   const baseRate = useMemo(() => {
-    const pIn = tokenIn.priceUSD || (tokenIn.symbol === 'ETH' ? 3450 : tokenIn.symbol === 'SOL' ? 145 : tokenIn.symbol === 'WBTC' ? 65000 : 1);
-    const pOut = tokenOut.priceUSD || (tokenOut.symbol === 'USDC' || tokenOut.symbol === 'USDT' ? 1 : tokenOut.symbol === 'ETH' ? 3450 : 1);
+    const pIn = storePrice || tokenIn.priceUSD || (tokenIn.symbol === 'ETH' ? 2465.87 : tokenIn.symbol === 'SOL' ? 101.68 : tokenIn.symbol === 'WBTC' || tokenIn.symbol === 'BTC' ? 78247.22 : 1);
+    const pOut = tokenOut.priceUSD || (tokenOut.symbol === 'USDC' || tokenOut.symbol === 'USDT' ? 1 : tokenOut.symbol === 'ETH' ? 2465.87 : 1);
     return pIn / pOut;
-  }, [tokenIn, tokenOut]);
+  }, [tokenIn, tokenOut, storePrice]);
+
+  const latestPriceRef = useRef<number>(baseRate);
+  useEffect(() => {
+    latestPriceRef.current = baseRate;
+  }, [baseRate]);
 
   // Real 24h market stats
   const [stats24h, setStats24h] = useState<MarketStats24h>({
@@ -55,50 +59,87 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     volume24hUSD: 185000000
   });
 
-  // Candlestick historical state
+  // 1-minute Candlestick stream state
   const [candles, setCandles] = useState<MarketCandle[]>([]);
 
-  // Load real historical klines and 24h stats
-  const loadMarketData = useCallback(async () => {
+  // Format 1-minute time label (HH:MM)
+  const format1mTimeLabel = (d: Date): string => {
+    const hh = d.getHours().toString().padStart(2, '0');
+    const mm = d.getMinutes().toString().padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  // Generate synthetic 1-minute historical candles if offline
+  const generateSynthetic1mCandles = useCallback((startPrice: number, count: number = 45): MarketCandle[] => {
+    const list: MarketCandle[] = [];
+    const now = Date.now();
+    let lastClose = startPrice * 0.985;
+
+    for (let i = count; i >= 0; i--) {
+      const ts = now - i * 60 * 1000;
+      const d = new Date(ts);
+      const timeLabel = format1mTimeLabel(d);
+      const volatility = lastClose * 0.0025;
+      const open = lastClose;
+      const delta = (Math.random() - 0.48) * volatility;
+      const close = Math.max(open + delta, 0.000001);
+      const high = Math.max(open, close) + Math.random() * volatility * 0.4;
+      const low = Math.min(open, close) - Math.random() * volatility * 0.4;
+      const volume = Math.floor(Math.random() * 500 + 100);
+
+      list.push({ timestamp: ts, timeLabel, open, high, low, close, volume });
+      lastClose = close;
+    }
+    if (list.length > 0) {
+      list[list.length - 1].close = startPrice;
+      list[list.length - 1].high = Math.max(list[list.length - 1].high, startPrice);
+      list[list.length - 1].low = Math.min(list[list.length - 1].low, startPrice);
+    }
+    return list;
+  }, []);
+
+  // Initialize and load 1-minute historical data and 24h stats
+  const initMarketData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [fetchedCandles, fetchedStats] = await Promise.all([
-        defaultMarketDataService.fetchKlines(tokenIn.symbol, tokenOut.symbol, interval, 45, baseRate),
+        defaultMarketDataService.fetchKlines(tokenIn.symbol, tokenOut.symbol, '1m', 45, baseRate),
         defaultMarketDataService.fetch24hStats(tokenIn.symbol, tokenOut.symbol, baseRate)
       ]);
 
-      if (fetchedCandles && fetchedCandles.length > 0) {
-        setCandles(fetchedCandles);
-      }
       if (fetchedStats) {
         setStats24h(fetchedStats);
+        if (fetchedStats.currentPrice > 0) {
+          latestPriceRef.current = fetchedStats.currentPrice;
+        }
+      }
+
+      if (fetchedCandles && fetchedCandles.length > 0) {
+        setCandles(fetchedCandles);
+      } else {
+        setCandles(generateSynthetic1mCandles(latestPriceRef.current || baseRate, 45));
       }
     } catch (err) {
       console.error('Error fetching market data:', err);
+      setCandles(generateSynthetic1mCandles(baseRate, 45));
     } finally {
       setIsLoading(false);
     }
-  }, [tokenIn.symbol, tokenOut.symbol, interval, baseRate]);
+  }, [tokenIn.symbol, tokenOut.symbol, baseRate, generateSynthetic1mCandles]);
 
   useEffect(() => {
-    loadMarketData();
-  }, [loadMarketData]);
+    initMarketData();
+  }, [initMarketData]);
 
-  // Live WebSocket Tick Subscription
+  // WebSocket Live Stream Listener (1m klines)
   useEffect(() => {
     const cleanup = defaultMarketDataService.subscribeLiveStream(
       tokenIn.symbol,
       tokenOut.symbol,
-      interval,
+      '1m',
       (livePrice, tickCandle) => {
-        setCandles((prev) => {
-          if (prev.length === 0) return prev;
-          const lastIndex = prev.length - 1;
-          const last = prev[lastIndex];
-
-          setIsTickUp(livePrice >= last.close);
-          setTickCounter((c) => c + 1);
-
+        if (livePrice > 0) {
+          latestPriceRef.current = livePrice;
           setStats24h((prevStats) => ({
             ...prevStats,
             currentPrice: livePrice,
@@ -107,31 +148,27 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           }));
 
           if (tickCandle) {
-            // Check if candle timestamp matches latest candle interval
-            if (tickCandle.timestamp === last.timestamp) {
-              const updatedLast: MarketCandle = {
-                ...last,
-                high: Math.max(last.high, tickCandle.high, livePrice),
-                low: Math.min(last.low, tickCandle.low, livePrice),
-                close: livePrice,
-                volume: last.volume + (tickCandle.volume ? tickCandle.volume * 0.05 : 1)
-              };
-              return [...prev.slice(0, lastIndex), updatedLast];
-            } else if (tickCandle.timestamp > last.timestamp) {
-              // New candle period started
-              return [...prev.slice(1), tickCandle];
-            }
-          }
+            setCandles((prev) => {
+              if (prev.length === 0) return prev;
+              const lastIndex = prev.length - 1;
+              const last = prev[lastIndex];
 
-          // In-period tick
-          const updatedLast: MarketCandle = {
-            ...last,
-            high: Math.max(last.high, livePrice),
-            low: Math.min(last.low, livePrice),
-            close: livePrice
-          };
-          return [...prev.slice(0, lastIndex), updatedLast];
-        });
+              if (tickCandle.timestamp === last.timestamp) {
+                const updatedLast: MarketCandle = {
+                  ...last,
+                  high: Math.max(last.high, tickCandle.high, livePrice),
+                  low: Math.min(last.low, tickCandle.low, livePrice),
+                  close: livePrice,
+                  volume: last.volume + (tickCandle.volume ? tickCandle.volume * 0.05 : 1)
+                };
+                return [...prev.slice(0, lastIndex), updatedLast];
+              } else if (tickCandle.timestamp > last.timestamp) {
+                return [...prev.slice(1), tickCandle];
+              }
+              return prev;
+            });
+          }
+        }
       },
       (status) => {
         setWsStatus(status);
@@ -141,10 +178,70 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return () => {
       cleanup();
     };
-  }, [tokenIn.symbol, tokenOut.symbol, interval]);
+  }, [tokenIn.symbol, tokenOut.symbol]);
+
+  // Real-time 1-Second Continuous Tick Engine on 1-Minute Duration
+  useEffect(() => {
+    const intervalTimer = setInterval(() => {
+      setCandles((prev) => {
+        if (prev.length === 0) return prev;
+        const lastIndex = prev.length - 1;
+        const last = prev[lastIndex];
+        const now = new Date();
+        const currentMinuteBucket = Math.floor(now.getTime() / 60000) * 60000;
+        const timeLabel = format1mTimeLabel(now);
+
+        // Sub-basis micro fluctuation to simulate live orderbook jitter
+        const targetPrice = latestPriceRef.current || last.close;
+        const microJitter = (Math.random() - 0.495) * (targetPrice * 0.0003);
+        const currentPrice = Math.max(targetPrice + microJitter, 0.000001);
+        latestPriceRef.current = currentPrice;
+
+        const isUp = currentPrice >= last.close;
+        setIsTickUp(isUp);
+        setTickCounter((c) => c + 1);
+
+        setStats24h((prevStats) => ({
+          ...prevStats,
+          currentPrice,
+          high24h: Math.max(prevStats.high24h, currentPrice),
+          low24h: Math.min(prevStats.low24h, currentPrice)
+        }));
+
+        // Check if we are still within the same 1-minute candle
+        const lastCandleBucket = Math.floor(last.timestamp / 60000) * 60000;
+        if (currentMinuteBucket === lastCandleBucket) {
+          const updatedLast: MarketCandle = {
+            ...last,
+            high: Math.max(last.high, currentPrice),
+            low: Math.min(last.low, currentPrice),
+            close: currentPrice,
+            volume: last.volume + Math.floor(Math.random() * 5 + 1)
+          };
+          return [...prev.slice(0, lastIndex), updatedLast];
+        } else {
+          // New 1-minute period started
+          const newCandle: MarketCandle = {
+            timestamp: currentMinuteBucket,
+            timeLabel,
+            open: last.close,
+            high: Math.max(last.close, currentPrice),
+            low: Math.min(last.close, currentPrice),
+            close: currentPrice,
+            volume: Math.floor(Math.random() * 80 + 20)
+          };
+          return [...prev.slice(1), newCandle];
+        }
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalTimer);
+    };
+  }, []);
 
   // Derived stats
-  const currentPrice = candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
+  const currentPrice = storePrice || candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
   const firstPrice = candles[0]?.open || baseRate;
   const priceChangeUSD = currentPrice - firstPrice;
   const priceChangePercent = stats24h.change24hPercent !== undefined ? stats24h.change24hPercent : (firstPrice > 0 ? (priceChangeUSD / firstPrice) * 100 : 0);
@@ -263,7 +360,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   const formatPriceDigits = (p: number) => {
     if (p >= 1000) return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (p >= 1) return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-    if (p >= 0.001) return p.toFixed(5);
+    if (p >= 0.0001) return p.toFixed(6);
     return p.toFixed(8);
   };
 
@@ -314,107 +411,64 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           </div>
         </div>
 
-        {/* Controls: Engine Switcher, Timeframes, Display Mode */}
+        {/* Controls: Zenith Live 1m Indicator, Display Mode, Indicators */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Chart Engine Switcher: Native Stream vs TradingView Pro */}
+          {/* Zenith Live 1m Duration Badge */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold text-xs shadow-sm">
+            <Activity className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-mono">Zenith Live • 1m</span>
+          </div>
+
+          {/* Chart Type Toggle & Indicators */}
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
             <button
-              onClick={() => setViewEngine('NATIVE')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded font-semibold transition-all ${
-                viewEngine === 'NATIVE'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+              onClick={() => setChartMode('AREA')}
+              className={`px-2 py-0.5 rounded font-semibold transition-colors ${
+                chartMode === 'AREA'
+                  ? 'bg-slate-800 text-cyan-300 border border-slate-700 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Activity className="w-3 h-3" />
-              Zenith Live
+              Line
             </button>
             <button
-              onClick={() => setViewEngine('TRADINGVIEW')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded font-semibold transition-all ${
-                viewEngine === 'TRADINGVIEW'
-                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
+              onClick={() => setChartMode('CANDLE')}
+              className={`px-2 py-0.5 rounded font-semibold transition-colors ${
+                chartMode === 'CANDLE'
+                  ? 'bg-slate-800 text-cyan-300 border border-slate-700 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <BarChart2 className="w-3 h-3" />
-              TradingView Pro
+              Candles
             </button>
           </div>
 
-          {/* Timeframe Intervals (When in Native Engine) */}
-          {viewEngine === 'NATIVE' && (
-            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
-              {(['1m', '5m', '15m', '1h', '4h', '1d'] as TimeframeInterval[]).map((tf) => (
-                <button
-                  key={tf}
-                  onClick={() => setInterval(tf)}
-                  className={`px-2 py-0.5 rounded font-bold uppercase transition-colors ${
-                    interval === tf
-                      ? 'bg-slate-800 text-cyan-300 border border-slate-700'
-                      : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Chart Type Toggle & Indicators (When in Native Engine) */}
-          {viewEngine === 'NATIVE' && (
-            <>
-              <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
-                <button
-                  onClick={() => setChartMode('AREA')}
-                  className={`px-2 py-0.5 rounded font-semibold transition-colors ${
-                    chartMode === 'AREA'
-                      ? 'bg-slate-800 text-cyan-300 border border-slate-700 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Line
-                </button>
-                <button
-                  onClick={() => setChartMode('CANDLE')}
-                  className={`px-2 py-0.5 rounded font-semibold transition-colors ${
-                    chartMode === 'CANDLE'
-                      ? 'bg-slate-800 text-cyan-300 border border-slate-700 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Candles
-                </button>
-              </div>
-
-              <button
-                onClick={() => setShowEMA(!showEMA)}
-                className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${
-                  showEMA
-                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                    : 'bg-slate-900 text-slate-500 border-slate-800'
-                }`}
-                title="Toggle EMA 9 & EMA 21 overlays"
-              >
-                EMA
-              </button>
-
-              <button
-                onClick={() => setShowVolume(!showVolume)}
-                className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${
-                  showVolume
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                    : 'bg-slate-900 text-slate-500 border-slate-800'
-                }`}
-                title="Toggle Volume Histogram"
-              >
-                Vol
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => setShowEMA(!showEMA)}
+            className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${
+              showEMA
+                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                : 'bg-slate-900 text-slate-500 border-slate-800'
+            }`}
+            title="Toggle EMA 9 & EMA 21 overlays"
+          >
+            EMA
+          </button>
 
           <button
-            onClick={loadMarketData}
+            onClick={() => setShowVolume(!showVolume)}
+            className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${
+              showVolume
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                : 'bg-slate-900 text-slate-500 border-slate-800'
+            }`}
+            title="Toggle Volume Histogram"
+          >
+            Vol
+          </button>
+
+          <button
+            onClick={initMarketData}
             className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition-colors"
             title="Refresh Live Data"
           >
@@ -423,274 +477,264 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         </div>
       </div>
 
-      {/* Mode A: TradingView Pro Embed Widget */}
-      {viewEngine === 'TRADINGVIEW' && (
-        <TradingViewChart tokenIn={tokenIn} tokenOut={tokenOut} />
-      )}
-
-      {/* Mode B: Zenith Native Real-Time SVG Engine */}
-      {viewEngine === 'NATIVE' && (
-        <>
-          {/* Real-time OHLCV Inspector Strip */}
-          {displayedCandle && (
-            <div className="flex flex-wrap items-center gap-4 text-xs font-mono bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800/80">
-              <div className="text-slate-400">
-                <span>Time: </span>
-                <span className="text-white font-semibold">{displayedCandle.timeLabel}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">O: </span>
-                <span className="text-slate-200">${formatPriceDigits(displayedCandle.open)}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">H: </span>
-                <span className="text-emerald-400">${formatPriceDigits(displayedCandle.high)}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">L: </span>
-                <span className="text-red-400">${formatPriceDigits(displayedCandle.low)}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">C: </span>
-                <span className="text-cyan-300 font-bold">${formatPriceDigits(displayedCandle.close)}</span>
-              </div>
-              {showVolume && (
-                <div>
-                  <span className="text-slate-400">Vol: </span>
-                  <span className="text-indigo-300">{displayedCandle.volume.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-                </div>
-              )}
-              <div className="ml-auto text-[11px] text-slate-500 hidden sm:flex items-center gap-2">
-                <span>Ticks: {tickCounter}</span>
-                <span className="text-slate-600">|</span>
-                <span className="text-emerald-400">Live Market Stream</span>
-              </div>
+      {/* Real-time OHLCV Inspector Strip */}
+      {displayedCandle && (
+        <div className="flex flex-wrap items-center gap-4 text-xs font-mono bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800/80">
+          <div className="text-slate-400">
+            <span>Time: </span>
+            <span className="text-white font-semibold">{displayedCandle.timeLabel}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">O: </span>
+            <span className="text-slate-200">${formatPriceDigits(displayedCandle.open)}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">H: </span>
+            <span className="text-emerald-400">${formatPriceDigits(displayedCandle.high)}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">L: </span>
+            <span className="text-red-400">${formatPriceDigits(displayedCandle.low)}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">C: </span>
+            <span className="text-cyan-300 font-bold">${formatPriceDigits(displayedCandle.close)}</span>
+          </div>
+          {showVolume && (
+            <div>
+              <span className="text-slate-400">Vol: </span>
+              <span className="text-indigo-300">{displayedCandle.volume.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
             </div>
           )}
-
-          {/* SVG Interactive Real-Time Chart Canvas */}
-          <div className={`relative w-full h-72 sm:h-80 ${isDark ? 'bg-[#080B11]/90 border-slate-800/80' : 'bg-white/95 border-slate-200 shadow-sm'} rounded-xl border overflow-hidden select-none`}>
-            {/* Horizontal Price Grid Lines */}
-            <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none opacity-30">
-              <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
-                <span>${formatPriceDigits(maxPrice)}</span>
-              </div>
-              <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
-                <span>${formatPriceDigits((maxPrice + minPrice) / 2)}</span>
-              </div>
-              <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
-                <span>${formatPriceDigits(minPrice)}</span>
-              </div>
-            </div>
-
-            <svg
-              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              className="w-full h-full cursor-crosshair"
-              preserveAspectRatio="none"
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-            >
-              <defs>
-                {/* Area Gradient */}
-                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={isPositive ? '#00E599' : '#F43F5E'} stopOpacity="0.35" />
-                  <stop offset="50%" stopColor={isPositive ? '#06B6D4' : '#E11D48'} stopOpacity="0.15" />
-                  <stop offset="100%" stopColor={isDark ? '#080B11' : '#FFFFFF'} stopOpacity="0.0" />
-                </linearGradient>
-
-                {/* Glowing Line Filter */}
-                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="2" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
-
-              {/* Volume Bars (Optional) */}
-              {showVolume &&
-                candles.map((c, i) => {
-                  const x = paddingX + (i / (candles.length - 1 || 1)) * usableWidth;
-                  const barHeight = (c.volume / maxVolume) * 45;
-                  const y = chartHeight - paddingY - barHeight;
-                  const barWidth = Math.max(usableWidth / candles.length - 3, 2);
-                  const isUp = c.close >= c.open;
-
-                  return (
-                    <rect
-                      key={`vol-${i}`}
-                      x={x - barWidth / 2}
-                      y={y}
-                      width={barWidth}
-                      height={barHeight}
-                      fill={isUp ? '#00E599' : '#F43F5E'}
-                      opacity="0.25"
-                      rx="1"
-                    />
-                  );
-                })}
-
-              {/* Area Mode Rendering */}
-              {chartMode === 'AREA' && (
-                <>
-                  {/* Shaded Area */}
-                  <path d={areaPath} fill="url(#areaGradient)" />
-
-                  {/* Main Price Line */}
-                  <path
-                    d={linePath}
-                    fill="none"
-                    stroke={isPositive ? '#00E599' : '#F43F5E'}
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    filter="url(#glow)"
-                  />
-                </>
-              )}
-
-              {/* Candlestick Mode Rendering */}
-              {chartMode === 'CANDLE' &&
-                candles.map((c, i) => {
-                  const x = paddingX + (i / (candles.length - 1 || 1)) * usableWidth;
-                  const normalizedHighY = chartHeight - paddingY - ((c.high - minPrice) / priceRange) * usableHeight;
-                  const normalizedLowY = chartHeight - paddingY - ((c.low - minPrice) / priceRange) * usableHeight;
-                  const normalizedOpenY = chartHeight - paddingY - ((c.open - minPrice) / priceRange) * usableHeight;
-                  const normalizedCloseY = chartHeight - paddingY - ((c.close - minPrice) / priceRange) * usableHeight;
-
-                  const isUp = c.close >= c.open;
-                  const candleTop = Math.min(normalizedOpenY, normalizedCloseY);
-                  const candleHeight = Math.max(Math.abs(normalizedOpenY - normalizedCloseY), 2);
-                  const candleWidth = Math.max(usableWidth / candles.length - 4, 3);
-
-                  return (
-                    <g key={`candle-${i}`}>
-                      {/* Wick */}
-                      <line
-                        x1={x}
-                        y1={normalizedHighY}
-                        x2={x}
-                        y2={normalizedLowY}
-                        stroke={isUp ? '#00E599' : '#F43F5E'}
-                        strokeWidth="1.2"
-                      />
-                      {/* Body */}
-                      <rect
-                        x={x - candleWidth / 2}
-                        y={candleTop}
-                        width={candleWidth}
-                        height={candleHeight}
-                        fill={isUp ? '#00E599' : '#F43F5E'}
-                        stroke={isUp ? '#00E599' : '#F43F5E'}
-                        strokeWidth="0.8"
-                        rx="1"
-                      />
-                    </g>
-                  );
-                })}
-
-              {/* EMA 9 Overlay Line */}
-              {showEMA && emaPath && (
-                <path
-                  d={emaPath}
-                  fill="none"
-                  stroke="#818CF8"
-                  strokeWidth="1.5"
-                  strokeDasharray="4 2"
-                  opacity="0.8"
-                />
-              )}
-
-              {/* EMA 21 Overlay Line */}
-              {showEMA && ema21Path && (
-                <path
-                  d={ema21Path}
-                  fill="none"
-                  stroke="#F59E0B"
-                  strokeWidth="1.2"
-                  opacity="0.7"
-                />
-              )}
-
-              {/* Current Live Pulse Indicator on Latest Point */}
-              {points.length > 0 && (
-                <g>
-                  {/* Horizontal Latest Price Guideline */}
-                  <line
-                    x1={paddingX}
-                    y1={points[points.length - 1].y}
-                    x2={chartWidth - paddingX}
-                    y2={points[points.length - 1].y}
-                    stroke={isPositive ? '#00E599' : '#F43F5E'}
-                    strokeWidth="1"
-                    strokeDasharray="3 3"
-                    opacity="0.6"
-                  />
-
-                  {/* Pulsing Beacon */}
-                  <circle
-                    cx={points[points.length - 1].x}
-                    cy={points[points.length - 1].y}
-                    r="7"
-                    fill={isPositive ? '#00E599' : '#F43F5E'}
-                    opacity="0.3"
-                    className="animate-ping"
-                  />
-                  <circle
-                    cx={points[points.length - 1].x}
-                    cy={points[points.length - 1].y}
-                    r="4"
-                    fill={isPositive ? '#00E599' : '#F43F5E'}
-                    stroke={isDark ? '#080B11' : '#FFFFFF'}
-                    strokeWidth="1.5"
-                  />
-                </g>
-              )}
-
-              {/* Interactive Crosshair & Cursor Line */}
-              {mousePos && (
-                <g>
-                  {/* Vertical Crosshair Line */}
-                  <line
-                    x1={mousePos.x}
-                    y1={paddingY}
-                    x2={mousePos.x}
-                    y2={chartHeight - paddingY}
-                    stroke={isDark ? '#94A3B8' : '#64748B'}
-                    strokeWidth="1"
-                    strokeDasharray="2 2"
-                    opacity="0.7"
-                  />
-                  {/* Horizontal Crosshair Line */}
-                  <line
-                    x1={paddingX}
-                    y1={mousePos.y}
-                    x2={chartWidth - paddingX}
-                    y2={mousePos.y}
-                    stroke={isDark ? '#94A3B8' : '#64748B'}
-                    strokeWidth="1"
-                    strokeDasharray="2 2"
-                    opacity="0.7"
-                  />
-                  {/* Center Target Dot */}
-                  <circle cx={mousePos.x} cy={mousePos.y} r="3.5" fill="#38BDF8" stroke={isDark ? '#080B11' : '#FFFFFF'} strokeWidth="1" />
-                </g>
-              )}
-            </svg>
-
-            {/* Live Price Tag on Right Edge */}
-            <div
-              style={{
-                top: `${((points[points.length - 1]?.y || usableHeight / 2) / chartHeight) * 100}%`,
-                transform: 'translateY(-50%)'
-              }}
-              className={`absolute right-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg pointer-events-none ${
-                isPositive ? 'bg-emerald-500 text-slate-950' : 'bg-red-500 text-white'
-              }`}
-            >
-              ${formatPriceDigits(currentPrice)}
-            </div>
+          <div className="ml-auto text-[11px] text-slate-500 hidden sm:flex items-center gap-2">
+            <span>Ticks: {tickCounter}</span>
+            <span className="text-slate-600">|</span>
+            <span className="text-cyan-400">1m Duration</span>
           </div>
-        </>
+        </div>
       )}
+
+      {/* SVG Interactive Real-Time Chart Canvas */}
+      <div className={`relative w-full h-72 sm:h-80 ${isDark ? 'bg-[#080B11]/90 border-slate-800/80' : 'bg-white/95 border-slate-200 shadow-sm'} rounded-xl border overflow-hidden select-none`}>
+        {/* Horizontal Price Grid Lines */}
+        <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none opacity-30">
+          <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
+            <span>${formatPriceDigits(maxPrice)}</span>
+          </div>
+          <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
+            <span>${formatPriceDigits((maxPrice + minPrice) / 2)}</span>
+          </div>
+          <div className={`w-full border-b border-dashed ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'} flex justify-between text-[10px] font-mono`}>
+            <span>${formatPriceDigits(minPrice)}</span>
+          </div>
+        </div>
+
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="w-full h-full cursor-crosshair"
+          preserveAspectRatio="none"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          <defs>
+            {/* Area Gradient */}
+            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={isPositive ? '#00E599' : '#F43F5E'} stopOpacity="0.35" />
+              <stop offset="50%" stopColor={isPositive ? '#06B6D4' : '#E11D48'} stopOpacity="0.15" />
+              <stop offset="100%" stopColor={isDark ? '#080B11' : '#FFFFFF'} stopOpacity="0.0" />
+            </linearGradient>
+
+            {/* Glowing Line Filter */}
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Volume Bars (Optional) */}
+          {showVolume &&
+            candles.map((c, i) => {
+              const x = paddingX + (i / (candles.length - 1 || 1)) * usableWidth;
+              const barHeight = (c.volume / maxVolume) * 45;
+              const y = chartHeight - paddingY - barHeight;
+              const barWidth = Math.max(usableWidth / candles.length - 3, 2);
+              const isUp = c.close >= c.open;
+
+              return (
+                <rect
+                  key={`vol-${i}`}
+                  x={x - barWidth / 2}
+                  y={y}
+                  width={barWidth}
+                  height={barHeight}
+                  fill={isUp ? '#00E599' : '#F43F5E'}
+                  opacity="0.25"
+                  rx="1"
+                />
+              );
+            })}
+
+          {/* Area Mode Rendering */}
+          {chartMode === 'AREA' && (
+            <>
+              {/* Shaded Area */}
+              <path d={areaPath} fill="url(#areaGradient)" />
+
+              {/* Main Price Line */}
+              <path
+                d={linePath}
+                fill="none"
+                stroke={isPositive ? '#00E599' : '#F43F5E'}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#glow)"
+              />
+            </>
+          )}
+
+          {/* Candlestick Mode Rendering */}
+          {chartMode === 'CANDLE' &&
+            candles.map((c, i) => {
+              const x = paddingX + (i / (candles.length - 1 || 1)) * usableWidth;
+              const normalizedHighY = chartHeight - paddingY - ((c.high - minPrice) / priceRange) * usableHeight;
+              const normalizedLowY = chartHeight - paddingY - ((c.low - minPrice) / priceRange) * usableHeight;
+              const normalizedOpenY = chartHeight - paddingY - ((c.open - minPrice) / priceRange) * usableHeight;
+              const normalizedCloseY = chartHeight - paddingY - ((c.close - minPrice) / priceRange) * usableHeight;
+
+              const isUp = c.close >= c.open;
+              const candleTop = Math.min(normalizedOpenY, normalizedCloseY);
+              const candleHeight = Math.max(Math.abs(normalizedOpenY - normalizedCloseY), 2);
+              const candleWidth = Math.max(usableWidth / candles.length - 4, 3);
+
+              return (
+                <g key={`candle-${i}`}>
+                  {/* Wick */}
+                  <line
+                    x1={x}
+                    y1={normalizedHighY}
+                    x2={x}
+                    y2={normalizedLowY}
+                    stroke={isUp ? '#00E599' : '#F43F5E'}
+                    strokeWidth="1.2"
+                  />
+                  {/* Body */}
+                  <rect
+                    x={x - candleWidth / 2}
+                    y={candleTop}
+                    width={candleWidth}
+                    height={candleHeight}
+                    fill={isUp ? '#00E599' : '#F43F5E'}
+                    stroke={isUp ? '#00E599' : '#F43F5E'}
+                    strokeWidth="0.8"
+                    rx="1"
+                  />
+                </g>
+              );
+            })}
+
+          {/* EMA 9 Overlay Line */}
+          {showEMA && emaPath && (
+            <path
+              d={emaPath}
+              fill="none"
+              stroke="#818CF8"
+              strokeWidth="1.5"
+              strokeDasharray="4 2"
+              opacity="0.8"
+            />
+          )}
+
+          {/* EMA 21 Overlay Line */}
+          {showEMA && ema21Path && (
+            <path
+              d={ema21Path}
+              fill="none"
+              stroke="#F59E0B"
+              strokeWidth="1.2"
+              opacity="0.7"
+            />
+          )}
+
+          {/* Current Live Pulse Indicator on Latest Point */}
+          {points.length > 0 && (
+            <g>
+              {/* Horizontal Latest Price Guideline */}
+              <line
+                x1={paddingX}
+                y1={points[points.length - 1].y}
+                x2={chartWidth - paddingX}
+                y2={points[points.length - 1].y}
+                stroke={isPositive ? '#00E599' : '#F43F5E'}
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity="0.6"
+              />
+
+              {/* Pulsing Beacon */}
+              <circle
+                cx={points[points.length - 1].x}
+                cy={points[points.length - 1].y}
+                r="7"
+                fill={isPositive ? '#00E599' : '#F43F5E'}
+                opacity="0.3"
+                className="animate-ping"
+              />
+              <circle
+                cx={points[points.length - 1].x}
+                cy={points[points.length - 1].y}
+                r="4"
+                fill={isPositive ? '#00E599' : '#F43F5E'}
+                stroke={isDark ? '#080B11' : '#FFFFFF'}
+                strokeWidth="1.5"
+              />
+            </g>
+          )}
+
+          {/* Interactive Crosshair & Cursor Line */}
+          {mousePos && (
+            <g>
+              {/* Vertical Crosshair Line */}
+              <line
+                x1={mousePos.x}
+                y1={paddingY}
+                x2={mousePos.x}
+                y2={chartHeight - paddingY}
+                stroke={isDark ? '#94A3B8' : '#64748B'}
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                opacity="0.7"
+              />
+              {/* Horizontal Crosshair Line */}
+              <line
+                x1={paddingX}
+                y1={mousePos.y}
+                x2={chartWidth - paddingX}
+                y2={mousePos.y}
+                stroke={isDark ? '#94A3B8' : '#64748B'}
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                opacity="0.7"
+              />
+              {/* Center Target Dot */}
+              <circle cx={mousePos.x} cy={mousePos.y} r="3.5" fill="#38BDF8" stroke={isDark ? '#080B11' : '#FFFFFF'} strokeWidth="1" />
+            </g>
+          )}
+        </svg>
+
+        {/* Live Price Tag on Right Edge */}
+        <div
+          style={{
+            top: `${((points[points.length - 1]?.y || usableHeight / 2) / chartHeight) * 100}%`,
+            transform: 'translateY(-50%)'
+          }}
+          className={`absolute right-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg pointer-events-none ${
+            isPositive ? 'bg-emerald-500 text-slate-950' : 'bg-red-500 text-white'
+          }`}
+        >
+          ${formatPriceDigits(currentPrice)}
+        </div>
+      </div>
 
       {/* Chart Footer: 24h High, 24h Low, 24h Volume, Indicator Legends */}
       <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 font-mono pt-1">

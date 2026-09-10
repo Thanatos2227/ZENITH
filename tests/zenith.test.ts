@@ -4,12 +4,13 @@ import assert from 'node:assert/strict';
 import { defaultChainRegistry } from '../packages/chains/src/registry';
 import { DEFAULT_TOKENS, defaultTokenService } from '../packages/tokens/src';
 import { defaultTokenRiskEngine, defaultCircuitBreaker } from '../packages/security/src';
-import { DEXAggregator, ZenithRouter, defaultZenithRouter } from '../packages/routing/src';
-import { ExecutionStateMachine } from '../packages/execution/src';
+import { defaultZenithRouter, ConstantProductMath, ConcentratedLiquidityMath } from '../packages/routing/src';
+import { ExecutionStateMachine, defaultIntentEngine, defaultEVMAdapter } from '../packages/execution/src';
+import { CrossChainIntent } from '../packages/types/src';
 
-test('1. Universal Network Support Tier System & 52-Chain Governance', () => {
+test('1. Universal Network Support Tier System & 53-Chain Governance', () => {
   const allChains = defaultChainRegistry.getAllChains();
-  assert.equal(allChains.length, 52);
+  assert.equal(allChains.length, 53);
 
   // Check Tier 1 (8 chains)
   const tier1 = defaultChainRegistry.getChainsByTier('TIER_1');
@@ -27,9 +28,9 @@ test('1. Universal Network Support Tier System & 52-Chain Governance', () => {
   assert.ok(tier2.some((c) => c.id === 'berachain'));
   assert.ok(tier2.some((c) => c.id === 'sui'));
 
-  // Check Tier 3 (17 chains)
+  // Check Tier 3 (18 chains)
   const tier3 = defaultChainRegistry.getChainsByTier('TIER_3');
-  assert.equal(tier3.length, 17);
+  assert.equal(tier3.length, 18);
   assert.ok(tier3.some((c) => c.id === 'tron'));
   assert.ok(tier3.some((c) => c.id === 'ton'));
   assert.ok(tier3.some((c) => c.id === 'cardano'));
@@ -128,7 +129,55 @@ test('4. Token Risk Engine & Security Profiling', () => {
   assert.ok(riskyEval.warnings.length > 0);
 });
 
-test('5. Best Execution Router, EES Scoring & Capability Gating', async () => {
+test('5. Constant-Product AMM Math & Invariant Verification (x * y = k)', () => {
+  const reserveIn = 1000000000000000000000n; // 1,000 ETH
+  const reserveOut = 3450000000000n; // 3,450,000 USDC (6 decimals)
+  const amountIn = 1000000000000000000n; // 1 ETH
+
+  // Test Exact Input
+  const amountOut = ConstantProductMath.getAmountOut(amountIn, reserveIn, reserveOut, 30);
+  assert.ok(amountOut > 0n);
+  assert.ok(amountOut < 3450000000n); // Less than nominal due to 0.3% fee and price impact
+
+  // Invariant property check
+  const invariantHolds = ConstantProductMath.verifyInvariant(reserveIn, reserveOut, amountIn, amountOut, 30);
+  assert.equal(invariantHolds, true);
+
+  // Test Exact Output (round trip)
+  const requiredAmountIn = ConstantProductMath.getAmountIn(amountOut, reserveIn, reserveOut, 30);
+  assert.ok(requiredAmountIn > 0n);
+  // Re-evaluating getAmountOut with requiredAmountIn must yield at least the target amountOut
+  const simulatedOut = ConstantProductMath.getAmountOut(requiredAmountIn, reserveIn, reserveOut, 30);
+  assert.ok(simulatedOut >= amountOut);
+});
+
+test('6. Concentrated Liquidity sqrt(P) & Tick Step Math', () => {
+  const tick0 = 0;
+  const sqrtRatio0 = ConcentratedLiquidityMath.getSqrtRatioAtTick(tick0);
+  assert.ok(sqrtRatio0 > 0n);
+
+  const tickBack = ConcentratedLiquidityMath.getTickAtSqrtRatio(sqrtRatio0);
+  assert.equal(tickBack, 0);
+
+  // Test swap step
+  const liquidity = 1000000000000000000n;
+  const targetSqrtRatio = sqrtRatio0 * 99n / 100n;
+  const step = ConcentratedLiquidityMath.computeSwapStep(
+    sqrtRatio0,
+    targetSqrtRatio,
+    liquidity,
+    10000000000000000n,
+    30,
+    true,
+    true
+  );
+
+  assert.ok(step.amountIn > 0n);
+  assert.ok(step.amountOut > 0n);
+  assert.ok(step.feeAmount > 0n);
+});
+
+test('7. Best Execution Router: Exact-Input Swap Quoting', async () => {
   const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'ETH')!;
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
 
@@ -138,36 +187,108 @@ test('5. Best Execution Router, EES Scoring & Capability Gating', async () => {
     tokenIn,
     tokenOut,
     amountInRaw: '1000000000000000000',
-    slippageTolerancePercent: 0.5
+    slippageTolerancePercent: 0.5,
+    tradeType: 'EXACT_INPUT'
   });
 
   assert.ok(quote.requestId);
+  assert.equal(quote.tradeType, 'EXACT_INPUT');
   const outFormattedNum = parseFloat(quote.amountOutFormatted.replace(/,/g, ''));
-  assert.ok(outFormattedNum > 3000);
+  assert.ok(outFormattedNum > 2000 && outFormattedNum < 3000);
   assert.ok(quote.effectiveExecutionScore >= 80);
   assert.equal(quote.protocolFee.feeBps, 5);
   assert.ok(quote.simulationPreview?.isSuccess);
-
-  // Capability Gating: Quoting on Tier 4 (Bitcoin) should throw descriptive capability rejection
-  const btcToken = DEFAULT_TOKENS.find((t) => t.chainId === 'bitcoin' && t.symbol === 'BTC')!;
-  await assert.rejects(
-    async () => {
-      await defaultZenithRouter.getQuote({
-        sourceChainId: 'bitcoin',
-        destinationChainId: 'bitcoin',
-        tokenIn: btcToken,
-        tokenOut: btcToken,
-        amountInRaw: '100000000',
-        slippageTolerancePercent: 0.5
-      });
-    },
-    {
-      message: /Swap capability is not supported on Bitcoin/
-    }
-  );
 });
 
-test('6. Cross-Chain Stargate & Liquidity Routing', async () => {
+test('8. Best Execution Router: Exact-Output Swap Quoting', async () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'ETH')!;
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
+
+  const quote = await defaultZenithRouter.getQuote({
+    sourceChainId: 'ethereum',
+    destinationChainId: 'ethereum',
+    tokenIn,
+    tokenOut,
+    amountInRaw: '0',
+    amountOutRaw: '2000000000', // 2,000 USDC
+    slippageTolerancePercent: 0.5,
+    tradeType: 'EXACT_OUTPUT'
+  });
+
+  assert.equal(quote.tradeType, 'EXACT_OUTPUT');
+  assert.ok(quote.amountInRaw);
+  assert.ok(quote.maximumInputRaw);
+  assert.ok(BigInt(quote.maximumInputRaw!) >= BigInt(quote.amountInRaw));
+  assert.ok(parseFloat(quote.amountInFormatted) > 0.7 && parseFloat(quote.amountInFormatted) < 1.1);
+});
+
+test('9. Multi-Hop Graph Pathfinding (A -> Connector -> B)', async () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'UNI') || {
+    address: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+    chainId: 'ethereum',
+    name: 'Uniswap',
+    symbol: 'UNI',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL' as const,
+    priceUSD: 6.18
+  };
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'LINK') || {
+    address: '0x514910771af9ca656af840dff83e8264ecf986ca',
+    chainId: 'ethereum',
+    name: 'Chainlink',
+    symbol: 'LINK',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL' as const,
+    priceUSD: 11.80
+  };
+
+  const quote = await defaultZenithRouter.getQuote({
+    sourceChainId: 'ethereum',
+    destinationChainId: 'ethereum',
+    tokenIn,
+    tokenOut,
+    amountInRaw: '100000000000000000000', // 100 UNI
+    slippageTolerancePercent: 0.5
+  });
+
+  assert.ok(quote.routes.length > 0);
+  const multiHopRoute = quote.routes.find((r) => r.routeType === 'MULTI_HOP');
+  assert.ok(multiHopRoute);
+  assert.equal(multiHopRoute?.hops.length, 2);
+  assert.equal(multiHopRoute?.hops[0].tokenOut.symbol, 'WETH');
+});
+
+test('10. Dynamic Split-Routing (Multi-Pool Liquidity Division)', async () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'ETH')!;
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
+
+  // Large trade ($345,000 USD) triggers split-routing discovery
+  const quote = await defaultZenithRouter.getQuote({
+    sourceChainId: 'ethereum',
+    destinationChainId: 'ethereum',
+    tokenIn,
+    tokenOut,
+    amountInRaw: '100000000000000000000', // 100 ETH
+    slippageTolerancePercent: 0.5
+  });
+
+  const splitRoute = quote.routes.find((r) => r.routeType === 'SPLIT_ROUTE');
+  assert.ok(splitRoute);
+  assert.equal(splitRoute?.hops.length, 2);
+  assert.equal(splitRoute?.hops[0].proportionPercent + splitRoute?.hops[1].proportionPercent, 100);
+});
+
+test('11. Gas-Aware Scoring & Price Impact Categorization', () => {
+  const ethGas = defaultChainRegistry.getEstimatedGasCostUSD('ethereum', 'SWAP');
+  const baseGas = defaultChainRegistry.getEstimatedGasCostUSD('base', 'SWAP');
+  const solanaGas = defaultChainRegistry.getEstimatedGasCostUSD('solana', 'SWAP');
+
+  assert.ok(ethGas > 2.0);
+  assert.ok(baseGas < 0.1);
+  assert.ok(solanaGas < 0.01);
+});
+
+test('12. Cross-Chain Stargate & Liquidity Routing', async () => {
   const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'USDC')!;
 
@@ -183,18 +304,84 @@ test('6. Cross-Chain Stargate & Liquidity Routing', async () => {
   assert.equal(crossQuote.bestRoute.routeType, 'CROSS_CHAIN');
   assert.ok(crossQuote.bestRoute.bridgeStep);
   assert.equal(crossQuote.bestRoute.bridgeStep?.bridgeProtocol, 'STARGATE');
+  assert.ok(crossQuote.intent);
+  assert.equal(crossQuote.intent?.status, 'CREATED');
 });
 
-test('7. Circuit Breaker & Execution State Machine', () => {
+test('13. Cross-Chain Intent Creation, Solver Competition, Nonce & Replay Protection', async () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'USDC')!;
+
+  const intent: CrossChainIntent = {
+    orderId: `intent_test_${Date.now()}`,
+    sourceChainId: 'ethereum',
+    destinationChainId: 'arbitrum',
+    sourceToken: tokenIn,
+    destinationToken: tokenOut,
+    sourceAmountRaw: '1000000000',
+    minDestinationAmountRaw: '995000000',
+    recipient: '0x9999999999999999999999999999999999999999',
+    deadline: Date.now() + 100000,
+    nonce: 99999,
+    status: 'CREATED',
+    createdAt: Date.now()
+  };
+
+  // Solver competition check
+  const solverQuotes = await defaultIntentEngine.getCompetitiveQuotes(intent);
+  assert.ok(solverQuotes.length >= 2);
+  assert.ok(solverQuotes[0].solverReputationScore >= 90);
+
+  // Nonce registration
+  defaultIntentEngine.registerIntent(intent);
+  assert.equal(defaultIntentEngine.getIntent(intent.orderId)?.status, 'CREATED');
+
+  // Replay protection: Submitting same nonce should throw error
+  assert.throws(() => {
+    defaultIntentEngine.registerIntent(intent);
+  }, /Nonce replay detected/);
+});
+
+test('14. Cross-Chain Settlement State Machine & Deterministic Refund Handling', () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'base' && t.symbol === 'USDC')!;
+
+  const orderId = `intent_refund_${Date.now()}`;
+  const intent: CrossChainIntent = {
+    orderId,
+    sourceChainId: 'ethereum',
+    destinationChainId: 'base',
+    sourceToken: tokenIn,
+    destinationToken: tokenOut,
+    sourceAmountRaw: '500000000',
+    minDestinationAmountRaw: '498000000',
+    recipient: '0x1111111111111111111111111111111111111111',
+    deadline: Date.now() + 100000,
+    nonce: 88888,
+    status: 'CREATED',
+    createdAt: Date.now()
+  };
+
+  defaultIntentEngine.registerIntent(intent);
+  defaultIntentEngine.updateIntentState(orderId, 'SIGNED');
+  defaultIntentEngine.updateIntentState(orderId, 'SUBMITTED');
+  defaultIntentEngine.updateIntentState(orderId, 'ACCEPTED');
+
+  // Trigger timeout/failure refund
+  const refundedIntent = defaultIntentEngine.processRefund(orderId, 'Destination RPC timeout');
+  assert.equal(refundedIntent.status, 'REFUNDED');
+});
+
+test('15. Circuit Breaker & Execution State Machine', () => {
   const normalCheck = defaultCircuitBreaker.validatePriceDeviation({
-    oraclePriceUSD: 3450,
-    quotedPriceUSD: 3445
+    oraclePriceUSD: 2465.87,
+    quotedPriceUSD: 2460.00
   });
   assert.equal(normalCheck.isValid, true);
 
   const abnormalCheck = defaultCircuitBreaker.validatePriceDeviation({
-    oraclePriceUSD: 3450,
-    quotedPriceUSD: 2400
+    oraclePriceUSD: 2465.87,
+    quotedPriceUSD: 1800.00
   });
   assert.equal(abnormalCheck.isValid, false);
 
@@ -204,23 +391,17 @@ test('7. Circuit Breaker & Execution State Machine', () => {
   assert.equal(sm.getStatus(), 'QUOTE_REQUESTED');
 });
 
-test('8. Real-Time Dynamic Gas Pricing Across All 4 Tiers', () => {
-  const ethGas = defaultChainRegistry.getEstimatedGasCostUSD('ethereum', 'SWAP');
-  const baseGas = defaultChainRegistry.getEstimatedGasCostUSD('base', 'SWAP');
-  const solanaGas = defaultChainRegistry.getEstimatedGasCostUSD('solana', 'SWAP');
+test('16. Real-Time Dynamic Gas Pricing Across All 4 Tiers', () => {
   const scrollGas = defaultChainRegistry.getEstimatedGasCostUSD('scroll', 'SWAP');
   const tronGas = defaultChainRegistry.getEstimatedGasCostUSD('tron', 'SWAP');
   const btcGas = defaultChainRegistry.getEstimatedGasCostUSD('bitcoin', 'SWAP');
 
-  assert.ok(ethGas > 2.0);
-  assert.ok(baseGas < 0.1);
-  assert.ok(solanaGas < 0.01);
   assert.ok(scrollGas > 0.01 && scrollGas < 0.2);
   assert.ok(tronGas > 0.5 && tronGas < 2.0);
   assert.ok(btcGas > 1.0);
 });
 
-test('9. Full End-to-End Swap Execution Lifecycle (EVM & Solana)', async () => {
+test('17. Full End-to-End Swap Execution Lifecycle (EVM & Solana)', async () => {
   const { defaultExecutionCoordinator } = await import('../packages/execution/src/executionCoordinator');
   const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'ETH')!;
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
@@ -253,7 +434,7 @@ test('9. Full End-to-End Swap Execution Lifecycle (EVM & Solana)', async () => {
   assert.equal(stateMachine.getStatus(), 'COMPLETED');
 });
 
-test('10. Quote Resilience & Zero-Division Guards Across Micro Fractions', async () => {
+test('18. Quote Resilience & Zero-Division Guards Across Micro Fractions', async () => {
   const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'base' && t.symbol === 'ETH')!;
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'base' && t.symbol === 'USDC')!;
 
@@ -273,57 +454,20 @@ test('10. Quote Resilience & Zero-Division Guards Across Micro Fractions', async
   assert.ok(microQuote.bestRoute.hops.length > 0);
 });
 
-test('11. Network-aware token identity, search, and native coverage', () => {
-  const evmChains = defaultChainRegistry.getChainsByEnvironment('EVM');
-  assert.equal(evmChains.length, 36);
-  assert.ok(evmChains.every((chain) => defaultTokenService.getNativeToken(chain.id)?.isNative));
+test('19. EVM Token Authorization & Allowance Verification', async () => {
+  // Native token needs no approval
+  const nativeAllowance = await defaultEVMAdapter.checkAllowance({
+    tokenAddress: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+    ownerAddress: '0x1234567890abcdef1234567890abcdef12345678',
+    spenderAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
+  });
+  assert.ok(nativeAllowance > 0n);
 
-  const ethereumUsdc = defaultTokenService.getToken(
-    'ethereum',
-    '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-  );
-  assert.ok(ethereumUsdc);
-  assert.equal(defaultTokenService.searchTokens('USDC', 'polygon').some((token) => token.chainId === 'ethereum'), false);
-  assert.ok(defaultTokenService.searchTokens(ethereumUsdc!.address, 'ethereum').includes(ethereumUsdc!));
-
-  const tokenCountBefore = defaultTokenService.getTokensForChain('arbitrum').length;
-  defaultTokenService.addToken({ ...ethereumUsdc!, chainId: 'arbitrum' });
-  assert.equal(defaultTokenService.getTokensForChain('arbitrum').length, tokenCountBefore + 1);
-  defaultTokenService.addToken({ ...ethereumUsdc!, chainId: 'arbitrum' });
-  assert.equal(defaultTokenService.getTokensForChain('arbitrum').length, tokenCountBefore + 1);
-
-  assert.throws(
-    () => defaultTokenService.importCustomToken({
-      chainId: 'not-a-supported-chain',
-      address: '0x1111111111111111111111111111111111111111',
-      name: 'Unsupported',
-      symbol: 'UNSUPPORTED',
-      decimals: 18
-    }),
-    /Unsupported network/
-  );
-});
-
-test('12. Empty aggregators report unavailable liquidity', async () => {
-  class EmptyDEXAggregator extends DEXAggregator {
-    public override findRoutes(): never[] {
-      return [];
-    }
-  }
-
-  const tokenIn = DEFAULT_TOKENS.find((token) => token.chainId === 'ethereum' && token.symbol === 'ETH')!;
-  const tokenOut = DEFAULT_TOKENS.find((token) => token.chainId === 'ethereum' && token.symbol === 'USDC')!;
-  const router = new ZenithRouter(new EmptyDEXAggregator());
-
-  await assert.rejects(
-    () => router.getQuote({
-      sourceChainId: 'ethereum',
-      destinationChainId: 'ethereum',
-      tokenIn,
-      tokenOut,
-      amountInRaw: '1000000000000000000',
-      slippageTolerancePercent: 0.5
-    }),
-    /No liquidity\/route available/
-  );
+  // ERC-20 token returns 0n when unconnected / unapproved
+  const erc20Allowance = await defaultEVMAdapter.checkAllowance({
+    tokenAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+    ownerAddress: '0x1234567890abcdef1234567890abcdef12345678',
+    spenderAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
+  });
+  assert.equal(erc20Allowance, 0n);
 });

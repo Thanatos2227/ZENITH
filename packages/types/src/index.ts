@@ -141,8 +141,6 @@ export interface Token {
   symbol: string;
   decimals: number;
   logoURI?: string;
-  wrappedAddress?: string;
-  enabled?: boolean;
   priceUSD?: number;
   change24hUSD?: number;
   volume24hUSD?: number;
@@ -223,37 +221,115 @@ export interface ProtocolFee {
   treasuryRecipient: string;
 }
 
+export type TradeType = 'EXACT_INPUT' | 'EXACT_OUTPUT';
+
+export interface ConstantProductPoolState {
+  address: string;
+  token0: Token;
+  token1: Token;
+  reserve0Raw: string;
+  reserve1Raw: string;
+  feeBps: number;
+}
+
+export interface ConcentratedPoolState {
+  address: string;
+  token0: Token;
+  token1: Token;
+  sqrtPriceX96Raw: string;
+  currentTick: number;
+  tickSpacing: number;
+  liquidityRaw: string;
+  feeTierBps: number;
+}
+
+export type SettlementState =
+  | 'CREATED'
+  | 'SIGNED'
+  | 'SUBMITTED'
+  | 'ACCEPTED'
+  | 'FULFILLING'
+  | 'DESTINATION_FILLED'
+  | 'VERIFIED'
+  | 'SETTLING'
+  | 'SETTLED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | 'REJECTED'
+  | 'FAILED'
+  | 'REFUND_PENDING'
+  | 'REFUNDED';
+
+export interface CrossChainIntent {
+  orderId: string;
+  sourceChainId: string;
+  destinationChainId: string;
+  sourceToken: Token;
+  destinationToken: Token;
+  sourceAmountRaw: string;
+  minDestinationAmountRaw: string;
+  recipient: string;
+  deadline: number;
+  nonce: number;
+  userSignature?: string;
+  status: SettlementState;
+  solverId?: string;
+  txHashSource?: string;
+  txHashDestination?: string;
+  createdAt: number;
+}
+
+export interface SolverFillQuote {
+  solverId: string;
+  solverName: string;
+  destinationAmountRaw: string;
+  destinationAmountFormatted: string;
+  estimatedTimeSec: number;
+  executionCostUSD: number;
+  solverReputationScore: number;
+  isGuaranteed: boolean;
+}
+
 export interface QuoteRequest {
   sourceChainId: string;
   destinationChainId: string;
   tokenIn: Token;
   tokenOut: Token;
   amountInRaw: string;
+  amountOutRaw?: string;
+  tradeType?: TradeType;
   slippageTolerancePercent: number;
   userWalletAddress?: string;
   recipientAddress?: string;
   mevProtectionEnabled?: boolean;
   gasPreset?: GasPreset;
+  deadlineSeconds?: number;
 }
 
 export interface QuoteResponse {
   requestId: string;
   request: QuoteRequest;
+  tradeType: TradeType;
   routes: SwapRoute[];
   bestRoute: SwapRoute;
+  amountInRaw: string;
   amountInFormatted: string;
   amountOutRaw: string;
   amountOutFormatted: string;
   minimumReceivedRaw: string;
   minimumReceivedFormatted: string;
+  maximumInputRaw?: string;
+  maximumInputFormatted?: string;
   executionPrice: number;
   priceImpact: PriceImpact;
   protocolFee: ProtocolFee;
   effectiveExecutionScore: number;
   quoteTimestamp: number;
   expiresAt: number;
+  deadline: number;
   freshnessSeconds: number;
   simulationPreview?: SimulationResult;
+  intent?: CrossChainIntent;
 }
 
 export interface TokenBalanceDelta {

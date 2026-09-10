@@ -20,6 +20,7 @@ export class DEXAggregator {
     const directGasUnits = defaultChainRegistry.getGasUnits(chainId, false);
     const directGasCostUSD = defaultChainRegistry.getEstimatedGasCostUSD(chainId, 'SWAP', params.gasPreset);
 
+    // 1. Direct Single-Hop Route
     const directHops: RouteHop[] = [
       {
         dexProtocol: directDEX,
@@ -40,7 +41,59 @@ export class DEXAggregator {
       estimatedGasUnits: directGasUnits
     });
 
-    if (params.amountInNum * (params.tokenIn.priceUSD || 1) > 2000) {
+    // 2. Multi-Hop Route via Connector Token (e.g., TokenIn -> WETH/USDC -> TokenOut)
+    const isDirectStablePair =
+      (params.tokenIn.symbol === 'USDC' && params.tokenOut.symbol === 'USDT') ||
+      (params.tokenIn.symbol === 'USDT' && params.tokenOut.symbol === 'USDC') ||
+      params.tokenIn.symbol === 'ETH' ||
+      params.tokenOut.symbol === 'ETH';
+
+    if (!isDirectStablePair && params.tokenIn.symbol !== params.tokenOut.symbol) {
+      const intermediateToken: Token = {
+        address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+        chainId: params.chainId,
+        name: 'Wrapped Ether',
+        symbol: 'WETH',
+        decimals: 18,
+        verificationTier: 'VERIFIED_CANONICAL',
+        priceUSD: 2465.87
+      };
+
+      const multiHopGasUnits = directGasUnits * 14n / 10n; // ~40% additional gas for 2 hops
+      const multiHopGasCostUSD = directGasCostUSD * 1.4;
+
+      const multiHops: RouteHop[] = [
+        {
+          dexProtocol: directDEX,
+          poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
+          tokenIn: params.tokenIn,
+          tokenOut: intermediateToken,
+          feeTierBps: 5,
+          proportionPercent: 100,
+          estimatedGas: directGasUnits
+        },
+        {
+          dexProtocol: directDEX,
+          poolAddress: '0x11b815efb8f581194ae79006d24e0d814b7697f6',
+          tokenIn: intermediateToken,
+          tokenOut: params.tokenOut,
+          feeTierBps: 30,
+          proportionPercent: 100,
+          estimatedGas: directGasUnits
+        }
+      ];
+
+      routes.push({
+        id: `route-multihop-${params.tokenIn.symbol.toLowerCase()}-weth-${params.tokenOut.symbol.toLowerCase()}`,
+        routeType: 'MULTI_HOP',
+        hops: multiHops,
+        gasCostUSD: multiHopGasCostUSD,
+        estimatedGasUnits: multiHopGasUnits
+      });
+    }
+
+    // 3. Dynamic Split-Route across primary and secondary liquidity pools for large trades
+    if (params.amountInNum * (params.tokenIn.priceUSD || 1) > 1500) {
       const secondaryDEX = this.selectSecondaryDEX(chainId);
       const splitGasUnits = defaultChainRegistry.getGasUnits(chainId, true);
       const splitGasCostUSD = defaultChainRegistry.getEstimatedGasCostUSD(chainId, 'SPLIT_SWAP', params.gasPreset);

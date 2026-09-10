@@ -14,7 +14,7 @@ import {
   ZenithNotification
 } from '@zenith/types';
 import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
-import { DEFAULT_TOKENS, defaultTokenService } from '@zenith/tokens';
+import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData } from '@zenith/tokens';
 import { defaultZenithRouter } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
@@ -118,9 +118,18 @@ export interface ZenithState {
   transactionHistory: ReceiptView[];
   notifications: ZenithNotification[];
 
+  // Live Market Data
+  marketData: Record<string, LiveMarketData>;
+  isMarketsLoading: boolean;
+  marketsError: string | null;
+  lastMarketUpdate: number | null;
+  marketDataStatus: 'LIVE' | 'CACHED' | 'UNAVAILABLE';
+
   setActiveTab: (tab: ZenithState['activeTab']) => void;
   setProMode: (pro: boolean) => void;
   toggleTheme: () => void;
+  updateSingleTokenMarketData: (chainId: string, address: string, data: LiveMarketData) => void;
+  fetchMarketData: () => Promise<void>;
   setSourceChain: (chain: ChainConfig) => void;
   setDestChain: (chain: ChainConfig) => void;
   setTokenIn: (token: Token) => void;
@@ -160,6 +169,7 @@ const executionSM = new ExecutionStateMachine();
 let activeInjectedProvider: any = null;
 let activeAccountsChangedListener: ((accounts: string[]) => void) | null = null;
 let activeChainChangedListener: ((hexChainId: string) => void) | null = null;
+let isMarketStoreListenerRegistered = false;
 
 const cleanupWalletListeners = () => {
   if (activeInjectedProvider) {
@@ -203,6 +213,20 @@ const getChainRpcProvider = (
     console.warn(`[useZenithStore] Fallback to default RPC for ${chainIdStr}:`, err);
     return injectedProvider || new JsonRpcProvider('https://eth.llamarpc.com');
   }
+};
+
+export const resolveTokenLivePrice = (token: Token, marketDataRecord: Record<string, LiveMarketData>): number => {
+  if (!token) return 0;
+  const tokenKey = `${token.chainId.toLowerCase()}:${token.address.toLowerCase()}`;
+  const symKey = token.symbol.toLowerCase();
+  const cached = defaultMarketDataService.getCachedMarketData(token.chainId, token.address);
+  return (
+    marketDataRecord[tokenKey]?.priceUSD ||
+    marketDataRecord[symKey]?.priceUSD ||
+    cached?.priceUSD ||
+    token.priceUSD ||
+    0
+  );
 };
 
 export const useZenithStore = create<ZenithState>((set, get) => {
@@ -273,6 +297,12 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       }
     ],
 
+    marketData: {},
+    isMarketsLoading: false,
+    marketsError: null,
+    lastMarketUpdate: null,
+    marketDataStatus: 'CACHED',
+
     setActiveTab: (tab) => set({ activeTab: tab }),
     setProMode: (isProMode) => set({ isProMode }),
     toggleTheme: () => {
@@ -287,7 +317,10 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const isSameChainTrade = prevSource.id === prevDest.id;
 
       const sourceTokens = defaultTokenService.getTokensForChain(chain.id);
-      const newIn = defaultTokenService.getNativeToken(chain.id) || sourceTokens[0] || get().tokenIn;
+      let rawIn = defaultTokenService.getNativeToken(chain.id) || sourceTokens[0] || get().tokenIn;
+
+      const livePriceIn = resolveTokenLivePrice(rawIn, get().marketData);
+      const newIn = livePriceIn ? { ...rawIn, priceUSD: livePriceIn } : rawIn;
 
       let nextDest = prevDest;
       let nextOut = get().tokenOut;
@@ -298,17 +331,23 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         const stable = destTokens.find(
           (t) => (t.symbol === 'USDC' || t.symbol === 'USDT' || t.symbol === 'DAI') && t.address.toLowerCase() !== newIn.address.toLowerCase()
         );
-        nextOut =
+        let rawOut =
           stable ||
           destTokens.find((t) => t.address.toLowerCase() !== newIn.address.toLowerCase()) ||
           destTokens[1] ||
           destTokens[0] ||
           newIn;
+
+        const livePriceOut = resolveTokenLivePrice(rawOut, get().marketData);
+        nextOut = livePriceOut ? { ...rawOut, priceUSD: livePriceOut } : rawOut;
       } else {
         if (nextOut.chainId !== nextDest.id) {
           const destTokens = defaultTokenService.getTokensForChain(nextDest.id);
           const stable = destTokens.find((t) => t.symbol === 'USDC' || t.symbol === 'USDT');
-          nextOut = stable || destTokens[0] || nextOut;
+          let rawOut = stable || destTokens[0] || nextOut;
+
+          const livePriceOut = resolveTokenLivePrice(rawOut, get().marketData);
+          nextOut = livePriceOut ? { ...rawOut, priceUSD: livePriceOut } : rawOut;
         }
       }
 
@@ -331,19 +370,22 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const isSameChain = get().sourceChain.id === chain.id;
       const destTokens = defaultTokenService.getTokensForChain(chain.id);
 
-      let newOut = destTokens.find(
+      let rawOut = destTokens.find(
         (t) =>
           (t.symbol === 'USDC' || t.symbol === 'USDT' || t.symbol === 'DAI') &&
           (!isSameChain || t.address.toLowerCase() !== currentIn.address.toLowerCase())
       );
 
-      if (!newOut) {
-        newOut =
+      if (!rawOut) {
+        rawOut =
           destTokens.find((t) => !isSameChain || t.address.toLowerCase() !== currentIn.address.toLowerCase()) ||
           destTokens[1] ||
           destTokens[0] ||
           get().tokenOut;
       }
+
+      const livePriceOut = resolveTokenLivePrice(rawOut, get().marketData);
+      const newOut = livePriceOut ? { ...rawOut, priceUSD: livePriceOut } : rawOut;
 
       set({ destChain: chain, tokenOut: newOut });
       get().fetchQuote();
@@ -355,6 +397,9 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const prevDest = get().destChain;
       const isSameChainTrade = prevSource.id === prevDest.id;
 
+      const livePriceIn = resolveTokenLivePrice(token, get().marketData);
+      const effectiveToken = livePriceIn ? { ...token, priceUSD: livePriceIn } : token;
+
       let nextSource = chain || prevSource;
       let nextDest = prevDest;
       let nextOut = get().tokenOut;
@@ -365,19 +410,25 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           nextDest = chain;
           const destTokens = defaultTokenService.getTokensForChain(chain.id);
           const stable = destTokens.find(
-            (t) => (t.symbol === 'USDC' || t.symbol === 'USDT' || t.symbol === 'DAI') && t.address.toLowerCase() !== token.address.toLowerCase()
+            (t) => (t.symbol === 'USDC' || t.symbol === 'USDT' || t.symbol === 'DAI') && t.address.toLowerCase() !== effectiveToken.address.toLowerCase()
           );
-          nextOut =
+          let rawOut =
             stable ||
-            destTokens.find((t) => t.address.toLowerCase() !== token.address.toLowerCase()) ||
+            destTokens.find((t) => t.address.toLowerCase() !== effectiveToken.address.toLowerCase()) ||
             destTokens[1] ||
             destTokens[0] ||
-            token;
+            effectiveToken;
+
+          const livePriceOut = resolveTokenLivePrice(rawOut, get().marketData);
+          nextOut = livePriceOut ? { ...rawOut, priceUSD: livePriceOut } : rawOut;
         }
-      } else if (isSameChainTrade && token.address.toLowerCase() === nextOut.address.toLowerCase()) {
-        const destTokens = defaultTokenService.getTokensForChain(token.chainId);
-        const alt = destTokens.find((t) => t.address.toLowerCase() !== token.address.toLowerCase());
-        if (alt) nextOut = alt;
+      } else if (isSameChainTrade && effectiveToken.address.toLowerCase() === nextOut.address.toLowerCase()) {
+        const destTokens = defaultTokenService.getTokensForChain(effectiveToken.chainId);
+        const alt = destTokens.find((t) => t.address.toLowerCase() !== effectiveToken.address.toLowerCase());
+        if (alt) {
+          const livePriceOut = resolveTokenLivePrice(alt, get().marketData);
+          nextOut = livePriceOut ? { ...alt, priceUSD: livePriceOut } : alt;
+        }
       }
 
       const isWrongNetwork = get().chainId !== null && nextSource.chainId !== undefined && get().chainId !== nextSource.chainId;
@@ -385,7 +436,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       set({
         sourceChain: nextSource,
         destChain: nextDest,
-        tokenIn: token,
+        tokenIn: effectiveToken,
         tokenOut: nextOut,
         isWrongNetwork
       });
@@ -399,16 +450,22 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const isSameChain = get().sourceChain.id === (chain ? chain.id : get().destChain.id);
       let nextIn = get().tokenIn;
 
-      if (isSameChain && token.address.toLowerCase() === nextIn.address.toLowerCase()) {
-        const sourceTokens = defaultTokenService.getTokensForChain(token.chainId);
-        const alt = sourceTokens.find((t) => t.address.toLowerCase() !== token.address.toLowerCase());
-        if (alt) nextIn = alt;
+      const livePriceOut = resolveTokenLivePrice(token, get().marketData);
+      const effectiveToken = livePriceOut ? { ...token, priceUSD: livePriceOut } : token;
+
+      if (isSameChain && effectiveToken.address.toLowerCase() === nextIn.address.toLowerCase()) {
+        const sourceTokens = defaultTokenService.getTokensForChain(effectiveToken.chainId);
+        const alt = sourceTokens.find((t) => t.address.toLowerCase() !== effectiveToken.address.toLowerCase());
+        if (alt) {
+          const livePriceIn = resolveTokenLivePrice(alt, get().marketData);
+          nextIn = livePriceIn ? { ...alt, priceUSD: livePriceIn } : alt;
+        }
       }
 
       if (chain && chain.id !== get().destChain.id) {
-        set({ destChain: chain, tokenOut: token, tokenIn: nextIn });
+        set({ destChain: chain, tokenOut: effectiveToken, tokenIn: nextIn });
       } else {
-        set({ tokenOut: token, tokenIn: nextIn });
+        set({ tokenOut: effectiveToken, tokenIn: nextIn });
       }
       get().fetchQuote();
     },
@@ -944,6 +1001,78 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       set((state) => ({
         notifications: state.notifications.map((n) => ({ ...n, isRead: true }))
       }));
+    },
+
+    updateSingleTokenMarketData: (chainId: string, address: string, data: LiveMarketData) => {
+      const key = `${chainId.toLowerCase()}:${address.toLowerCase()}`;
+      const currentTokenIn = get().tokenIn;
+      const currentTokenOut = get().tokenOut;
+
+      let updatedTokenIn = currentTokenIn;
+      let updatedTokenOut = currentTokenOut;
+
+      const targetSym = data.symbol ? defaultMarketDataService.resolveSymbol(data.symbol) : undefined;
+      const inSym = defaultMarketDataService.resolveSymbol(currentTokenIn.symbol);
+      const outSym = defaultMarketDataService.resolveSymbol(currentTokenOut.symbol);
+
+      if (
+        (targetSym && inSym === targetSym) ||
+        (currentTokenIn.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenIn.address.toLowerCase() === address.toLowerCase())
+      ) {
+        updatedTokenIn = { ...currentTokenIn, priceUSD: data.priceUSD };
+      }
+      if (
+        (targetSym && outSym === targetSym) ||
+        (currentTokenOut.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenOut.address.toLowerCase() === address.toLowerCase())
+      ) {
+        updatedTokenOut = { ...currentTokenOut, priceUSD: data.priceUSD };
+      }
+
+      const symKey = data.symbol?.toLowerCase();
+
+      set((state) => ({
+        marketData: {
+          ...state.marketData,
+          [key]: data,
+          ...(symKey ? { [symKey]: data } : {})
+        },
+        tokenIn: updatedTokenIn,
+        tokenOut: updatedTokenOut,
+        lastMarketUpdate: Date.now(),
+        marketDataStatus: data.isLive ? 'LIVE' : (state.marketDataStatus || 'CACHED')
+      }));
+    },
+
+    fetchMarketData: async () => {
+      set({ isMarketsLoading: true, marketsError: null });
+      try {
+        const dataMap = await defaultMarketDataService.fetchMarketData(DEFAULT_TOKENS);
+        const record: Record<string, LiveMarketData> = {};
+        dataMap.forEach((val, key) => {
+          record[key] = val;
+        });
+
+        // Register listener for continuous live WebSocket tick updates (registered once)
+        if (!isMarketStoreListenerRegistered) {
+          isMarketStoreListenerRegistered = true;
+          defaultMarketDataService.addStoreTickListener((chainId, address, data) => {
+            get().updateSingleTokenMarketData(chainId, address, data);
+          });
+        }
+
+        set({
+          marketData: record,
+          isMarketsLoading: false,
+          marketsError: defaultMarketDataService.getLastError(),
+          lastMarketUpdate: Date.now(),
+          marketDataStatus: defaultMarketDataService.getWsStatus() === 'CONNECTED' ? 'LIVE' : 'CACHED'
+        });
+      } catch (err: any) {
+        set({
+          isMarketsLoading: false,
+          marketsError: err.message || 'Failed to fetch live market data'
+        });
+      }
     }
   };
 });
