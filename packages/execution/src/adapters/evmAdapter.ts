@@ -20,11 +20,11 @@ export interface EVMExecutionResult {
 }
 
 export const CANONICAL_ROUTERS: Record<number, string> = {
-  1: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
-  137: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+  1: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+  137: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
   8453: '0x2626664c2603336E57B271c5C0b26F421741e481',
-  42161: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
-  10: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+  42161: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+  10: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
   56: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4',
   43114: '0x60aE616a2155Ee3d9A68541Ba4544862310933d4'
 };
@@ -110,7 +110,7 @@ export class EVMExecutionAdapter {
     const sourceChain = defaultChainRegistry.getChain(quote.request.sourceChainId);
     const chainIdNum = sourceChain?.chainId ?? 1;
 
-    const routerAddress = CANONICAL_ROUTERS[chainIdNum] || '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45';
+    const routerAddress = CANONICAL_ROUTERS[chainIdNum] || '0xE592427A0AEce92De3Edee1F18E0157C05861564';
     const wrappedNative = WRAPPED_NATIVE_TOKENS[chainIdNum] || '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 
     const tokenIn = quote.request.tokenIn;
@@ -156,21 +156,19 @@ export class EVMExecutionAdapter {
             tokenIn: wrappedNative,
             tokenOut: actualTokenOut,
             fee: feeTier,
-            recipient: tokenOut.isNative ? '0x0000000000000000000000000000000000000002' : userAddress,
+            recipient: userAddress,
             deadline,
             amountOut: BigInt(quote.amountOutRaw),
             amountInMaximum: maxAmountInRaw,
             sqrtPriceLimitX96: 0n
           };
-          const swapCall = routerContract.interface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
-          const refundCall = routerContract.interface.encodeFunctionData('refundETH', []);
-          tx = await routerContract.multicall([swapCall, refundCall], { value: maxAmountInRaw });
+          tx = await routerContract.exactOutputSingle(exactOutputParams, { value: maxAmountInRaw });
         } else if (tokenOut.isNative) {
           const exactOutputParams = {
             tokenIn: tokenIn.address,
             tokenOut: wrappedNative,
             fee: feeTier,
-            recipient: '0x0000000000000000000000000000000000000002',
+            recipient: '0x0000000000000000000000000000000000000000',
             deadline,
             amountOut: BigInt(quote.amountOutRaw),
             amountInMaximum: maxAmountInRaw,
@@ -198,21 +196,19 @@ export class EVMExecutionAdapter {
             tokenIn: wrappedNative,
             tokenOut: actualTokenOut,
             fee: feeTier,
-            recipient: tokenOut.isNative ? '0x0000000000000000000000000000000000000002' : userAddress,
+            recipient: userAddress,
             deadline,
             amountIn: amountInRaw,
             amountOutMinimum: minAmountOutRaw,
             sqrtPriceLimitX96: 0n
           };
-          const swapCall = routerContract.interface.encodeFunctionData('exactInputSingle', [exactInputParams]);
-          const refundCall = routerContract.interface.encodeFunctionData('refundETH', []);
-          tx = await routerContract.multicall([swapCall, refundCall], { value: amountInRaw });
+          tx = await routerContract.exactInputSingle(exactInputParams, { value: amountInRaw });
         } else if (tokenOut.isNative) {
           const exactInputParams = {
             tokenIn: tokenIn.address,
             tokenOut: wrappedNative,
             fee: feeTier,
-            recipient: '0x0000000000000000000000000000000000000002',
+            recipient: '0x0000000000000000000000000000000000000000',
             deadline,
             amountIn: amountInRaw,
             amountOutMinimum: minAmountOutRaw,
