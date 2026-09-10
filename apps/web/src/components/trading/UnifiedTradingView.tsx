@@ -115,25 +115,15 @@ export const UnifiedTradingView: React.FC = () => {
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-400 font-mono flex-wrap">
                 <span>{sourceChain.shortName}</span>
-                <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                  sourceChain.tier === 'TIER_1' ? 'text-emerald-400 bg-emerald-500/10' :
-                  sourceChain.tier === 'TIER_2' ? 'text-cyan-400 bg-cyan-500/10' :
-                  sourceChain.tier === 'TIER_3' ? 'text-amber-400 bg-amber-500/10' :
-                  'text-purple-400 bg-purple-500/10'
-                }`}>
-                  {sourceChain.tier.replace('_', ' ')}
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                  Network
                 </span>
                 {isCrossChain && (
                   <>
                     <ArrowRight className="w-3 h-3 text-cyan-400" />
                     <span>{destChain.shortName}</span>
-                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                      destChain.tier === 'TIER_1' ? 'text-emerald-400 bg-emerald-500/10' :
-                      destChain.tier === 'TIER_2' ? 'text-cyan-400 bg-cyan-500/10' :
-                      destChain.tier === 'TIER_3' ? 'text-amber-400 bg-amber-500/10' :
-                      'text-purple-400 bg-purple-500/10'
-                    }`}>
-                      {destChain.tier.replace('_', ' ')}
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                      Network
                     </span>
                   </>
                 )}

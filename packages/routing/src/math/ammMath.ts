@@ -146,10 +146,6 @@ export class ConcentratedLiquidityMath {
     return Math.max(MIN_TICK, Math.min(MAX_TICK, tick));
   }
 
-  /**
-   * Computes exact token0 delta between two sqrt prices for a given liquidity amount
-   * Formula: L * (sqrtB - sqrtA) / (sqrtA * sqrtB)
-   */
   public static getAmount0Delta(
     sqrtRatioAX96: bigint,
     sqrtRatioBX96: bigint,

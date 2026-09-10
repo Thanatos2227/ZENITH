@@ -6,7 +6,6 @@ import {
   TrendingUp,
   PieChart,
   History,
-  Settings,
   Bell,
   Sun,
   Moon,
@@ -108,18 +107,6 @@ export const Navbar: React.FC = () => {
             >
               <History className="w-4 h-4" />
               History
-            </button>
-
-            <button
-              onClick={() => setActiveTab('SETTINGS')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === 'SETTINGS'
-                  ? 'bg-slate-800/90 text-cyan-400 shadow-sm border border-slate-700/50'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              Settings
             </button>
           </nav>
         </div>

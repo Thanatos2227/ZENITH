@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
-import { DEFAULT_TOKENS, defaultTokenService } from '@zenith/tokens';
+import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, VERIFIED_CIRCULATING_SUPPLY } from '@zenith/tokens';
 import { defaultChainRegistry } from '@zenith/chains';
 import { Token } from '@zenith/types';
 import {
@@ -30,12 +30,16 @@ export const MarketsView: React.FC = () => {
   } = useZenithStore();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [tierFilter, setTierFilter] = useState('ALL');
+  const [networkTypeFilter, setNetworkTypeFilter] = useState('ALL');
   const [chainFilter, setChainFilter] = useState('ALL');
 
   useEffect(() => {
     fetchMarketData();
-  }, []);
+    const interval = setInterval(() => {
+      fetchMarketData();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [fetchMarketData]);
 
   const filteredTokens = DEFAULT_TOKENS.filter((t) => {
     const chain = defaultChainRegistry.getChain(t.chainId);
@@ -45,9 +49,17 @@ export const MarketsView: React.FC = () => {
       (chain && chain.canonicalName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesChain = chainFilter === 'ALL' || t.chainId.toLowerCase() === chainFilter.toLowerCase();
-    const matchesTier = tierFilter === 'ALL' || (chain && chain.tier === tierFilter);
+    
+    let matchesType = true;
+    if (networkTypeFilter === 'EVM') {
+      matchesType = chain?.executionEnvironment === 'EVM';
+    } else if (networkTypeFilter === 'L2') {
+      matchesType = chain?.category === 'OPTIMISTIC_ROLLUP' || chain?.category === 'ZK_ROLLUP' || chain?.category === 'ORBIT_RWA';
+    } else if (networkTypeFilter === 'NON_EVM') {
+      matchesType = chain?.executionEnvironment !== 'EVM';
+    }
 
-    return matchesSearch && matchesChain && matchesTier;
+    return matchesSearch && matchesChain && matchesType;
   });
 
   const handleTrade = (token: Token) => {
@@ -178,22 +190,21 @@ export const MarketsView: React.FC = () => {
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-thin">
           {[
-            { id: 'ALL', label: 'All Tiers' },
-            { id: 'TIER_1', label: 'Tier 1 (Core)' },
-            { id: 'TIER_2', label: 'Tier 2 (Expanding)' },
-            { id: 'TIER_3', label: 'Tier 3 (Limited)' },
-            { id: 'TIER_4', label: 'Tier 4 (Research)' }
-          ].map((tier) => (
+            { id: 'ALL', label: 'All Networks' },
+            { id: 'EVM', label: 'EVM Networks' },
+            { id: 'L2', label: 'Layer 2 Rollups' },
+            { id: 'NON_EVM', label: 'Non-EVM / SVM' }
+          ].map((tab) => (
             <button
-              key={tier.id}
-              onClick={() => setTierFilter(tier.id)}
+              key={tab.id}
+              onClick={() => setNetworkTypeFilter(tab.id)}
               className={`px-3 py-1.5 rounded-lg font-semibold shrink-0 transition-colors ${
-                tierFilter === tier.id
+                networkTypeFilter === tab.id
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-glow-cyan'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
-              {tier.label}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -205,7 +216,7 @@ export const MarketsView: React.FC = () => {
             <thead className="bg-[#0B111E] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
               <tr>
                 <th className="py-3.5 px-4">Asset</th>
-                <th className="py-3.5 px-4">Network & Tier</th>
+                <th className="py-3.5 px-4">Network</th>
                 <th className="py-3.5 px-4">Live Price (USD)</th>
                 <th className="py-3.5 px-4">24h Change</th>
                 <th className="py-3.5 px-4">24h Volume</th>
@@ -218,12 +229,19 @@ export const MarketsView: React.FC = () => {
               {filteredTokens.map((t) => {
                 const chain = defaultChainRegistry.getChain(t.chainId);
                 const tokenKey = `${t.chainId.toLowerCase()}:${t.address.toLowerCase()}`;
-                const live = marketData[tokenKey] || marketData[t.symbol.toLowerCase()];
+                const baseSymbol = defaultMarketDataService.resolveSymbol(t.symbol);
+                const live =
+                  marketData[tokenKey] ||
+                  marketData[t.symbol.toLowerCase()] ||
+                  marketData[baseSymbol.toLowerCase()] ||
+                  defaultMarketDataService.getCachedMarketData(t.chainId, t.address);
 
-                const currentPrice = live?.priceUSD ?? t.priceUSD ?? 0;
+                const isStable = t.symbol === 'USDC' || t.symbol === 'USDT' || t.symbol === 'DAI' || t.symbol === 'FDUSD' || t.symbol === 'USDE';
+                const currentPrice = live?.priceUSD ?? t.priceUSD ?? (isStable ? 1.0 : 0);
                 const change24h = live?.change24hUSD ?? t.change24hUSD ?? 0;
                 const volume24h = live?.volume24hUSD ?? t.volume24hUSD ?? 0;
-                const marketCapUSD = live?.marketCapUSD;
+                const supply = VERIFIED_CIRCULATING_SUPPLY[t.symbol.toUpperCase()] || VERIFIED_CIRCULATING_SUPPLY[baseSymbol.toUpperCase()];
+                const marketCapUSD = live?.marketCapUSD || (supply && currentPrice > 0 ? currentPrice * supply : undefined);
 
                 const isPositive = change24h >= 0;
                 const riskScore = t.securityProfile?.riskScore ?? 0;
@@ -256,17 +274,12 @@ export const MarketsView: React.FC = () => {
 
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-medium">
                           {chain?.shortName || t.chainId}
                         </span>
                         {chain && (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                            chain.tier === 'TIER_1' ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' :
-                            chain.tier === 'TIER_2' ? 'text-cyan-300 bg-cyan-500/10 border-cyan-500/30' :
-                            chain.tier === 'TIER_3' ? 'text-amber-300 bg-amber-500/10 border-amber-500/30' :
-                            'text-purple-300 bg-purple-500/10 border-purple-500/30'
-                          }`}>
-                            {chain.tier.replace('_', ' ')}
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 font-mono">
+                            {chain.executionEnvironment}
                           </span>
                         )}
                       </div>

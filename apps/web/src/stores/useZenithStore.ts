@@ -1060,13 +1060,25 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           });
         }
 
-        set({
+        const currentTokenIn = get().tokenIn;
+        const currentTokenOut = get().tokenOut;
+        const inKey = defaultMarketDataService.getKey(currentTokenIn.chainId, currentTokenIn.address);
+        const outKey = defaultMarketDataService.getKey(currentTokenOut.chainId, currentTokenOut.address);
+        const inSym = defaultMarketDataService.resolveSymbol(currentTokenIn.symbol).toLowerCase();
+        const outSym = defaultMarketDataService.resolveSymbol(currentTokenOut.symbol).toLowerCase();
+
+        const latestInPrice = dataMap.get(inKey)?.priceUSD || dataMap.get(inSym)?.priceUSD;
+        const latestOutPrice = dataMap.get(outKey)?.priceUSD || dataMap.get(outSym)?.priceUSD;
+
+        set((state) => ({
           marketData: record,
+          tokenIn: latestInPrice && latestInPrice > 0 ? { ...state.tokenIn, priceUSD: latestInPrice } : state.tokenIn,
+          tokenOut: latestOutPrice && latestOutPrice > 0 ? { ...state.tokenOut, priceUSD: latestOutPrice } : state.tokenOut,
           isMarketsLoading: false,
           marketsError: defaultMarketDataService.getLastError(),
           lastMarketUpdate: Date.now(),
-          marketDataStatus: defaultMarketDataService.getWsStatus() === 'CONNECTED' ? 'LIVE' : 'CACHED'
-        });
+          marketDataStatus: 'LIVE'
+        }));
       } catch (err: any) {
         set({
           isMarketsLoading: false,

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
 import { defaultChainRegistry } from '@zenith/chains';
-import { ChainConfig, NetworkSupportTier } from '@zenith/types';
-import { X, Search, Zap, Check, Shield, Activity, Layers, ArrowRightLeft, Sparkles } from 'lucide-react';
+import { ChainConfig } from '@zenith/types';
+import { X, Search, Zap, Check, Shield, ArrowRightLeft } from 'lucide-react';
 
 export const ChainPickerModal: React.FC = () => {
   const {
@@ -16,17 +16,17 @@ export const ChainPickerModal: React.FC = () => {
   } = useZenithStore();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTier, setSelectedTier] = useState<string>('ALL');
+  const [networkFilter, setNetworkFilter] = useState<string>('ALL');
 
   if (!isChainPickerOpen) return null;
 
   const currentSelected = chainPickerTarget === 'SOURCE' ? sourceChain : destChain;
   const allChains = defaultChainRegistry.getAllChains();
 
-  const tier1Count = allChains.filter((c) => c.tier === 'TIER_1').length;
-  const tier2Count = allChains.filter((c) => c.tier === 'TIER_2').length;
-  const tier3Count = allChains.filter((c) => c.tier === 'TIER_3').length;
-  const tier4Count = allChains.filter((c) => c.tier === 'TIER_4').length;
+  const isL2 = (cat: string) => cat === 'OPTIMISTIC_ROLLUP' || cat === 'ZK_ROLLUP' || cat === 'ORBIT_RWA';
+  const evmCount = allChains.filter((c) => c.executionEnvironment === 'EVM').length;
+  const l2Count = allChains.filter((c) => isL2(c.category)).length;
+  const nonEvmCount = allChains.filter((c) => c.executionEnvironment !== 'EVM').length;
 
   const filteredChains = allChains.filter((c) => {
     const matchesSearch =
@@ -36,9 +36,16 @@ export const ChainPickerModal: React.FC = () => {
       c.executionEnvironment.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.supportedStandards.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesTier = selectedTier === 'ALL' || c.tier === selectedTier;
+    let matchesFilter = true;
+    if (networkFilter === 'EVM') {
+      matchesFilter = c.executionEnvironment === 'EVM';
+    } else if (networkFilter === 'L2') {
+      matchesFilter = isL2(c.category);
+    } else if (networkFilter === 'NON_EVM') {
+      matchesFilter = c.executionEnvironment !== 'EVM';
+    }
 
-    return matchesSearch && matchesTier;
+    return matchesSearch && matchesFilter;
   });
 
   const handleSelect = (chain: ChainConfig) => {
@@ -48,35 +55,6 @@ export const ChainPickerModal: React.FC = () => {
       setDestChain(chain);
     }
     closeChainPicker();
-  };
-
-  const getTierBadge = (tier: NetworkSupportTier) => {
-    switch (tier) {
-      case 'TIER_1':
-        return {
-          label: 'Tier 1 • Core Production',
-          desc: 'Full DEX routing, simulation & MEV-aware execution',
-          badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-        };
-      case 'TIER_2':
-        return {
-          label: 'Tier 2 • Expanding Trading',
-          desc: 'Production trading, live routing & risk engine',
-          badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
-        };
-      case 'TIER_3':
-        return {
-          label: 'Tier 3 • Limited / Experimental',
-          desc: 'Selective liquidity with capability restrictions',
-          badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-        };
-      case 'TIER_4':
-        return {
-          label: 'Tier 4 • Research / Adapter',
-          desc: 'Architecture prepared; direct swaps coming soon',
-          badgeClass: 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-        };
-    }
   };
 
   const getStatusDot = (status: string) => {
@@ -113,7 +91,7 @@ export const ChainPickerModal: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Universal Chain Registry with automated capability detection, tier governance & failover
+              Universal Network Registry with automated capability detection & high-speed routing
             </p>
           </div>
           <button
@@ -124,7 +102,7 @@ export const ChainPickerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Search & Tier Filters */}
+        {/* Search & Network Filters */}
         <div className="p-4 border-b border-slate-800/80 space-y-3 bg-[#080D1A]/50">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -140,16 +118,15 @@ export const ChainPickerModal: React.FC = () => {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-thin">
             {[
               { id: 'ALL', label: `All Networks (${allChains.length})` },
-              { id: 'TIER_1', label: `Tier 1 • Core (${tier1Count})`, color: 'emerald' },
-              { id: 'TIER_2', label: `Tier 2 • Expanding (${tier2Count})`, color: 'cyan' },
-              { id: 'TIER_3', label: `Tier 3 • Limited (${tier3Count})`, color: 'amber' },
-              { id: 'TIER_4', label: `Tier 4 • Research (${tier4Count})`, color: 'purple' }
+              { id: 'EVM', label: `EVM Networks (${evmCount})` },
+              { id: 'L2', label: `Layer 2 Rollups (${l2Count})` },
+              { id: 'NON_EVM', label: `Non-EVM / SVM (${nonEvmCount})` }
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setSelectedTier(tab.id)}
+                onClick={() => setNetworkFilter(tab.id)}
                 className={`px-3 py-1.5 rounded-lg font-semibold shrink-0 transition-all text-xs ${
-                  selectedTier === tab.id
+                  networkFilter === tab.id
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-glow-cyan'
                     : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
@@ -164,7 +141,6 @@ export const ChainPickerModal: React.FC = () => {
         <div className="p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] scrollbar-thin">
           {filteredChains.map((c) => {
             const isSelected = currentSelected.id === c.id;
-            const tierBadge = getTierBadge(c.tier);
             const isSwapSupported = c.capabilities.swap;
 
             return (
@@ -214,10 +190,8 @@ export const ChainPickerModal: React.FC = () => {
                     </div>
                   </div>
 
-                  <span
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${tierBadge.badgeClass}`}
-                  >
-                    {c.tier.replace('_', ' ')}
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 bg-slate-900 border-slate-800 text-cyan-300 font-mono">
+                    Network
                   </span>
                 </div>
 
@@ -258,9 +232,9 @@ export const ChainPickerModal: React.FC = () => {
         <div className="p-3 bg-[#080D1A] border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 px-5">
           <div className="flex items-center gap-2">
             <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Capability-gated execution: unverified or research chains are restricted safely.</span>
+            <span>Capability-gated execution across all {allChains.length} supported networks.</span>
           </div>
-          <span className="font-mono text-[11px] text-slate-500">Universal Tier Governance v4.0</span>
+          <span className="font-mono text-[11px] text-slate-500">Universal Network Registry v4.0</span>
         </div>
       </div>
     </div>

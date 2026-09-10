@@ -96,13 +96,8 @@ export const SwapCard: React.FC = () => {
             >
               <img src={sourceChain.iconURI} alt={sourceChain.shortName} className="w-4 h-4 rounded-full" />
               <span>{sourceChain.shortName}</span>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                sourceChain.tier === 'TIER_1' ? 'text-emerald-400 bg-emerald-500/10' :
-                sourceChain.tier === 'TIER_2' ? 'text-cyan-400 bg-cyan-500/10' :
-                sourceChain.tier === 'TIER_3' ? 'text-amber-400 bg-amber-500/10' :
-                'text-purple-400 bg-purple-500/10'
-              }`}>
-                {sourceChain.tier.replace('_', ' ')}
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
+                Network
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
@@ -347,8 +342,8 @@ export const SwapCard: React.FC = () => {
             <div>
               <p className="font-semibold">Network In Research / Adapter Stage</p>
               <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">
-                {!sourceChain.capabilities.swap ? sourceChain.canonicalName : destChain.canonicalName} is currently configured in{' '}
-                <span className="text-purple-300 font-semibold">{sourceChain.tier.replace('_', ' ')}</span>. Direct swap execution is in active testing; token discovery and portfolio balance tracking are available.
+                {!sourceChain.capabilities.swap ? sourceChain.canonicalName : destChain.canonicalName} is currently in{' '}
+                <span className="text-purple-300 font-semibold">Research / Adapter Mode</span>. Direct swap execution is in active testing; token discovery and portfolio balance tracking are available.
               </p>
             </div>
           </div>
