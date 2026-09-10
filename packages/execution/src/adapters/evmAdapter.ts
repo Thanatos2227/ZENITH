@@ -197,36 +197,7 @@ export class EVMExecutionAdapter {
         effectiveGasPriceWei: receipt.gasPrice || 0n
       };
     } catch (err: any) {
-      const errMsg = err?.message || String(err);
-      const isUserRejected =
-        err?.code === 4001 ||
-        err?.code === 'ACTION_REJECTED' ||
-        errMsg.includes('rejected') ||
-        errMsg.includes('denied') ||
-        errMsg.includes('User rejected');
-
-      if (isUserRejected) {
-        throw err;
-      }
-
-      params.onStatusChange?.('SIGNING');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      params.onStatusChange?.('SUBMITTING');
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const mockTxHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-      params.onStatusChange?.('BROADCASTED', mockTxHash);
-      params.onStatusChange?.('CONFIRMING', mockTxHash);
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      params.onStatusChange?.('COMPLETED', mockTxHash);
-
-      return {
-        isSuccess: true,
-        txHash: mockTxHash,
-        blockNumber: 19842100,
-        gasUsed: 142000n,
-        effectiveGasPriceWei: 18000000000n
-      };
+      throw err;
     }
   }
 }

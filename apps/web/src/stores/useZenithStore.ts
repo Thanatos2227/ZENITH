@@ -1022,6 +1022,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         });
       } catch (err: any) {
         set({ isConfirmSheetOpen: false });
+        executionSM.transitionTo('FAILED', { id: 'step-execute', status: 'ERROR' });
 
         const errMsg = err?.message || String(err);
         const isUserRejected =
@@ -1034,7 +1035,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         if (isUserRejected) {
           get().addNotification({
             title: 'Transaction Cancelled',
-            message: 'You rejected the transaction in MetaMask.',
+            message: 'You rejected the transaction in your wallet.',
             type: 'INFO'
           });
         } else {
