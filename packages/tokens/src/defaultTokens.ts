@@ -1,6 +1,7 @@
 import { Token } from '@zenith/types';
+import { ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 
-export const DEFAULT_TOKENS: Token[] = [
+const TOKEN_CONFIG: Token[] = [
   // ==========================================
   // BITCOIN (UTXO Network)
   // ==========================================
@@ -2378,4 +2379,40 @@ export const DEFAULT_TOKENS: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png'
   }
 ];
+
+const WRAPPED_SYMBOLS = new Set(['WETH', 'WPOL', 'WMATIC', 'WBNB', 'WAVAX', 'WCELO', 'WMNT']);
+
+const NORMALIZED_TOKENS: Token[] = TOKEN_CONFIG.map((token) => {
+  const wrappedToken = token.isNative
+    ? TOKEN_CONFIG.find(
+        (candidate) =>
+          candidate.chainId === token.chainId &&
+          !candidate.isNative &&
+          WRAPPED_SYMBOLS.has(candidate.symbol)
+      )
+    : undefined;
+
+  return {
+    ...token,
+    enabled: token.enabled !== false,
+    ...(wrappedToken ? { wrappedAddress: wrappedToken.address } : {})
+  };
+});
+
+const EVM_NATIVE_TOKENS: Token[] = Object.values(ZENITH_SUPPORTED_CHAINS)
+  .filter((chain) => chain.executionEnvironment === 'EVM')
+  .filter((chain) => !NORMALIZED_TOKENS.some((token) => token.chainId === chain.id && token.isNative))
+  .map((chain) => ({
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+    chainId: chain.id,
+    name: chain.nativeCurrency.name,
+    symbol: chain.nativeCurrency.symbol,
+    decimals: chain.nativeCurrency.decimals,
+    isNative: true,
+    enabled: true,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: chain.nativeCurrency.logoURI || chain.iconURI
+  }));
+
+export const DEFAULT_TOKENS: Token[] = [...NORMALIZED_TOKENS, ...EVM_NATIVE_TOKENS];
 
