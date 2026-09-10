@@ -44,7 +44,13 @@ export const SwapCard: React.FC = () => {
     openWalletModal,
     chainId,
     switchNetwork,
-    marketData
+    marketData,
+    executionMode,
+    setExecutionMode,
+    orderType,
+    setOrderType,
+    limitPrice,
+    setLimitPrice
   } = useZenithStore();
 
   const [refreshTimer, setRefreshTimer] = useState<number>(10);
@@ -53,7 +59,6 @@ export const SwapCard: React.FC = () => {
     fetchQuote();
   }, []);
 
-  // Continuous WebSocket stream subscription for real-time market price & swap rate updates
   useEffect(() => {
     let isMounted = true;
     const cleanup = defaultMarketDataService.subscribeLiveStream(
@@ -129,11 +134,11 @@ export const SwapCard: React.FC = () => {
     const raw = e.target.value;
     const validation = validateAndSanitizeAmount(raw);
     if (!validation.isValid) {
-      // Reject invalid values by restoring the previous valid DOM value
+
       e.target.value = amountIn;
       return;
     }
-    // Truncate in-place if decimal precision exceeded 3 places
+
     if (validation.isTruncated || validation.sanitized !== raw) {
       e.target.value = validation.sanitized;
     }
@@ -144,6 +149,49 @@ export const SwapCard: React.FC = () => {
     <div className="w-full max-w-lg mx-auto">
       <div className="glass-panel rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden border border-slate-800/80">
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+
+        {}
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/60">
+          <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+            <button
+              onClick={() => setOrderType('SWAP')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                orderType === 'SWAP' ? 'bg-cyan-500 text-slate-950 shadow-glow-cyan' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Swap
+            </button>
+            <button
+              onClick={() => setOrderType('LIMIT')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                orderType === 'LIMIT' ? 'bg-cyan-500 text-slate-950 shadow-glow-cyan' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Limit
+            </button>
+            <button
+              onClick={() => setOrderType('DCA')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                orderType === 'DCA' ? 'bg-cyan-500 text-slate-950 shadow-glow-cyan' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              DCA
+            </button>
+          </div>
+
+          <button
+            onClick={() => setExecutionMode(executionMode === 'INSTANT_AMM' ? 'GASLESS_INTENT' : 'INSTANT_AMM')}
+            className={`px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all border ${
+              executionMode === 'GASLESS_INTENT'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-glow-emerald'
+                : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
+            }`}
+            title="Toggle between Gasless Intent (UniswapX RFQ) and Instant AMM"
+          >
+            <Sparkles className="w-3 h-3" />
+            {executionMode === 'GASLESS_INTENT' ? '⚡ Gasless (UniswapX)' : '⚡ v4 AMM'}
+          </button>
+        </div>
 
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/60">
           <div className="flex items-center gap-2 flex-wrap">
@@ -378,32 +426,6 @@ export const SwapCard: React.FC = () => {
                 {quote.priceImpact.percentage}%
               </span>
             </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Swap Fee (LP)</span>
-              <span className="font-mono text-slate-200">
-                {quote.swapFee
-                  ? `${quote.swapFee.feeAmountFormatted} ${tokenIn.symbol} (~$${quote.swapFee.feeUSD < 0.01 ? quote.swapFee.feeUSD.toFixed(4) : quote.swapFee.feeUSD.toFixed(2)})`
-                  : '0.30%'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Platform Fee</span>
-              <span className="font-mono text-slate-200">
-                {quote.protocolFee
-                  ? `${quote.protocolFee.feeAmountFormatted} ${tokenIn.symbol} (~$${quote.protocolFee.feeUSD < 0.01 ? quote.protocolFee.feeUSD.toFixed(4) : quote.protocolFee.feeUSD.toFixed(2)})`
-                  : '0.05%'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Network Fee (Est.)</span>
-              <span className="font-mono text-emerald-400 font-semibold">
-                ~${quote.bestRoute.gasCostUSD < 0.01 ? quote.bestRoute.gasCostUSD.toFixed(4) : quote.bestRoute.gasCostUSD.toFixed(2)}
-              </span>
-            </div>
-
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Route</span>
               <span className="font-mono text-cyan-300 font-medium">

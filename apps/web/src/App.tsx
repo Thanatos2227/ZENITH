@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useZenithStore } from './stores/useZenithStore';
 import { Navbar } from './components/layout/Navbar';
 import { UnifiedTradingView } from './components/trading/UnifiedTradingView';
+import { PoolsView } from './components/pools/PoolsView';
+import { ExploreView } from './components/explore/ExploreView';
 import { MarketsView } from './components/markets/MarketsView';
 import { PortfolioView } from './components/portfolio/PortfolioView';
 import { HistoryView } from './components/history/HistoryView';
@@ -28,6 +30,8 @@ export const App: React.FC = () => {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
         {activeTab === 'TRADE' && <UnifiedTradingView />}
+        {activeTab === 'POOLS' && <PoolsView />}
+        {activeTab === 'EXPLORE' && <ExploreView />}
         {activeTab === 'MARKETS' && <MarketsView />}
         {activeTab === 'PORTFOLIO' && <PortfolioView />}
         {activeTab === 'HISTORY' && <HistoryView />}

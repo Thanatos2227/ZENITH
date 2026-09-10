@@ -43,7 +43,6 @@ const TradingViewChartComponent: React.FC<TradingViewChartProps> = ({ tokenIn, t
     return getTradingViewSymbol(tokenIn.symbol, tokenOut.symbol);
   }, [tokenIn.symbol, tokenOut.symbol]);
 
-  // Unique container ID for TradingView widget mounting
   const containerId = useMemo(
     () => `tv_chart_container_${Math.random().toString(36).substring(2, 9)}`,
     [tvSymbol]
@@ -145,7 +144,7 @@ const TradingViewChartComponent: React.FC<TradingViewChartProps> = ({ tokenIn, t
 
   return (
     <div className="w-full h-[460px] sm:h-[500px] rounded-xl overflow-hidden border border-slate-800 bg-[#080B11] relative flex flex-col">
-      {/* Header bar */}
+      {}
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/90 border-b border-slate-800/80 text-xs font-mono">
         <div className="flex items-center gap-2">
           <Activity className="w-3.5 h-3.5 text-indigo-400" />
@@ -166,15 +165,15 @@ const TradingViewChartComponent: React.FC<TradingViewChartProps> = ({ tokenIn, t
         </div>
       </div>
 
-      {/* Main Chart Canvas */}
+      {}
       <div className="relative flex-1 w-full h-full min-h-[400px]">
-        {/* Dynamic widget container */}
+        {}
         <div
           ref={containerRef}
           className={`w-full h-full ${loadError ? 'hidden' : 'block'}`}
         />
 
-        {/* Fallback Iframe */}
+        {}
         {loadError && (
           <iframe
             src={iframeSrc}

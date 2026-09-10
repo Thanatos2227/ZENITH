@@ -50,7 +50,6 @@ export class ZenithRouter {
     const priceInUSD = request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 ? request.tokenIn.priceUSD : 1;
     const priceOutUSD = request.tokenOut.priceUSD && request.tokenOut.priceUSD > 0 ? request.tokenOut.priceUSD : 1;
 
-    // Pre-trade reference market exchange rate (in tokenOut per tokenIn)
     const referencePrice = hasValidPrices ? (request.tokenIn.priceUSD! / request.tokenOut.priceUSD!) : undefined;
 
     let amountInBig: bigint = 0n;
@@ -126,7 +125,6 @@ export class ZenithRouter {
     const spotPrice = (priceInUSD / priceOutUSD);
     const executionPrice = amountInNum > 0 && amountOutNum > 0 ? (amountOutNum / amountInNum) : spotPrice;
 
-    // Separate LP pool swap fee (30 bps / 0.30%) from platform fee and price impact
     const poolFeeBps = 30;
     const swapFeeRaw = ((amountInBig * BigInt(poolFeeBps)) / 10000n).toString();
     const swapFeeNum = (amountInNum * poolFeeBps) / 10000;
@@ -144,7 +142,6 @@ export class ZenithRouter {
       amountInNum
     });
 
-    // Pure price impact: compares liquidity curve execution against reference price without fee distortion
     const totalFeeBps = protocolFee.feeBps + poolFeeBps;
     const priceImpact = this.scoringService.calculatePriceImpact({
       tokenIn: request.tokenIn,
@@ -155,7 +152,6 @@ export class ZenithRouter {
       feeBpsTotal: totalFeeBps
     });
 
-    // Discover Routes (Direct, Multi-Hop, Split, Cross-Chain)
     let routes: SwapRoute[] = [];
     if (isCrossChain) {
       routes = this.bridgeAggregator.findCrossChainRoutes({

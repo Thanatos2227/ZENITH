@@ -4,13 +4,17 @@ pragma solidity ^0.8.24;
 import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH9.sol";
 import "./interfaces/IZenithRouter.sol";
+import "./interfaces/IPermit2.sol";
 import "./ZenithFeeManager.sol";
 import "./ZenithCircuitBreaker.sol";
+import "./ZenithPoolManager.sol";
 
 contract ZenithRouter is IZenithRouter {
     ZenithFeeManager public immutable feeManager;
     ZenithCircuitBreaker public immutable circuitBreaker;
+    ZenithPoolManager public poolManager;
     address public immutable WETH9;
+    IPermit2 public immutable permit2;
 
     uint256 private _status;
     uint256 private constant _NOT_ENTERED = 1;
@@ -33,16 +37,29 @@ contract ZenithRouter is IZenithRouter {
         _;
     }
 
-    constructor(address _feeManager, address _circuitBreaker, address _weth9) {
+    constructor(
+        address _feeManager,
+        address _circuitBreaker,
+        address _weth9,
+        address _permit2,
+        address _poolManager
+    ) {
         require(_feeManager != address(0), "ZenithRouter: Zero fee manager");
         require(_circuitBreaker != address(0), "ZenithRouter: Zero circuit breaker");
         feeManager = ZenithFeeManager(_feeManager);
         circuitBreaker = ZenithCircuitBreaker(_circuitBreaker);
         WETH9 = _weth9;
+        permit2 = IPermit2(_permit2);
+        poolManager = ZenithPoolManager(_poolManager);
         _status = _NOT_ENTERED;
     }
 
     receive() external payable {}
+
+    function setPoolManager(address _poolManager) external {
+        require(msg.sender == feeManager.governance(), "ZenithRouter: Only governance");
+        poolManager = ZenithPoolManager(_poolManager);
+    }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
@@ -77,7 +94,7 @@ contract ZenithRouter is IZenithRouter {
         require(params.amountIn > 0, "ZenithRouter: Zero amountIn");
         require(params.recipient != address(0), "ZenithRouter: Zero recipient");
 
-        uint256 protocolFee = feeManager.calculateFee(params.amountIn);
+        uint256 protocolFee = feeManager.calculateUserFee(msg.sender, params.amountIn);
         uint256 netAmountIn = params.amountIn - protocolFee;
 
         if (params.tokenIn == address(0)) {
@@ -96,11 +113,34 @@ contract ZenithRouter is IZenithRouter {
             _safeTransferFrom(params.tokenIn, msg.sender, address(this), netAmountIn);
         }
 
-        uint256 balanceBefore = params.tokenOut == address(0)
-            ? address(this).balance
-            : IERC20(params.tokenOut).balanceOf(address(this));
+        if (address(poolManager) != address(0) && params.tokenIn != address(0) && params.tokenOut != address(0)) {
+            bool zeroForOne = params.tokenIn < params.tokenOut;
+            address c0 = zeroForOne ? params.tokenIn : params.tokenOut;
+            address c1 = zeroForOne ? params.tokenOut : params.tokenIn;
 
-        amountOut = netAmountIn;
+            _safeApprove(params.tokenIn, address(poolManager), netAmountIn);
+
+            ZenithPoolManager.BalanceDelta memory delta = poolManager.swap(
+                ZenithPoolManager.SwapParams({
+                    key: ZenithPoolManager.PoolKey({
+                        currency0: c0,
+                        currency1: c1,
+                        feeBps: uint24(params.feeBps > 0 ? params.feeBps : 30),
+                        tickSpacing: 60,
+                        hook: IZenithHook(address(0))
+                    }),
+                    zeroForOne: zeroForOne,
+                    amountSpecified: int256(netAmountIn),
+                    sqrtPriceLimitX96: zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+                    hookData: ""
+                })
+            );
+
+            amountOut = zeroForOne ? (delta.amount1 < 0 ? uint256(-delta.amount1) : uint256(delta.amount1))
+                                   : (delta.amount0 < 0 ? uint256(-delta.amount0) : uint256(delta.amount0));
+        } else {
+            amountOut = netAmountIn;
+        }
 
         require(amountOut >= params.amountOutMinimum, "ZenithRouter: Slippage limit exceeded");
 
@@ -134,7 +174,7 @@ contract ZenithRouter is IZenithRouter {
         require(params.amountIn > 0, "ZenithRouter: Zero amountIn");
         require(params.recipient != address(0), "ZenithRouter: Zero recipient");
 
-        uint256 protocolFee = feeManager.calculateFee(params.amountIn);
+        uint256 protocolFee = feeManager.calculateUserFee(msg.sender, params.amountIn);
         uint256 netAmountIn = params.amountIn - protocolFee;
 
         amountOut = netAmountIn;
@@ -166,7 +206,7 @@ contract ZenithRouter is IZenithRouter {
         amountIn = params.amountOut;
         require(amountIn <= params.amountInMaximum, "ZenithRouter: Maximum input exceeded");
 
-        uint256 protocolFee = feeManager.calculateFee(amountIn);
+        uint256 protocolFee = feeManager.calculateUserFee(msg.sender, amountIn);
 
         emit SwapExecuted(
             msg.sender,
@@ -194,7 +234,7 @@ contract ZenithRouter is IZenithRouter {
         amountIn = params.amountOut;
         require(amountIn <= params.amountInMaximum, "ZenithRouter: Maximum input exceeded");
 
-        uint256 protocolFee = feeManager.calculateFee(amountIn);
+        uint256 protocolFee = feeManager.calculateUserFee(msg.sender, amountIn);
 
         emit SwapExecuted(
             msg.sender,
@@ -219,7 +259,7 @@ contract ZenithRouter is IZenithRouter {
         require(params.amountIn > 0, "ZenithRouter: Zero input amount");
         require(params.recipient != address(0), "ZenithRouter: Zero recipient address");
 
-        uint256 protocolFee = feeManager.calculateFee(params.amountIn);
+        uint256 protocolFee = feeManager.calculateUserFee(msg.sender, params.amountIn);
         uint256 netAmountIn = params.amountIn - protocolFee;
 
         if (params.tokenIn == address(0)) {
@@ -255,12 +295,15 @@ contract ZenithRouter is IZenithRouter {
             ? address(this).balance
             : IERC20(params.tokenOut).balanceOf(address(this));
 
-        amountOut = currentBalanceAfter > currentBalanceBefore ? (currentBalanceAfter - currentBalanceBefore) : netAmountIn;
-        require(amountOut >= params.minAmountOut, "ZenithRouter: Slippage limit exceeded");
+        amountOut = currentBalanceAfter > currentBalanceBefore
+            ? currentBalanceAfter - currentBalanceBefore
+            : netAmountIn;
+
+        require(amountOut >= params.minAmountOut, "ZenithRouter: Insufficient output amount");
 
         if (params.tokenOut == address(0)) {
-            (bool sendOk, ) = params.recipient.call{value: amountOut}("");
-            require(sendOk, "ZenithRouter: Output ETH transfer failed");
+            (bool payoutSuccess, ) = params.recipient.call{value: amountOut}("");
+            require(payoutSuccess, "ZenithRouter: Payout failed");
         } else {
             _safeTransfer(params.tokenOut, params.recipient, amountOut);
         }
@@ -274,26 +317,5 @@ contract ZenithRouter is IZenithRouter {
             protocolFee,
             params.recipient
         );
-    }
-
-    function unwrapWETH9(uint256 amountMinimum, address recipient) external payable override nonReentrant {
-        require(WETH9 != address(0), "ZenithRouter: WETH9 not set");
-        uint256 wethBalance = IWETH9(WETH9).balanceOf(address(this));
-        require(wethBalance >= amountMinimum, "ZenithRouter: Insufficient WETH balance");
-
-        if (wethBalance > 0) {
-            IWETH9(WETH9).withdraw(wethBalance);
-            (bool sendOk, ) = recipient.call{value: wethBalance}("");
-            require(sendOk, "ZenithRouter: ETH transfer failed");
-        }
-    }
-
-    function refundETH() external payable override nonReentrant {
-        if (address(this).balance > 0) {
-            uint256 balance = address(this).balance;
-            (bool sendOk, ) = msg.sender.call{value: balance}("");
-            require(sendOk, "ZenithRouter: Refund failed");
-            emit RefundInitiated(msg.sender, balance);
-        }
     }
 }

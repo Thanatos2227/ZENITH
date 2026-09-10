@@ -68,9 +68,13 @@ export const applyThemeToDom = (theme: 'dark' | 'light'): void => {
 };
 
 export interface ZenithState {
-  activeTab: 'TRADE' | 'MARKETS' | 'PORTFOLIO' | 'HISTORY' | 'SETTINGS';
+  activeTab: 'TRADE' | 'POOLS' | 'EXPLORE' | 'MARKETS' | 'PORTFOLIO' | 'HISTORY' | 'SETTINGS';
   isProMode: boolean;
   theme: 'dark' | 'light';
+
+  executionMode: 'INSTANT_AMM' | 'GASLESS_INTENT';
+  orderType: 'SWAP' | 'LIMIT' | 'DCA';
+  limitPrice: string;
 
   sourceChain: ChainConfig;
   destChain: ChainConfig;
@@ -124,6 +128,9 @@ export interface ZenithState {
   marketDataStatus: MarketStatus;
 
   setActiveTab: (tab: ZenithState['activeTab']) => void;
+  setExecutionMode: (mode: 'INSTANT_AMM' | 'GASLESS_INTENT') => void;
+  setOrderType: (type: 'SWAP' | 'LIMIT' | 'DCA') => void;
+  setLimitPrice: (price: string) => void;
   setProMode: (pro: boolean) => void;
   toggleTheme: () => void;
   updateSingleTokenMarketData: (chainId: string, address: string, data: LiveMarketData) => void;
@@ -226,7 +233,6 @@ export const resolveTokenLivePrice = (token: Token, marketDataRecord: Record<str
     return price;
   }
 
-  // Fallback for stablecoins if unpriced
   if (
     ['usdc', 'usdt', 'dai', 'usde', 'pyusd', 'fdusd', 'busd'].includes(symKey) ||
     ['usdc', 'usdt', 'dai', 'usde', 'pyusd', 'fdusd', 'busd'].includes(cleanSym)
@@ -250,6 +256,10 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     activeTab: 'TRADE',
     isProMode: true,
     theme: getStoredTheme(),
+
+    executionMode: 'INSTANT_AMM',
+    orderType: 'SWAP',
+    limitPrice: '',
 
     sourceChain: defaultEthChain,
     destChain: defaultEthChain,
@@ -312,6 +322,9 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     marketDataStatus: 'UNAVAILABLE',
 
     setActiveTab: (tab) => set({ activeTab: tab }),
+    setExecutionMode: (executionMode) => set({ executionMode }),
+    setOrderType: (orderType) => set({ orderType }),
+    setLimitPrice: (limitPrice) => set({ limitPrice }),
     setProMode: (isProMode) => set({ isProMode }),
     toggleTheme: () => {
       const nextTheme = get().theme === 'dark' ? 'light' : 'dark';
@@ -493,12 +506,11 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     setAmountIn: (rawAmountIn) => {
       const validation = validateAndSanitizeAmount(rawAmountIn);
       if (!validation.isValid) {
-        // Reject amounts exceeding 9,999,999.999 or invalid numeric inputs
+
         return;
       }
       set({ amountIn: validation.sanitized });
 
-      // Clear any pending debounce timer
       if (quoteDebounceTimer) {
         clearTimeout(quoteDebounceTimer);
         quoteDebounceTimer = null;
@@ -509,7 +521,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         return;
       }
 
-      // 350ms debounce so rapid typing does not trigger network requests on every keystroke
       quoteDebounceTimer = setTimeout(() => {
         get().fetchQuote();
       }, 350);
@@ -870,14 +881,14 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     toggleNotificationDrawer: () => set((state) => ({ isNotificationDrawerOpen: !state.isNotificationDrawerOpen })),
 
     fetchQuote: async () => {
-      // Clear pending debounce timer if fetchQuote is invoked explicitly (e.g. token switch, network change, manual refresh)
+
       if (quoteDebounceTimer) {
         clearTimeout(quoteDebounceTimer);
         quoteDebounceTimer = null;
       }
 
       const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset, marketData } = get();
-      
+
       const validation = validateAndSanitizeAmount(amountIn);
       if (!validation.isValid || validation.numericValue <= 0) {
         set({ quote: null, quoteError: null, isQuoteLoading: false });
@@ -885,7 +896,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       }
 
       const cleanAmount = validation.sanitized;
-      // Increment quote request sequence counter to discard stale responses
+
       const currentRequestId = ++activeQuoteRequestId;
 
       set({ isQuoteLoading: true, quoteError: null });
@@ -921,7 +932,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           gasPreset
         });
 
-        // Stale response guard: discard if a newer quote request was initiated
         if (currentRequestId !== activeQuoteRequestId) {
           return;
         }
@@ -933,7 +943,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           quoteError: null
         });
       } catch (err: any) {
-        // Stale response guard
+
         if (currentRequestId !== activeQuoteRequestId) {
           return;
         }
@@ -1102,7 +1112,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         marketDataStatus: data.isLive ? 'LIVE' : defaultMarketDataService.getOverallStatus()
       }));
 
-      // Automatically recalculate quote if the active pair's price changed!
       if (priceChanged && get().amountIn && parseFloat(get().amountIn) > 0) {
         get().fetchQuote();
       }
@@ -1140,7 +1149,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           marketDataStatus: defaultMarketDataService.getOverallStatus()
         });
 
-        // Refresh quote with live market prices
         get().fetchQuote();
       } catch (err: any) {
         set({

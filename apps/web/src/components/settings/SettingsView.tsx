@@ -41,11 +41,10 @@ export const SettingsView: React.FC = () => {
             <button
               key={preset}
               onClick={() => setSlippage(preset)}
-              className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all ${
-                slippagePreset === preset
+              className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all ${slippagePreset === preset
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-glow-cyan'
                   : 'bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700'
-              }`}
+                }`}
             >
               {preset}
             </button>
@@ -83,11 +82,10 @@ export const SettingsView: React.FC = () => {
             <div
               key={item.id}
               onClick={() => setMEVProtection(item.id as any)}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                mevProtection === item.id
+              className={`p-4 rounded-xl border cursor-pointer transition-all ${mevProtection === item.id
                   ? 'bg-cyan-950/30 border-cyan-500/50 shadow-glow-cyan'
                   : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-bold text-sm text-white">{item.title}</span>
@@ -110,11 +108,10 @@ export const SettingsView: React.FC = () => {
             <button
               key={preset}
               onClick={() => setGasPreset(preset)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                gasPreset === preset
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${gasPreset === preset
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                   : 'bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700'
-              }`}
+                }`}
             >
               {preset}
             </button>

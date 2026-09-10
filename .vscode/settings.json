@@ -1,0 +1,13 @@
+{
+  "solidity.packageDefaultDependenciesContractsDirectory": "src",
+  "solidity.packageDefaultDependenciesDirectory": "contracts/evm/lib",
+  "solidity.remappings": [
+    "forge-std/=contracts/evm/lib/forge-std/src/"
+  ],
+  "solidity.remappingsUnix": [
+    "forge-std/=contracts/evm/lib/forge-std/src/"
+  ],
+  "solidity.remappingsWindows": [
+    "forge-std/=contracts/evm/lib/forge-std/src/"
+  ]
+}

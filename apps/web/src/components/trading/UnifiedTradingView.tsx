@@ -103,9 +103,9 @@ export const UnifiedTradingView: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-4">
-      {/* Top Header Bar: Pair Stats, Global Network Context & Automated Protection Status */}
+      {}
       <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800/80 shadow-xl flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        {/* Row 1 on Narrow / Left on Desktop: Pair & Network Context */}
+        {}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2 shrink-0">
@@ -162,14 +162,14 @@ export const UnifiedTradingView: React.FC = () => {
             </div>
           </div>
 
-          {/* Protection Status Badge (Mobile / Narrow Top Row placement) */}
+          {}
           <div className="xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 text-xs font-mono shrink-0">
             <Lock className="w-3.5 h-3.5 text-cyan-400" />
             <span className="font-semibold text-cyan-300">Private Relay Protected</span>
           </div>
         </div>
 
-        {/* 24h Market Stats Strip — Always visible across all viewports (never hidden) */}
+        {}
         <div className="grid grid-cols-2 sm:grid-cols-4 xl:flex xl:items-center gap-3 sm:gap-6 pt-3 xl:pt-0 border-t xl:border-t-0 xl:border-l border-slate-800/80 xl:pl-6 text-xs font-mono">
           <div>
             <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Mark Price</span>
@@ -199,7 +199,7 @@ export const UnifiedTradingView: React.FC = () => {
           </div>
         </div>
 
-        {/* Protection Status Badge (Desktop placement) */}
+        {}
         <div className="hidden xl:flex items-center gap-3 text-xs font-mono shrink-0">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 shadow-sm">
             <Lock className="w-3.5 h-3.5 text-cyan-400" />
@@ -333,9 +333,6 @@ export const UnifiedTradingView: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-3 font-mono">
-                          <span className="text-emerald-400 font-semibold">
-                            Gas: ~${r.gasCostUSD < 0.01 ? r.gasCostUSD.toFixed(4) : r.gasCostUSD.toFixed(2)}
-                          </span>
                           {i === 0 && (
                             <span className="px-2 py-0.5 rounded bg-cyan-500 text-slate-950 font-bold text-[10px]">
                               BEST ROUTE

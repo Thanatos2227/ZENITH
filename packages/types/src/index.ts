@@ -157,6 +157,8 @@ export type DEXProtocol =
   | 'UNISWAP_V2'
   | 'UNISWAP_V3'
   | 'UNISWAP_V4'
+  | 'ZENITH_V4_CONCENTRATED'
+  | 'ZENITH_DUTCH_INTENT'
   | 'CURVE'
   | 'BALANCER_V2'
   | 'AERODROME'
@@ -497,3 +499,87 @@ export interface ZenithNotification {
   chainId?: string;
   actionUrl?: string;
 }
+
+export interface ZenithPool {
+  id: string;
+  poolAddress: string;
+  chainId: string;
+  token0: Token;
+  token1: Token;
+  feeBps: number;
+  tickSpacing: number;
+  sqrtPriceX96: string;
+  currentTick: number;
+  liquidity: string;
+  tvlUSD: number;
+  volume24hUSD: number;
+  volume7dUSD: number;
+  fees24hUSD: number;
+  aprPercent: number;
+  hookAddress?: string;
+  hookName?: string;
+  isDynamicFee?: boolean;
+}
+
+export interface LPPosition {
+  tokenId: string;
+  poolId: string;
+  token0: Token;
+  token1: Token;
+  feeBps: number;
+  tickLower: number;
+  tickUpper: number;
+  priceLower: number;
+  priceUpper: number;
+  currentPrice: number;
+  isInRange: boolean;
+  liquidityRaw: string;
+  depositedAmount0: string;
+  depositedAmount1: string;
+  depositedUSD: number;
+  unclaimedFee0: string;
+  unclaimedFee1: string;
+  unclaimedFeeUSD: number;
+  earnedAprPercent: number;
+  createdAt: number;
+}
+
+export interface ConcentratedRange {
+  minPrice: number;
+  maxPrice: number;
+  tickLower: number;
+  tickUpper: number;
+  isFullRange: boolean;
+}
+
+export interface DutchAuctionOrderIntent {
+  orderId: string;
+  userAddress: string;
+  inputToken: Token;
+  outputToken: Token;
+  inputAmountRaw: string;
+  startOutputAmountRaw: string;
+  endOutputAmountRaw: string;
+  decayStartTime: number;
+  decayEndTime: number;
+  recipient: string;
+  nonce: number;
+  signature?: string;
+  status: 'PENDING' | 'FILLING' | 'FILLED' | 'CANCELLED' | 'EXPIRED';
+  fillerAddress?: string;
+  fillTxHash?: string;
+  filledOutputRaw?: string;
+}
+
+export interface ProtocolAnalytics {
+  totalValueLockedUSD: number;
+  totalVolume24hUSD: number;
+  totalVolume7dUSD: number;
+  totalFees24hUSD: number;
+  totalTransactions24h: number;
+  activeLPsCount: number;
+  topPools: ZenithPool[];
+  topTokens: Token[];
+  historicalVolume: Array<{ timestamp: number; volumeUSD: number; tvlUSD: number }>;
+}
+

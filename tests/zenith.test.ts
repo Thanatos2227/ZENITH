@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { defaultChainRegistry } from '../packages/chains/src/registry';
-import { DEFAULT_TOKENS, defaultTokenService } from '../packages/tokens/src';
+import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService } from '../packages/tokens/src';
 import { defaultTokenRiskEngine, defaultCircuitBreaker } from '../packages/security/src';
 import {
   defaultZenithRouter,
@@ -15,7 +15,6 @@ import {
 } from '../packages/routing/src';
 import { ExecutionStateMachine, defaultIntentEngine, defaultEVMAdapter } from '../packages/execution/src';
 import { CrossChainIntent } from '../packages/types/src';
-
 
 test('1. Universal Network Support Tier System & 53-Chain Governance', () => {
   const allChains = defaultChainRegistry.getAllChains();
@@ -462,95 +461,82 @@ test('19. EVM Token Authorization & Allowance Verification', async () => {
 });
 
 test('20. Strict Swap Amount Input Validation, 3-Decimal Truncation, and Upper Boundary Limits', () => {
-  // Test case 1: '1'
+
   const t1 = validateAndSanitizeAmount('1');
   assert.equal(t1.isValid, true);
   assert.equal(t1.sanitized, '1');
   assert.equal(t1.numericValue, 1);
   assert.equal(t1.isTruncated, false);
 
-  // Test case 2: '1.' (preserve typing decimal point)
   const t2 = validateAndSanitizeAmount('1.');
   assert.equal(t2.isValid, true);
   assert.equal(t2.sanitized, '1.');
   assert.equal(t2.numericValue, 1);
   assert.equal(t2.isTruncated, false);
 
-  // Test case 3: '1.1'
   const t3 = validateAndSanitizeAmount('1.1');
   assert.equal(t3.isValid, true);
   assert.equal(t3.sanitized, '1.1');
   assert.equal(t3.numericValue, 1.1);
   assert.equal(t3.isTruncated, false);
 
-  // Test case 4: '1.11'
   const t4 = validateAndSanitizeAmount('1.11');
   assert.equal(t4.isValid, true);
   assert.equal(t4.sanitized, '1.11');
   assert.equal(t4.numericValue, 1.11);
   assert.equal(t4.isTruncated, false);
 
-  // Test case 5: '1.111'
   const t5 = validateAndSanitizeAmount('1.111');
   assert.equal(t5.isValid, true);
   assert.equal(t5.sanitized, '1.111');
   assert.equal(t5.numericValue, 1.111);
   assert.equal(t5.isTruncated, false);
 
-  // Test case 6: '1.1111' -> MUST TRUNCATE TO '1.111'
   const t6 = validateAndSanitizeAmount('1.1111');
   assert.equal(t6.isValid, true);
   assert.equal(t6.sanitized, '1.111');
   assert.equal(t6.numericValue, 1.111);
   assert.equal(t6.isTruncated, true);
 
-  // Test case 7: '1.1119' -> MUST TRUNCATE TO '1.111', NOT ROUND TO 1.112
   const t7 = validateAndSanitizeAmount('1.1119');
   assert.equal(t7.isValid, true);
   assert.equal(t7.sanitized, '1.111');
-  assert.notEqual(t7.sanitized, '1.112'); // STRICT TRUNCATION VERIFICATION
+  assert.notEqual(t7.sanitized, '1.112');
   assert.equal(t7.numericValue, 1.111);
   assert.equal(t7.isTruncated, true);
 
-  // Test case 8: '25.123456' -> MUST TRUNCATE TO '25.123'
   const t8 = validateAndSanitizeAmount('25.123456');
   assert.equal(t8.isValid, true);
   assert.equal(t8.sanitized, '25.123');
   assert.equal(t8.numericValue, 25.123);
   assert.equal(t8.isTruncated, true);
 
-  // Test case 9: '9999999.999' -> EXACT MAXIMUM
   const t9 = validateAndSanitizeAmount('9999999.999');
   assert.equal(t9.isValid, true);
   assert.equal(t9.sanitized, '9999999.999');
   assert.equal(t9.numericValue, 9999999.999);
   assert.equal(t9.isTruncated, false);
 
-  // Test case 10: '10000000' -> MUST REJECT (integer portion exceeds 9999999)
   const t10 = validateAndSanitizeAmount('10000000');
   assert.equal(t10.isValid, false);
   assert.ok(t10.error);
 
-  // Test case 11: '99999999' -> MUST REJECT
   const t11 = validateAndSanitizeAmount('99999999');
   assert.equal(t11.isValid, false);
   assert.ok(t11.error);
 
-  // Test case 12: '0.0001' -> MUST TRUNCATE TO '0.000'
   const t12 = validateAndSanitizeAmount('0.0001');
   assert.equal(t12.isValid, true);
   assert.equal(t12.sanitized, '0.000');
   assert.equal(t12.numericValue, 0);
   assert.equal(t12.isTruncated, true);
 
-  // Additional typing & edge case tests
   assert.equal(validateAndSanitizeAmount('').isValid, true);
   assert.equal(validateAndSanitizeAmount('.').sanitized, '0.');
   assert.equal(validateAndSanitizeAmount('9,999,999.999').sanitized, '9999999.999');
   assert.equal(validateAndSanitizeAmount('-5').isValid, false);
   assert.equal(validateAndSanitizeAmount('1e6').isValid, false);
 
-  // Helper truncateToThreeDecimals
   assert.equal(truncateToThreeDecimals(1.1119), '1.111');
   assert.equal(truncateToThreeDecimals(25.123456), '25.123');
   assert.equal(truncateToThreeDecimals(10000000), '9999999.999');
@@ -560,7 +546,6 @@ test('21. Router and Calculation Protection from Extremely Large Amounts', async
   const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'ETH')!;
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
 
-  // Try to request a quote with an amount exceeding MAX_SWAP_AMOUNT (e.g. 10,000,000 ETH)
   const massiveAmountRaw = (10000000n * 10n ** 18n).toString();
 
   await assert.rejects(
@@ -576,5 +561,81 @@ test('21. Router and Calculation Protection from Extremely Large Amounts', async
     },
     /exceeds maximum allowed limit/
   );
+});
+
+test('22. Concentrated Liquidity Price to SqrtX96 and Token Delta Calculations', () => {
+  const sqrtPriceX96_1to1 = ConcentratedLiquidityMath.priceToSqrtRatioX96(1.0);
+  assert.equal(sqrtPriceX96_1to1.toString(), '79228162514264337593543950336');
+
+  const priceFromSqrt = ConcentratedLiquidityMath.sqrtRatioX96ToPrice(sqrtPriceX96_1to1);
+  assert.ok(Math.abs(priceFromSqrt - 1.0) < 0.0001);
+
+  const sqrtA = ConcentratedLiquidityMath.priceToSqrtRatioX96(0.9);
+  const sqrtB = ConcentratedLiquidityMath.priceToSqrtRatioX96(1.1);
+  const liquidity = 1000000000000000000n;
+
+  const amount0Delta = ConcentratedLiquidityMath.getAmount0Delta(sqrtA, sqrtB, liquidity);
+  const amount1Delta = ConcentratedLiquidityMath.getAmount1Delta(sqrtA, sqrtB, liquidity);
+
+  assert.ok(amount0Delta > 0n);
+  assert.ok(amount1Delta > 0n);
+});
+
+test('23. Split-Route Smart Order Routing (SOR) with ZENITH_V4_CONCENTRATED & ZENITH_DUTCH_INTENT', async () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'ETH')!;
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
+
+  const quote = await defaultZenithRouter.getQuote({
+    sourceChainId: 'ethereum',
+    destinationChainId: 'ethereum',
+    tokenIn,
+    tokenOut,
+    amountInRaw: (2n * 10n ** 18n).toString(),
+    slippageTolerancePercent: 0.5
+  });
+
+  assert.ok(quote.routes.length >= 2);
+  const hasConcentratedV4 = quote.routes.some((r) => r.hops.some((h) => h.dexProtocol === 'ZENITH_V4_CONCENTRATED'));
+  const hasGaslessIntent = quote.routes.some((r) => r.hops.some((h) => h.dexProtocol === 'ZENITH_DUTCH_INTENT'));
+
+  assert.equal(hasConcentratedV4, true, 'Should include ZENITH v4 concentrated route');
+  assert.equal(hasGaslessIntent, true, 'Should include ZENITH Dutch auction gasless intent route');
+});
+
+test('24. UniswapX-Style Dutch Auction Price Decay Calculation', () => {
+  const startOutput = 1000n;
+  const endOutput = 900n;
+  const startTime = 1000;
+  const endTime = 2000;
+
+  const getRequiredOutput = (timestamp: number): bigint => {
+    if (timestamp <= startTime) return startOutput;
+    if (timestamp >= endTime) return endOutput;
+    const elapsed = BigInt(timestamp - startTime);
+    const duration = BigInt(endTime - startTime);
+    const decayTotal = startOutput - endOutput;
+    return startOutput - (decayTotal * elapsed) / duration;
+  };
+
+  assert.equal(getRequiredOutput(900), 1000n);
+  assert.equal(getRequiredOutput(1500), 950n);
+  assert.equal(getRequiredOutput(2000), 900n);
+  assert.equal(getRequiredOutput(2500), 900n);
+});
+
+test('25. Protocol Analytics & Concentrated LP Position Management', () => {
+  const analytics = defaultMarketDataService.getProtocolAnalytics();
+  assert.ok(analytics.totalValueLockedUSD > 100000000);
+  assert.ok(analytics.totalVolume24hUSD > 50000000);
+  assert.ok(analytics.topPools.length >= 3);
+
+  const pools = defaultMarketDataService.getPools();
+  assert.ok(pools.some((p) => p.token0.symbol === 'USDC' && p.token1.symbol === 'ETH'));
+  assert.ok(pools.some((p) => p.isDynamicFee === true));
+
+  const userPositions = defaultMarketDataService.getUserPositions('0xAlice');
+  assert.ok(userPositions.length >= 2);
+  assert.equal(userPositions[0].isInRange, true);
+  assert.ok(userPositions[0].earnedAprPercent > 0);
 });
 

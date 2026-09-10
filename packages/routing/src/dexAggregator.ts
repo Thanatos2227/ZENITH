@@ -20,6 +20,43 @@ export class DEXAggregator {
     const directGasUnits = defaultChainRegistry.getGasUnits(chainId, false);
     const directGasCostUSD = defaultChainRegistry.getEstimatedGasCostUSD(chainId, 'SWAP', params.gasPreset);
 
+    const zenithNativeGasUnits = (directGasUnits * 8n) / 10n;
+    routes.push({
+      id: `route-zenith-v4-concentrated`,
+      routeType: 'DIRECT',
+      hops: [
+        {
+          dexProtocol: 'ZENITH_V4_CONCENTRATED',
+          poolAddress: '0xZENITHPoolManagerSingleton000000000001',
+          tokenIn: params.tokenIn,
+          tokenOut: params.tokenOut,
+          feeTierBps: 5,
+          proportionPercent: 100,
+          estimatedGas: zenithNativeGasUnits
+        }
+      ],
+      gasCostUSD: directGasCostUSD * 0.8,
+      estimatedGasUnits: zenithNativeGasUnits
+    });
+
+    routes.push({
+      id: `route-zenith-dutch-intent`,
+      routeType: 'DIRECT',
+      hops: [
+        {
+          dexProtocol: 'ZENITH_DUTCH_INTENT',
+          poolAddress: '0xZENITHReactorSettlement000000000001',
+          tokenIn: params.tokenIn,
+          tokenOut: params.tokenOut,
+          feeTierBps: 0,
+          proportionPercent: 100,
+          estimatedGas: 0n
+        }
+      ],
+      gasCostUSD: 0,
+      estimatedGasUnits: 0n
+    });
+
     const directHops: RouteHop[] = [
       {
         dexProtocol: directDEX,

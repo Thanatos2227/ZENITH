@@ -22,6 +22,7 @@ export const ConfirmSheet: React.FC = () => {
     amountIn,
     slippageTolerancePercent,
     mevProtection,
+    executionMode,
     executionStatus,
     executionSteps,
     executeTrade
@@ -56,6 +57,17 @@ export const ConfirmSheet: React.FC = () => {
         </div>
 
         <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-mono text-slate-400">Execution Route Engine</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${
+              executionMode === 'GASLESS_INTENT'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+            }`}>
+              {executionMode === 'GASLESS_INTENT' ? '⚡ Gasless Dutch Auction (Permit2)' : '⚡ v4 Singleton AMM'}
+            </span>
+          </div>
+
           <div className="bg-[#0B111E] rounded-xl p-4 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -112,13 +124,6 @@ export const ConfirmSheet: React.FC = () => {
                 }`}
               >
                 {quote.priceImpact.percentage}% ({quote.priceImpact.level})
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Network Gas Fee ({sourceChain.shortName})</span>
-              <span className="font-mono text-emerald-400 font-semibold">
-                ~${quote.bestRoute.gasCostUSD < 0.01 ? quote.bestRoute.gasCostUSD.toFixed(4) : quote.bestRoute.gasCostUSD.toFixed(2)}
               </span>
             </div>
 

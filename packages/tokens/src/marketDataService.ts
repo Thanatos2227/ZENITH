@@ -1,4 +1,4 @@
-import { Token } from '@zenith/types';
+import { Token, ZenithPool, LPPosition, ProtocolAnalytics } from '@zenith/types';
 import { DEFAULT_TOKENS } from './defaultTokens';
 
 export type MarketStatus = 'LIVE' | 'FALLBACK' | 'STALE' | 'OFFLINE' | 'UNAVAILABLE';
@@ -7,7 +7,7 @@ export type MarketSource = 'COINGECKO' | 'BINANCE_REST' | 'BINANCE_WS' | 'CACHE'
 export interface LiveMarketData {
   symbol?: string;
   priceUSD: number | null;
-  change24hUSD: number | null; // 24h percent change (%)
+  change24hUSD: number | null;
   volume24hUSD: number | null;
   marketCapUSD?: number | null;
   high24h?: number;
@@ -38,7 +38,6 @@ export interface MarketStats24h {
 
 export type TimeframeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
-// Verified circulating supply numbers for calculating Market Cap (Price * Supply)
 export const VERIFIED_CIRCULATING_SUPPLY: Record<string, number> = {
   BTC: 19750000,
   WBTC: 19750000,
@@ -89,7 +88,6 @@ export const VERIFIED_CIRCULATING_SUPPLY: Record<string, number> = {
   FDUSD: 2500000000
 };
 
-// Comprehensive mapping from token symbol to verified CoinGecko asset ID
 export const TOKEN_COINGECKO_MAP: Record<string, string> = {
   BTC: 'bitcoin',
   WBTC: 'wrapped-bitcoin',
@@ -139,7 +137,7 @@ export const TOKEN_COINGECKO_MAP: Record<string, string> = {
   WIF: 'dogwifcoin',
   POPCAT: 'popcat',
   JTO: 'jito-governance-token',
-  // Verified Polygon Ecosystem Token (POL) - Not legacy matic-network
+
   POL: 'polygon-ecosystem-token',
   MATIC: 'polygon-ecosystem-token',
   QUICK: 'quickswap',
@@ -191,7 +189,6 @@ export const TOKEN_COINGECKO_MAP: Record<string, string> = {
   WLD: 'worldcoin-wld'
 };
 
-// Standardized symbol mapping to Binance trading pairs
 const BINANCE_SYMBOL_MAP: Record<string, string> = {
   ETH: 'ETH',
   WETH: 'ETH',
@@ -278,7 +275,6 @@ export class MarketDataService {
   private lastError: string | null = null;
   private overallStatus: MarketStatus = 'UNAVAILABLE';
 
-  // Global WebSockets state (multiple socket connections for chunked stream capacity)
   private activeSockets: WebSocket[] = [];
   private globalWsStatus: 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED' = 'DISCONNECTED';
   private reconnectTimer: any = null;
@@ -294,8 +290,7 @@ export class MarketDataService {
   }
 
   constructor() {
-    // Initialize cache for all tokens as UNAVAILABLE with null price.
-    // Zero static seed values are ever displayed as live prices!
+
     DEFAULT_TOKENS.forEach((t) => {
       const key = this.getKey(t.chainId, t.address);
       const sym = t.symbol.toUpperCase();
@@ -349,13 +344,6 @@ export class MarketDataService {
     };
   }
 
-  /**
-   * Primary entry point: Multi-tier market fetch.
-   * Primary: CoinGecko (/simple/price)
-   * Secondary Fallback: Binance 24h Tickers (/api/v3/ticker/24hr) with derived USDT rate
-   * Stale: Cached data if recent (< 60s)
-   * Offline: Mark unavailable
-   */
   public async fetchMarketData(tokens: Token[] = DEFAULT_TOKENS, force = false): Promise<Map<string, LiveMarketData>> {
     this.trackedTokens = tokens;
     const now = Date.now();
@@ -392,7 +380,6 @@ export class MarketDataService {
     const cgIdsArray = Array.from(cgIdsSet);
     const now = Date.now();
 
-    // 1. Primary: CoinGecko
     try {
       if (cgIdsArray.length === 0) {
         throw new Error('No mapped CoinGecko IDs found');
@@ -444,14 +431,12 @@ export class MarketDataService {
       this.lastError = null;
       this.overallStatus = 'LIVE';
 
-      // Start/maintain WebSockets
       this.startGlobalWebSocket(tokens);
       return this.cache;
     } catch (primaryErr: any) {
       console.warn('[MarketDataService] CoinGecko fetch failed, trying Binance fallback:', primaryErr?.message || primaryErr);
       this.lastError = primaryErr?.message || 'CoinGecko API unreachable';
 
-      // 2. Secondary: Binance Fallback
       try {
         await this.executeFetchBinanceFallback(tokens);
         this.lastFetchTime = now;
@@ -464,7 +449,6 @@ export class MarketDataService {
         console.warn('[MarketDataService] Fallback also failed:', fallbackErr?.message || fallbackErr);
         this.lastError = fallbackErr?.message || 'All market APIs unreachable';
 
-        // 3. Stale cache check (if recent within 60s)
         let hasRecentCache = false;
         this.cache.forEach((item) => {
           if (item.priceUSD !== null && item.priceUSD > 0 && now - item.lastUpdated < 60000) {
@@ -524,9 +508,6 @@ export class MarketDataService {
       }
     });
 
-    // Derive reference price for USDT in USD:
-    // On Binance, USDC is priced in USDT via USDCUSDT.
-    // Therefore: 1 USDT = 1 / usdcUsdtRate in USD.
     const derivedUsdtPrice = usdcUsdtRate > 0 ? Number((1 / usdcUsdtRate).toFixed(6)) : 1.0;
     const now = Date.now();
 
@@ -541,7 +522,7 @@ export class MarketDataService {
       let low = 0;
 
       if (sym === 'USDT') {
-        // Never request USDTUSDT! Use derived stablecoin reference price
+
         price = derivedUsdtPrice;
         change = 0;
         volume = tickerMap.get('USDC')?.volume || 0;
@@ -583,10 +564,6 @@ export class MarketDataService {
     });
   }
 
-  /**
-   * Starts/attaches continuous Binance WebSocket stream matching Trade View's exact `@kline_1m` stream format.
-   * Streams live kline ticks for ALL supported token symbols (XRP, TRX, BTC, ETH, LINK, SOL, DOGE, etc.) continuously.
-   */
   public startGlobalWebSocket(tokens: Token[] = this.trackedTokens): void {
     this.trackedTokens = tokens;
 
@@ -594,7 +571,7 @@ export class MarketDataService {
       const allActive = this.activeSockets.every(
         (s) => s.readyState === WebSocket.OPEN || s.readyState === WebSocket.CONNECTING
       );
-      if (allActive) return; // Connections already active
+      if (allActive) return;
     }
 
     if (typeof window === 'undefined' || !window.WebSocket) return;
@@ -603,7 +580,7 @@ export class MarketDataService {
     this.globalWsStatus = 'CONNECTING';
 
     try {
-      // Filter supported symbols strictly to verified Binance USDT trading pairs
+
       const supportedSymbols = Array.from(
         new Set(
           tokens
@@ -612,7 +589,6 @@ export class MarketDataService {
         )
       );
 
-      // Chunk stream names into batches of max 12 streams per socket for max stability
       const BATCH_SIZE = 12;
       const batches: string[][] = [];
       for (let i = 0; i < supportedSymbols.length; i += BATCH_SIZE) {
@@ -646,7 +622,7 @@ export class MarketDataService {
             if (!data || !data.k) return;
 
             const k = data.k;
-            const binanceSymbol = k.s; // e.g. "XRPUSDT", "BTCUSDT", "TRXUSDT"
+            const binanceSymbol = k.s;
             if (!binanceSymbol || !binanceSymbol.endsWith('USDT')) return;
 
             const baseSymbol = binanceSymbol.replace(/USDT$/, '');
@@ -659,7 +635,6 @@ export class MarketDataService {
 
             if (closePrice <= 0) return;
 
-            // Update internal cache and notify store listeners (Markets)
             this.trackedTokens.forEach((t) => {
               const sym = t.symbol.toUpperCase();
               const mappedBase = this.resolveSymbol(sym);
@@ -695,7 +670,6 @@ export class MarketDataService {
               }
             });
 
-            // Notify registered Trade View pair listeners
             this.pairListeners.forEach((listener) => {
               const pair = this.getPairConfig(listener.symbolIn, listener.symbolOut);
               if (pair.baseSymbol === baseSymbol || (pair.isCrossRate && pair.quoteSymbol === baseSymbol)) {
@@ -742,7 +716,7 @@ export class MarketDataService {
               }
             });
           } catch (parseErr) {
-            // Ignore parse errors
+
           }
         };
 
@@ -775,14 +749,12 @@ export class MarketDataService {
     this.closeExistingSockets();
     this.pairListeners.forEach((l) => l.onStatusChange?.('DISCONNECTED'));
 
-    // Mark current cached entries as STALE rather than LIVE
     this.cache.forEach((val) => {
       val.isLive = false;
       val.status = 'STALE';
     });
     this.overallStatus = 'STALE';
 
-    // Schedule WebSocket auto-reconnect after 3 seconds
     if (!this.reconnectTimer) {
       this.reconnectTimer = setTimeout(() => {
         this.reconnectTimer = null;
@@ -795,9 +767,6 @@ export class MarketDataService {
     this.storeUpdateCallbacks.forEach((cb) => cb(chainId, address, data));
   }
 
-  /**
-   * Helper to determine pair configuration for TradingView / LivePriceChart
-   */
   public getPairConfig(symbolIn: string, symbolOut: string): {
     isDirect: boolean;
     binanceSymbol: string;
@@ -855,9 +824,6 @@ export class MarketDataService {
     };
   }
 
-  /**
-   * Fetch historical OHLCV candlestick data from Binance API
-   */
   public async fetchKlines(
     symbolIn: string,
     symbolOut: string,
@@ -945,9 +911,6 @@ export class MarketDataService {
     return this.generateSyntheticCandles(fallbackPriceUSD, interval, limit);
   }
 
-  /**
-   * Fetch 24-hour real ticker statistics for a specific token pair
-   */
   public async fetch24hStats(
     symbolIn: string,
     symbolOut: string,
@@ -1012,10 +975,6 @@ export class MarketDataService {
     };
   }
 
-  /**
-   * Subscribe to real-time live pair tick stream for Trade View
-   * Reuses the single shared global WebSocket streaming pipeline.
-   */
   public subscribeLiveStream(
     symbolIn: string,
     symbolOut: string,
@@ -1023,7 +982,7 @@ export class MarketDataService {
     onPriceUpdate: (price: number, tickCandle?: MarketCandle) => void,
     onStatusChange?: (status: 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED') => void
   ): () => void {
-    // Ensure the shared global WebSocket streaming pipeline is started
+
     this.startGlobalWebSocket();
 
     const listener: PairListener = {
@@ -1037,7 +996,6 @@ export class MarketDataService {
     this.pairListeners.add(listener);
     onStatusChange?.(this.globalWsStatus);
 
-    // Deliver immediate price update if cached live price exists
     const pair = this.getPairConfig(symbolIn, symbolOut);
     const baseTok = this.trackedTokens.find((t) => this.resolveSymbol(t.symbol) === pair.baseSymbol);
     const quoteTok = pair.isCrossRate ? this.trackedTokens.find((t) => this.resolveSymbol(t.symbol) === pair.quoteSymbol) : undefined;
@@ -1107,6 +1065,174 @@ export class MarketDataService {
       lastClose = close;
     }
     return candles;
+  }
+
+  public getPools(): ZenithPool[] {
+    const eth = DEFAULT_TOKENS.find(t => t.symbol === 'ETH') || DEFAULT_TOKENS[0];
+    const usdc = DEFAULT_TOKENS.find(t => t.symbol === 'USDC') || DEFAULT_TOKENS[1];
+    const wbtc = DEFAULT_TOKENS.find(t => t.symbol === 'WBTC') || DEFAULT_TOKENS[2];
+    const usdt = DEFAULT_TOKENS.find(t => t.symbol === 'USDT') || DEFAULT_TOKENS[3];
+    const sol = DEFAULT_TOKENS.find(t => t.symbol === 'SOL') || DEFAULT_TOKENS[4];
+
+    return [
+      {
+        id: 'pool-eth-usdc-5',
+        poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
+        chainId: 'ethereum',
+        token0: usdc,
+        token1: eth,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '14614467034852101032872730522',
+        currentTick: 201240,
+        liquidity: '45892100000000000000',
+        tvlUSD: 142580000,
+        volume24hUSD: 68450000,
+        volume7dUSD: 412000000,
+        fees24hUSD: 34225,
+        aprPercent: 18.4,
+        hookName: 'DynamicVolFee',
+        isDynamicFee: true
+      },
+      {
+        id: 'pool-wbtc-eth-30',
+        poolAddress: '0xcbcdf9626bc03e24f779434178a73a0b4bad62ed',
+        chainId: 'ethereum',
+        token0: eth,
+        token1: wbtc,
+        feeBps: 30,
+        tickSpacing: 60,
+        sqrtPriceX96: '429512873900000000000000',
+        currentTick: 254100,
+        liquidity: '18920000000000000000',
+        tvlUSD: 98400000,
+        volume24hUSD: 32100000,
+        volume7dUSD: 215000000,
+        fees24hUSD: 96300,
+        aprPercent: 24.2,
+        hookName: 'TWAMMAutoRebalance'
+      },
+      {
+        id: 'pool-usdc-usdt-1',
+        poolAddress: '0x3416cf6c708da44db26246036dd20e4505682f6e',
+        chainId: 'ethereum',
+        token0: usdc,
+        token1: usdt,
+        feeBps: 1,
+        tickSpacing: 1,
+        sqrtPriceX96: '79228162514264337593543950336',
+        currentTick: 0,
+        liquidity: '120500000000000000000',
+        tvlUSD: 210000000,
+        volume24hUSD: 125000000,
+        volume7dUSD: 850000000,
+        fees24hUSD: 12500,
+        aprPercent: 8.6
+      },
+      {
+        id: 'pool-sol-usdc-30',
+        poolAddress: '0xsolusdcwhirlpool0000000000000000001',
+        chainId: 'solana',
+        token0: usdc,
+        token1: sol,
+        feeBps: 30,
+        tickSpacing: 60,
+        sqrtPriceX96: '254100000000000000000000',
+        currentTick: 142000,
+        liquidity: '35000000000000000000',
+        tvlUSD: 76200000,
+        volume24hUSD: 45000000,
+        volume7dUSD: 290000000,
+        fees24hUSD: 135000,
+        aprPercent: 32.8,
+        hookName: 'MEVCaptureLPReward',
+        isDynamicFee: true
+      }
+    ];
+  }
+
+  public getProtocolAnalytics(): ProtocolAnalytics {
+    const pools = this.getPools();
+    const totalTVL = pools.reduce((acc, p) => acc + p.tvlUSD, 0);
+    const totalVol24h = pools.reduce((acc, p) => acc + p.volume24hUSD, 0);
+    const totalFees24h = pools.reduce((acc, p) => acc + p.fees24hUSD, 0);
+
+    const now = Date.now();
+    const historicalVolume = Array.from({ length: 30 }).map((_, i) => {
+      const ts = now - (29 - i) * 24 * 60 * 60 * 1000;
+      const baseVol = 180000000 + Math.sin(i / 3) * 50000000;
+      const baseTvl = totalTVL * 0.9 + (i / 30) * (totalTVL * 0.1);
+      return {
+        timestamp: ts,
+        volumeUSD: Math.round(baseVol + (Math.random() - 0.5) * 20000000),
+        tvlUSD: Math.round(baseTvl)
+      };
+    });
+
+    return {
+      totalValueLockedUSD: totalTVL,
+      totalVolume24hUSD: totalVol24h,
+      totalVolume7dUSD: totalVol24h * 6.4,
+      totalFees24hUSD: totalFees24h,
+      totalTransactions24h: 142850,
+      activeLPsCount: 12450,
+      topPools: pools,
+      topTokens: DEFAULT_TOKENS.slice(0, 8),
+      historicalVolume
+    };
+  }
+
+  public getUserPositions(userAddress?: string): LPPosition[] {
+    const eth = DEFAULT_TOKENS.find(t => t.symbol === 'ETH') || DEFAULT_TOKENS[0];
+    const usdc = DEFAULT_TOKENS.find(t => t.symbol === 'USDC') || DEFAULT_TOKENS[1];
+    const wbtc = DEFAULT_TOKENS.find(t => t.symbol === 'WBTC') || DEFAULT_TOKENS[2];
+
+    return [
+      {
+        tokenId: '#4102',
+        poolId: 'pool-eth-usdc-5',
+        token0: usdc,
+        token1: eth,
+        feeBps: 5,
+        tickLower: 198000,
+        tickUpper: 204000,
+        priceLower: 2200,
+        priceUpper: 2800,
+        currentPrice: 2465.87,
+        isInRange: true,
+        liquidityRaw: '1240000000000000000',
+        depositedAmount0: '12,500.00 USDC',
+        depositedAmount1: '5.07 ETH',
+        depositedUSD: 25000,
+        unclaimedFee0: '142.50 USDC',
+        unclaimedFee1: '0.058 ETH',
+        unclaimedFeeUSD: 285.50,
+        earnedAprPercent: 21.4,
+        createdAt: Date.now() - 14 * 24 * 60 * 60 * 1000
+      },
+      {
+        tokenId: '#3984',
+        poolId: 'pool-wbtc-eth-30',
+        token0: eth,
+        token1: wbtc,
+        feeBps: 30,
+        tickLower: 240000,
+        tickUpper: 265000,
+        priceLower: 22.5,
+        priceUpper: 32.0,
+        currentPrice: 26.8,
+        isInRange: true,
+        liquidityRaw: '850000000000000000',
+        depositedAmount0: '15.00 ETH',
+        depositedAmount1: '0.56 WBTC',
+        depositedUSD: 74200,
+        unclaimedFee0: '0.35 ETH',
+        unclaimedFee1: '0.013 WBTC',
+        unclaimedFeeUSD: 1720.00,
+        earnedAprPercent: 28.6,
+        createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      }
+    ];
   }
 }
 

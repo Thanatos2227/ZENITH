@@ -219,7 +219,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   }, [tokenIn.symbol, tokenOut.symbol, isOnline]);
 
   useEffect(() => {
-    // If there is no network connection, completely halt live interval updates
+
     if (!isOnline) return;
 
     const intervalTimer = setInterval(() => {
@@ -231,7 +231,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         const currentMinuteBucket = Math.floor(now.getTime() / 60000) * 60000;
         const timeLabel = format1mTimeLabel(now);
 
-        // Sub-basis micro fluctuation to simulate live orderbook jitter
         const targetPrice = latestPriceRef.current || last.close;
         const microJitter = (Math.random() - 0.495) * (targetPrice * 0.0003);
         const currentPrice = Math.max(targetPrice + microJitter, 0.000001);
@@ -278,7 +277,6 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     };
   }, []);
 
-  // Derived stats
   const currentPrice = storePrice || candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
   const firstPrice = candles[0]?.open || baseRate;
   const priceChangeUSD = currentPrice - firstPrice;

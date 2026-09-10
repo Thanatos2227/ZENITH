@@ -3,6 +3,8 @@ import { useZenithStore } from '../../stores/useZenithStore';
 import { formatAddress } from '../../utils/walletDetector';
 import {
   Zap,
+  Layers,
+  BarChart3,
   TrendingUp,
   PieChart,
   History,
@@ -34,8 +36,10 @@ export const Navbar: React.FC = () => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const navItems: Array<{ id: 'TRADE' | 'MARKETS' | 'PORTFOLIO' | 'HISTORY'; label: string; icon: React.FC<{ className?: string }> }> = [
+  const navItems: Array<{ id: 'TRADE' | 'POOLS' | 'EXPLORE' | 'MARKETS' | 'PORTFOLIO' | 'HISTORY'; label: string; icon: React.FC<{ className?: string }> }> = [
     { id: 'TRADE', label: 'Trade', icon: Zap },
+    { id: 'POOLS', label: 'Pools', icon: Layers },
+    { id: 'EXPLORE', label: 'Explore', icon: BarChart3 },
     { id: 'MARKETS', label: 'Markets', icon: TrendingUp },
     { id: 'PORTFOLIO', label: 'Portfolio', icon: PieChart },
     { id: 'HISTORY', label: 'History', icon: History }
@@ -43,9 +47,9 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800/90 bg-[#080B11]/90 backdrop-blur-md transition-colors duration-200">
-      {/* Primary Top Bar */}
+      {}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-3">
-        {/* Left Side: Brand Logo + Desktop Nav */}
+        {}
         <div className="flex items-center gap-4 xl:gap-8">
           <div
             onClick={() => setActiveTab('TRADE')}
@@ -69,7 +73,7 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Desktop Navigation (visible on xl screens >= 1280px) */}
+          {}
           <nav className="hidden xl:flex items-center gap-1">
             {navItems.map(({ id, label, icon: Icon }) => (
               <button
@@ -88,9 +92,9 @@ export const Navbar: React.FC = () => {
           </nav>
         </div>
 
-        {/* Right Side: Network Selector, Controls & Connected Wallet */}
+        {}
         <div className="flex items-center flex-wrap gap-2 sm:gap-3 shrink-0">
-          {/* Network Selector Button */}
+          {}
           <button
             onClick={() => openChainPicker('SOURCE')}
             className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors text-xs sm:text-sm font-medium text-slate-200 shrink-0 shadow-sm"
@@ -108,7 +112,7 @@ export const Navbar: React.FC = () => {
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
-          {/* Notifications Button */}
+          {}
           <button
             onClick={toggleNotificationDrawer}
             className="relative p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-cyan-400 transition-colors shrink-0"
@@ -123,7 +127,7 @@ export const Navbar: React.FC = () => {
             )}
           </button>
 
-          {/* Theme Toggle Button */}
+          {}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-yellow-400 transition-colors shrink-0"
@@ -137,7 +141,7 @@ export const Navbar: React.FC = () => {
             )}
           </button>
 
-          {/* Wallet Connection Status & Button */}
+          {}
           {isWalletConnected ? (
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {isWrongNetwork && (
@@ -178,7 +182,7 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Sub-Nav Bar for Split-Screen & Narrow Widths (< xl screens) */}
+      {}
       <div className="xl:hidden w-full border-t border-slate-800/70 bg-[#080B11]/95 px-3 sm:px-6 py-1.5">
         <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto no-scrollbar">
           {navItems.map(({ id, label, icon: Icon }) => (

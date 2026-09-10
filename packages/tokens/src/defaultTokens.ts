@@ -2,9 +2,7 @@ import { Token } from '@zenith/types';
 import { ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 
 const TOKEN_CONFIG: Token[] = [
-  // ==========================================
-  // BITCOIN (UTXO Network)
-  // ==========================================
+
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'bitcoin',
@@ -2247,9 +2245,6 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png'
   },
 
-  // ==========================================
-  // ADDITIONAL CANONICAL LAYER 2 / SIDECHAIN NATIVE TOKENS
-  // ==========================================
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'arbitrumnova',

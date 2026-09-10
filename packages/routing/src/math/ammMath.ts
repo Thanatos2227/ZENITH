@@ -90,6 +90,20 @@ export class ConstantProductMath {
 
 export class ConcentratedLiquidityMath {
 
+  public static priceToSqrtRatioX96(price: number): bigint {
+    if (price <= 0) return MIN_SQRT_RATIO;
+    const sqrtPrice = Math.sqrt(price);
+    const intPart = BigInt(Math.floor(sqrtPrice));
+    const fracPart = BigInt(Math.floor((sqrtPrice - Math.floor(sqrtPrice)) * Number(Q96)));
+    return (intPart * Q96) + fracPart;
+  }
+
+  public static sqrtRatioX96ToPrice(sqrtRatioX96: bigint): number {
+    if (sqrtRatioX96 <= 0n) return 0;
+    const sqrtRatioNum = Number(sqrtRatioX96) / Number(Q96);
+    return sqrtRatioNum * sqrtRatioNum;
+  }
+
   public static getSqrtRatioAtTick(tick: number): bigint {
     const clampedTick = Math.max(MIN_TICK, Math.min(MAX_TICK, tick));
     const priceRatio = Math.pow(1.0001, clampedTick);

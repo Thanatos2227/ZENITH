@@ -33,7 +33,6 @@ export const MarketsView: React.FC = () => {
   const [networkTypeFilter, setNetworkTypeFilter] = useState('ALL');
   const [chainFilter, setChainFilter] = useState('ALL');
 
-  // Poll for live market data every 20 seconds
   useEffect(() => {
     fetchMarketData();
     const interval = setInterval(() => {
@@ -111,7 +110,6 @@ export const MarketsView: React.FC = () => {
     return `$${cap.toLocaleString()}`;
   };
 
-  // Compute live total 24h market volume across unique market assets (deduplicating multi-chain assets)
   const seenAssets = new Set<string>();
   let uniqueTotalVolumeUSD = 0;
 
@@ -255,7 +253,6 @@ export const MarketsView: React.FC = () => {
                   marketData[baseSymbol.toLowerCase()] ||
                   defaultMarketDataService.getCachedMarketData(t.chainId, t.address);
 
-                // No static price fallback! If live is null or not provided, it is unavailable
                 const currentPrice = (live?.priceUSD !== undefined && live.priceUSD !== null && live.priceUSD > 0) ? live.priceUSD : null;
                 const change24h = (live?.change24hUSD !== undefined && live.change24hUSD !== null) ? live.change24hUSD : null;
                 const volume24h = (live?.volume24hUSD !== undefined && live.volume24hUSD !== null && live.volume24hUSD > 0) ? live.volume24hUSD : null;
