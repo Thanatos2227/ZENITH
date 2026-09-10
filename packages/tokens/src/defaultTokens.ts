@@ -2377,6 +2377,114 @@ const TOKEN_CONFIG: Token[] = [
     volume24hUSD: 76759744,
     verificationTier: 'VERIFIED_CANONICAL',
     logoURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png'
+  },
+
+  // ==========================================
+  // ADDITIONAL CANONICAL LAYER 2 / SIDECHAIN NATIVE TOKENS
+  // ==========================================
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'arbitrumnova',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 5000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'polygonzkevm',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 2500000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'mode',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 4000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'taiko',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 3500000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'metis',
+    name: 'Metis',
+    symbol: 'METIS',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 42.1,
+    change24hUSD: 3.5,
+    volume24hUSD: 18000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/15595/small/metis.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'moonbeam',
+    name: 'Glimmer',
+    symbol: 'GLMR',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 0.22,
+    change24hUSD: 1.8,
+    volume24hUSD: 8500000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/22459/small/glmr.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'moonriver',
+    name: 'Moonriver',
+    symbol: 'MOVR',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 11.4,
+    change24hUSD: 2.1,
+    volume24hUSD: 6200000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/17984/small/moonriver.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'rootstock',
+    name: 'Smart Bitcoin',
+    symbol: 'RBTC',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 89400,
+    change24hUSD: 4.12,
+    volume24hUSD: 12000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/5041/small/rbtc.png'
   }
 ];
 

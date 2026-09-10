@@ -115,6 +115,7 @@ export interface ChainConfig {
   productionStatus: 'ACTIVE' | 'BETA' | 'MAINTENANCE' | 'PLANNED';
   color: string;
   iconURI: string;
+  defaultTokens?: Token[];
 }
 
 export type VerificationTier = 'VERIFIED_CANONICAL' | 'COMMUNITY_VERIFIED' | 'UNVERIFIED' | 'SUSPICIOUS';
