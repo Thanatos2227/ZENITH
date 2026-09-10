@@ -1,0 +1,34 @@
+{
+  "name": "zenith-monorepo",
+  "version": "4.0.0",
+  "private": true,
+  "description": "ZENITH — Trade Beyond Limits. Universal Multi-Chain Decentralized Trading & Execution Platform.",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "contracts/evm"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@zenith/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npx tsx --test tests/zenith.test.ts",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "keywords": [
+    "defi",
+    "dex-aggregator",
+    "cross-chain",
+    "ethereum",
+    "solana",
+    "arbitrum",
+    "base",
+    "trading",
+    "mev-protection"
+  ],
+  "author": "ZENITH Core Engineering",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

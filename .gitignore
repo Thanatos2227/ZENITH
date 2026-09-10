@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+storybook-static/
+
+# Vite & Bundler cache
+.vite/
+.cache/
+.turbo/
+.eslintcache
+*.tsbuildinfo
+*.timestamp-*.mjs
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Testing & Coverage
+coverage/
+*.lcov
+
+# Smart Contract Artifacts (Foundry / Hardhat)
+contracts/evm/cache/
+contracts/evm/out/
+contracts/evm/broadcast/
+contracts/evm/.gas-snapshot
+artifacts/
+cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
