@@ -212,14 +212,29 @@ export const resolveTokenLivePrice = (token: Token, marketDataRecord: Record<str
   if (!token) return 0;
   const tokenKey = `${token.chainId.toLowerCase()}:${token.address.toLowerCase()}`;
   const symKey = token.symbol.toLowerCase();
+  const cleanSym = defaultMarketDataService.resolveSymbol(token.symbol).toLowerCase();
   const cached = defaultMarketDataService.getCachedMarketData(token.chainId, token.address);
-  return (
+
+  const price =
     marketDataRecord[tokenKey]?.priceUSD ||
     marketDataRecord[symKey]?.priceUSD ||
+    marketDataRecord[cleanSym]?.priceUSD ||
     cached?.priceUSD ||
-    token.priceUSD ||
-    0
-  );
+    token.priceUSD;
+
+  if (typeof price === 'number' && price > 0) {
+    return price;
+  }
+
+  // Fallback for stablecoins if unpriced
+  if (
+    ['usdc', 'usdt', 'dai', 'usde', 'pyusd', 'fdusd', 'busd'].includes(symKey) ||
+    ['usdc', 'usdt', 'dai', 'usde', 'pyusd', 'fdusd', 'busd'].includes(cleanSym)
+  ) {
+    return 1.0;
+  }
+
+  return 0;
 };
 
 export const useZenithStore = create<ZenithState>((set, get) => {
@@ -861,7 +876,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         quoteDebounceTimer = null;
       }
 
-      const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset } = get();
+      const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset, marketData } = get();
       
       const validation = validateAndSanitizeAmount(amountIn);
       if (!validation.isValid || validation.numericValue <= 0) {
@@ -876,7 +891,20 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       set({ isQuoteLoading: true, quoteError: null });
 
       try {
-        const decimals = tokenIn.decimals || 18;
+        const livePriceIn = resolveTokenLivePrice(tokenIn, marketData);
+        const livePriceOut = resolveTokenLivePrice(tokenOut, marketData);
+
+        const effectiveTokenIn: Token = livePriceIn > 0 ? { ...tokenIn, priceUSD: livePriceIn } : tokenIn;
+        const effectiveTokenOut: Token = livePriceOut > 0 ? { ...tokenOut, priceUSD: livePriceOut } : tokenOut;
+
+        if (
+          effectiveTokenIn.priceUSD !== tokenIn.priceUSD ||
+          effectiveTokenOut.priceUSD !== tokenOut.priceUSD
+        ) {
+          set({ tokenIn: effectiveTokenIn, tokenOut: effectiveTokenOut });
+        }
+
+        const decimals = effectiveTokenIn.decimals || 18;
         const [wholePart = '0', fracPart = ''] = cleanAmount.split('.');
         const truncatedFrac = fracPart.slice(0, 3);
         const paddedFrac = truncatedFrac.padEnd(decimals, '0').slice(0, decimals);
@@ -885,8 +913,8 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         const quote = await defaultZenithRouter.getQuote({
           sourceChainId: sourceChain.id,
           destinationChainId: destChain.id,
-          tokenIn,
-          tokenOut,
+          tokenIn: effectiveTokenIn,
+          tokenOut: effectiveTokenOut,
           amountInRaw: rawAmountIn === '0' ? '1' : rawAmountIn,
           slippageTolerancePercent,
           userWalletAddress: walletAddress || undefined,
@@ -1039,17 +1067,25 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const inSym = defaultMarketDataService.resolveSymbol(currentTokenIn.symbol);
       const outSym = defaultMarketDataService.resolveSymbol(currentTokenOut.symbol);
 
+      let priceChanged = false;
+
       if (
         (targetSym && inSym === targetSym) ||
         (currentTokenIn.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenIn.address.toLowerCase() === address.toLowerCase())
       ) {
-        updatedTokenIn = { ...currentTokenIn, priceUSD: data.priceUSD ?? undefined };
+        if (data.priceUSD && data.priceUSD > 0 && currentTokenIn.priceUSD !== data.priceUSD) {
+          updatedTokenIn = { ...currentTokenIn, priceUSD: data.priceUSD };
+          priceChanged = true;
+        }
       }
       if (
         (targetSym && outSym === targetSym) ||
         (currentTokenOut.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenOut.address.toLowerCase() === address.toLowerCase())
       ) {
-        updatedTokenOut = { ...currentTokenOut, priceUSD: data.priceUSD ?? undefined };
+        if (data.priceUSD && data.priceUSD > 0 && currentTokenOut.priceUSD !== data.priceUSD) {
+          updatedTokenOut = { ...currentTokenOut, priceUSD: data.priceUSD };
+          priceChanged = true;
+        }
       }
 
       const symKey = data.symbol?.toLowerCase();
@@ -1065,23 +1101,29 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         lastMarketUpdate: Date.now(),
         marketDataStatus: data.isLive ? 'LIVE' : defaultMarketDataService.getOverallStatus()
       }));
+
+      // Automatically recalculate quote if the active pair's price changed!
+      if (priceChanged && get().amountIn && parseFloat(get().amountIn) > 0) {
+        get().fetchQuote();
+      }
     },
 
     fetchMarketData: async () => {
       set({ isMarketsLoading: true, marketsError: null });
+
+      if (!isMarketStoreListenerRegistered) {
+        isMarketStoreListenerRegistered = true;
+        defaultMarketDataService.addStoreTickListener((chainId, address, data) => {
+          get().updateSingleTokenMarketData(chainId, address, data);
+        });
+      }
+
       try {
         const dataMap = await defaultMarketDataService.fetchMarketData(DEFAULT_TOKENS);
         const record: Record<string, LiveMarketData> = {};
         dataMap.forEach((val, key) => {
           record[key] = val;
         });
-
-        if (!isMarketStoreListenerRegistered) {
-          isMarketStoreListenerRegistered = true;
-          defaultMarketDataService.addStoreTickListener((chainId, address, data) => {
-            get().updateSingleTokenMarketData(chainId, address, data);
-          });
-        }
 
         const currentTokenIn = get().tokenIn;
         const currentTokenOut = get().tokenOut;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useZenithStore } from '../../stores/useZenithStore';
+import { useZenithStore, resolveTokenLivePrice } from '../../stores/useZenithStore';
+import { defaultMarketDataService } from '../../services/marketDataService';
 import {
   ArrowDownUp,
   RefreshCw,
@@ -14,6 +15,14 @@ import {
   truncateToThreeDecimals,
   MAX_SWAP_AMOUNT_NUM
 } from '../../utils/amountValidation';
+
+const formatRateValue = (rate: number): string => {
+  if (!rate || isNaN(rate) || rate <= 0) return '0.00';
+  if (rate >= 1000) return rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (rate >= 1) return rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  if (rate >= 0.0001) return rate.toFixed(6);
+  return rate.toExponential(4);
+};
 
 export const SwapCard: React.FC = () => {
   const {
@@ -34,7 +43,8 @@ export const SwapCard: React.FC = () => {
     walletBalances,
     openWalletModal,
     chainId,
-    switchNetwork
+    switchNetwork,
+    marketData
   } = useZenithStore();
 
   const [refreshTimer, setRefreshTimer] = useState<number>(10);
@@ -42,6 +52,24 @@ export const SwapCard: React.FC = () => {
   useEffect(() => {
     fetchQuote();
   }, []);
+
+  // Continuous WebSocket stream subscription for real-time market price & swap rate updates
+  useEffect(() => {
+    let isMounted = true;
+    const cleanup = defaultMarketDataService.subscribeLiveStream(
+      tokenIn.symbol,
+      tokenOut.symbol,
+      '1m',
+      () => {
+        if (!isMounted) return;
+        fetchQuote();
+      }
+    );
+    return () => {
+      isMounted = false;
+      cleanup();
+    };
+  }, [tokenIn.symbol, tokenIn.chainId, tokenOut.symbol, tokenOut.chainId, fetchQuote]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -59,7 +87,16 @@ export const SwapCard: React.FC = () => {
   const isCrossChain = sourceChain.id !== destChain.id;
   const isSwapSupported = sourceChain.capabilities.swap && destChain.capabilities.swap;
   const numAmountIn = parseFloat(amountIn) || 0;
-  const tradeValueUSD = tokenIn.priceUSD ? numAmountIn * tokenIn.priceUSD : 0;
+
+  const liveInUSD: number = resolveTokenLivePrice(tokenIn, marketData) || tokenIn.priceUSD || 0;
+  const liveOutUSD: number = resolveTokenLivePrice(tokenOut, marketData) || tokenOut.priceUSD || 0;
+
+  const tradeValueUSD = liveInUSD > 0 ? numAmountIn * liveInUSD : 0;
+  const receiveValueUSD = quote && liveOutUSD > 0
+    ? parseFloat(quote.amountOutFormatted.replace(/,/g, '')) * liveOutUSD
+    : 0;
+
+  const marketRate = quote?.referencePrice || (liveInUSD > 0 && liveOutUSD > 0 ? liveInUSD / liveOutUSD : undefined);
 
   const isNetworkMismatch = isWalletConnected && chainId !== null && sourceChain.chainId !== undefined && chainId !== sourceChain.chainId;
 
@@ -233,8 +270,8 @@ export const SwapCard: React.FC = () => {
             <span>
               ~${tradeValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            {tokenIn.priceUSD && (
-              <span>1 {tokenIn.symbol} ≈ ${tokenIn.priceUSD.toLocaleString()}</span>
+            {liveInUSD > 0 && (
+              <span>1 {tokenIn.symbol} ≈ ${liveInUSD >= 1 ? liveInUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : liveInUSD.toFixed(6)}</span>
             )}
           </div>
         </div>
@@ -290,8 +327,8 @@ export const SwapCard: React.FC = () => {
 
           <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
             <span>
-              {quote && tokenOut.priceUSD
-                ? `~$${(parseFloat(quote.amountOutFormatted.replace(/,/g, '')) * tokenOut.priceUSD).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              {receiveValueUSD > 0
+                ? `~$${receiveValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : '$0.00'}
             </span>
             {quote && (
@@ -305,10 +342,26 @@ export const SwapCard: React.FC = () => {
         {quote && (
           <div className="space-y-2 mb-4 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Rate</span>
-              <span className="font-mono text-slate-200">
-                1 {tokenIn.symbol} = {quote.executionPrice.toFixed(4)} {tokenOut.symbol}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400">Rate</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live
+                </span>
+              </div>
+              <div className="text-right font-mono">
+                <div className="text-slate-100 font-semibold">
+                  1 {tokenIn.symbol} ≈ {formatRateValue(quote.executionPrice)} {tokenOut.symbol}
+                </div>
+                {marketRate && (
+                  <div className="text-[11px] text-slate-400 flex items-center justify-end gap-1">
+                    <span>Market:</span>
+                    <span className="text-cyan-300">
+                      1 {tokenIn.symbol} = {formatRateValue(marketRate)} {tokenOut.symbol}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between">

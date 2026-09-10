@@ -1040,12 +1040,19 @@ export class MarketDataService {
     // Deliver immediate price update if cached live price exists
     const pair = this.getPairConfig(symbolIn, symbolOut);
     const baseTok = this.trackedTokens.find((t) => this.resolveSymbol(t.symbol) === pair.baseSymbol);
+    const quoteTok = pair.isCrossRate ? this.trackedTokens.find((t) => this.resolveSymbol(t.symbol) === pair.quoteSymbol) : undefined;
     if (baseTok) {
-      const cached = this.cache.get(this.getKey(baseTok.chainId, baseTok.address));
-      if (cached && typeof cached.priceUSD === 'number' && cached.priceUSD > 0) {
-        let initPrice: number = cached.priceUSD;
-        if (pair.invertRate) {
-          initPrice = initPrice > 0 ? 1 / initPrice : 0;
+      const cachedBase = this.cache.get(this.getKey(baseTok.chainId, baseTok.address));
+      if (cachedBase && typeof cachedBase.priceUSD === 'number' && cachedBase.priceUSD > 0) {
+        let initPrice: number = cachedBase.priceUSD;
+        if (!pair.isCrossRate) {
+          if (pair.invertRate) {
+            initPrice = initPrice > 0 ? 1 / initPrice : 0;
+          }
+        } else if (quoteTok) {
+          const cachedQuote = this.cache.get(this.getKey(quoteTok.chainId, quoteTok.address));
+          const pQuote = cachedQuote && typeof cachedQuote.priceUSD === 'number' && cachedQuote.priceUSD > 0 ? cachedQuote.priceUSD : 1;
+          initPrice = pQuote > 0 ? initPrice / pQuote : initPrice;
         }
         onPriceUpdate(initPrice);
       }
