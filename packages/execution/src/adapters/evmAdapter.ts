@@ -144,40 +144,96 @@ export class EVMExecutionAdapter {
       const actualTokenIn = tokenIn.isNative ? wrappedNative : tokenIn.address;
       const actualTokenOut = tokenOut.isNative ? wrappedNative : tokenOut.address;
 
-      const feeTier = quote.bestRoute.hops[0]?.feeTierBps ? quote.bestRoute.hops[0].feeTierBps * 100 : 3000;
+      const feeTierBps = quote.bestRoute.hops[0]?.feeTierBps || 30;
+      const feeTier = feeTierBps <= 1 ? 100 : (feeTierBps <= 5 ? 500 : (feeTierBps <= 30 ? 3000 : 10000));
 
       let tx: any;
-      const valueToSend = tokenIn.isNative ? amountInRaw : 0n;
 
       if (quote.tradeType === 'EXACT_OUTPUT') {
         const maxAmountInRaw = BigInt(quote.maximumInputRaw || quote.amountInRaw);
-        const exactOutputParams = {
-          tokenIn: actualTokenIn,
-          tokenOut: actualTokenOut,
-          fee: feeTier,
-          recipient: userAddress,
-          deadline,
-          amountOut: BigInt(quote.amountOutRaw),
-          amountInMaximum: maxAmountInRaw,
-          sqrtPriceLimitX96: 0n
-        };
-        tx = await routerContract.exactOutputSingle(exactOutputParams, {
-          value: valueToSend
-        });
+        if (tokenIn.isNative) {
+          const exactOutputParams = {
+            tokenIn: wrappedNative,
+            tokenOut: actualTokenOut,
+            fee: feeTier,
+            recipient: tokenOut.isNative ? '0x0000000000000000000000000000000000000002' : userAddress,
+            deadline,
+            amountOut: BigInt(quote.amountOutRaw),
+            amountInMaximum: maxAmountInRaw,
+            sqrtPriceLimitX96: 0n
+          };
+          const swapCall = routerContract.interface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
+          const refundCall = routerContract.interface.encodeFunctionData('refundETH', []);
+          tx = await routerContract.multicall([swapCall, refundCall], { value: maxAmountInRaw });
+        } else if (tokenOut.isNative) {
+          const exactOutputParams = {
+            tokenIn: tokenIn.address,
+            tokenOut: wrappedNative,
+            fee: feeTier,
+            recipient: '0x0000000000000000000000000000000000000002',
+            deadline,
+            amountOut: BigInt(quote.amountOutRaw),
+            amountInMaximum: maxAmountInRaw,
+            sqrtPriceLimitX96: 0n
+          };
+          const swapCall = routerContract.interface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
+          const unwrapCall = routerContract.interface.encodeFunctionData('unwrapWETH9', [BigInt(quote.amountOutRaw), userAddress]);
+          tx = await routerContract.multicall([swapCall, unwrapCall]);
+        } else {
+          const exactOutputParams = {
+            tokenIn: tokenIn.address,
+            tokenOut: tokenOut.address,
+            fee: feeTier,
+            recipient: userAddress,
+            deadline,
+            amountOut: BigInt(quote.amountOutRaw),
+            amountInMaximum: maxAmountInRaw,
+            sqrtPriceLimitX96: 0n
+          };
+          tx = await routerContract.exactOutputSingle(exactOutputParams);
+        }
       } else {
-        const exactInputParams = {
-          tokenIn: actualTokenIn,
-          tokenOut: actualTokenOut,
-          fee: feeTier,
-          recipient: userAddress,
-          deadline,
-          amountIn: amountInRaw,
-          amountOutMinimum: minAmountOutRaw,
-          sqrtPriceLimitX96: 0n
-        };
-        tx = await routerContract.exactInputSingle(exactInputParams, {
-          value: valueToSend
-        });
+        if (tokenIn.isNative) {
+          const exactInputParams = {
+            tokenIn: wrappedNative,
+            tokenOut: actualTokenOut,
+            fee: feeTier,
+            recipient: tokenOut.isNative ? '0x0000000000000000000000000000000000000002' : userAddress,
+            deadline,
+            amountIn: amountInRaw,
+            amountOutMinimum: minAmountOutRaw,
+            sqrtPriceLimitX96: 0n
+          };
+          const swapCall = routerContract.interface.encodeFunctionData('exactInputSingle', [exactInputParams]);
+          const refundCall = routerContract.interface.encodeFunctionData('refundETH', []);
+          tx = await routerContract.multicall([swapCall, refundCall], { value: amountInRaw });
+        } else if (tokenOut.isNative) {
+          const exactInputParams = {
+            tokenIn: tokenIn.address,
+            tokenOut: wrappedNative,
+            fee: feeTier,
+            recipient: '0x0000000000000000000000000000000000000002',
+            deadline,
+            amountIn: amountInRaw,
+            amountOutMinimum: minAmountOutRaw,
+            sqrtPriceLimitX96: 0n
+          };
+          const swapCall = routerContract.interface.encodeFunctionData('exactInputSingle', [exactInputParams]);
+          const unwrapCall = routerContract.interface.encodeFunctionData('unwrapWETH9', [minAmountOutRaw, userAddress]);
+          tx = await routerContract.multicall([swapCall, unwrapCall]);
+        } else {
+          const exactInputParams = {
+            tokenIn: tokenIn.address,
+            tokenOut: tokenOut.address,
+            fee: feeTier,
+            recipient: userAddress,
+            deadline,
+            amountIn: amountInRaw,
+            amountOutMinimum: minAmountOutRaw,
+            sqrtPriceLimitX96: 0n
+          };
+          tx = await routerContract.exactInputSingle(exactInputParams);
+        }
       }
 
       const txHash = tx.hash;
