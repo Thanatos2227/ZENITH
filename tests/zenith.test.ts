@@ -4,9 +4,18 @@ import assert from 'node:assert/strict';
 import { defaultChainRegistry } from '../packages/chains/src/registry';
 import { DEFAULT_TOKENS, defaultTokenService } from '../packages/tokens/src';
 import { defaultTokenRiskEngine, defaultCircuitBreaker } from '../packages/security/src';
-import { defaultZenithRouter, ConstantProductMath, ConcentratedLiquidityMath } from '../packages/routing/src';
+import {
+  defaultZenithRouter,
+  ConstantProductMath,
+  ConcentratedLiquidityMath,
+  validateAndSanitizeAmount,
+  truncateToThreeDecimals,
+  MAX_SWAP_AMOUNT_NUM,
+  MAX_SWAP_AMOUNT_STR
+} from '../packages/routing/src';
 import { ExecutionStateMachine, defaultIntentEngine, defaultEVMAdapter } from '../packages/execution/src';
 import { CrossChainIntent } from '../packages/types/src';
+
 
 test('1. Universal Network Support Tier System & 53-Chain Governance', () => {
   const allChains = defaultChainRegistry.getAllChains();
@@ -451,3 +460,121 @@ test('19. EVM Token Authorization & Allowance Verification', async () => {
   });
   assert.equal(erc20Allowance, 0n);
 });
+
+test('20. Strict Swap Amount Input Validation, 3-Decimal Truncation, and Upper Boundary Limits', () => {
+  // Test case 1: '1'
+  const t1 = validateAndSanitizeAmount('1');
+  assert.equal(t1.isValid, true);
+  assert.equal(t1.sanitized, '1');
+  assert.equal(t1.numericValue, 1);
+  assert.equal(t1.isTruncated, false);
+
+  // Test case 2: '1.' (preserve typing decimal point)
+  const t2 = validateAndSanitizeAmount('1.');
+  assert.equal(t2.isValid, true);
+  assert.equal(t2.sanitized, '1.');
+  assert.equal(t2.numericValue, 1);
+  assert.equal(t2.isTruncated, false);
+
+  // Test case 3: '1.1'
+  const t3 = validateAndSanitizeAmount('1.1');
+  assert.equal(t3.isValid, true);
+  assert.equal(t3.sanitized, '1.1');
+  assert.equal(t3.numericValue, 1.1);
+  assert.equal(t3.isTruncated, false);
+
+  // Test case 4: '1.11'
+  const t4 = validateAndSanitizeAmount('1.11');
+  assert.equal(t4.isValid, true);
+  assert.equal(t4.sanitized, '1.11');
+  assert.equal(t4.numericValue, 1.11);
+  assert.equal(t4.isTruncated, false);
+
+  // Test case 5: '1.111'
+  const t5 = validateAndSanitizeAmount('1.111');
+  assert.equal(t5.isValid, true);
+  assert.equal(t5.sanitized, '1.111');
+  assert.equal(t5.numericValue, 1.111);
+  assert.equal(t5.isTruncated, false);
+
+  // Test case 6: '1.1111' -> MUST TRUNCATE TO '1.111'
+  const t6 = validateAndSanitizeAmount('1.1111');
+  assert.equal(t6.isValid, true);
+  assert.equal(t6.sanitized, '1.111');
+  assert.equal(t6.numericValue, 1.111);
+  assert.equal(t6.isTruncated, true);
+
+  // Test case 7: '1.1119' -> MUST TRUNCATE TO '1.111', NOT ROUND TO 1.112
+  const t7 = validateAndSanitizeAmount('1.1119');
+  assert.equal(t7.isValid, true);
+  assert.equal(t7.sanitized, '1.111');
+  assert.notEqual(t7.sanitized, '1.112'); // STRICT TRUNCATION VERIFICATION
+  assert.equal(t7.numericValue, 1.111);
+  assert.equal(t7.isTruncated, true);
+
+  // Test case 8: '25.123456' -> MUST TRUNCATE TO '25.123'
+  const t8 = validateAndSanitizeAmount('25.123456');
+  assert.equal(t8.isValid, true);
+  assert.equal(t8.sanitized, '25.123');
+  assert.equal(t8.numericValue, 25.123);
+  assert.equal(t8.isTruncated, true);
+
+  // Test case 9: '9999999.999' -> EXACT MAXIMUM
+  const t9 = validateAndSanitizeAmount('9999999.999');
+  assert.equal(t9.isValid, true);
+  assert.equal(t9.sanitized, '9999999.999');
+  assert.equal(t9.numericValue, 9999999.999);
+  assert.equal(t9.isTruncated, false);
+
+  // Test case 10: '10000000' -> MUST REJECT (integer portion exceeds 9999999)
+  const t10 = validateAndSanitizeAmount('10000000');
+  assert.equal(t10.isValid, false);
+  assert.ok(t10.error);
+
+  // Test case 11: '99999999' -> MUST REJECT
+  const t11 = validateAndSanitizeAmount('99999999');
+  assert.equal(t11.isValid, false);
+  assert.ok(t11.error);
+
+  // Test case 12: '0.0001' -> MUST TRUNCATE TO '0.000'
+  const t12 = validateAndSanitizeAmount('0.0001');
+  assert.equal(t12.isValid, true);
+  assert.equal(t12.sanitized, '0.000');
+  assert.equal(t12.numericValue, 0);
+  assert.equal(t12.isTruncated, true);
+
+  // Additional typing & edge case tests
+  assert.equal(validateAndSanitizeAmount('').isValid, true);
+  assert.equal(validateAndSanitizeAmount('.').sanitized, '0.');
+  assert.equal(validateAndSanitizeAmount('9,999,999.999').sanitized, '9999999.999');
+  assert.equal(validateAndSanitizeAmount('-5').isValid, false);
+  assert.equal(validateAndSanitizeAmount('1e6').isValid, false);
+
+  // Helper truncateToThreeDecimals
+  assert.equal(truncateToThreeDecimals(1.1119), '1.111');
+  assert.equal(truncateToThreeDecimals(25.123456), '25.123');
+  assert.equal(truncateToThreeDecimals(10000000), '9999999.999');
+});
+
+test('21. Router and Calculation Protection from Extremely Large Amounts', async () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'ETH')!;
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'ethereum' && t.symbol === 'USDC')!;
+
+  // Try to request a quote with an amount exceeding MAX_SWAP_AMOUNT (e.g. 10,000,000 ETH)
+  const massiveAmountRaw = (10000000n * 10n ** 18n).toString();
+
+  await assert.rejects(
+    async () => {
+      await defaultZenithRouter.getQuote({
+        sourceChainId: 'ethereum',
+        destinationChainId: 'ethereum',
+        tokenIn,
+        tokenOut,
+        amountInRaw: massiveAmountRaw,
+        slippageTolerancePercent: 0.5
+      });
+    },
+    /exceeds maximum allowed limit/
+  );
+});
+

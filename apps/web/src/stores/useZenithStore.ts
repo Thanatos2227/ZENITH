@@ -14,8 +14,8 @@ import {
   ZenithNotification
 } from '@zenith/types';
 import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
-import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData } from '@zenith/tokens';
-import { defaultZenithRouter } from '@zenith/routing';
+import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData, MarketStatus } from '@zenith/tokens';
+import { defaultZenithRouter, validateAndSanitizeAmount } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
 import { connectToWalletProvider, formatAddress } from '../utils/walletDetector';
@@ -121,7 +121,7 @@ export interface ZenithState {
   isMarketsLoading: boolean;
   marketsError: string | null;
   lastMarketUpdate: number | null;
-  marketDataStatus: 'LIVE' | 'CACHED' | 'UNAVAILABLE';
+  marketDataStatus: MarketStatus;
 
   setActiveTab: (tab: ZenithState['activeTab']) => void;
   setProMode: (pro: boolean) => void;
@@ -168,6 +168,8 @@ let activeInjectedProvider: any = null;
 let activeAccountsChangedListener: ((accounts: string[]) => void) | null = null;
 let activeChainChangedListener: ((hexChainId: string) => void) | null = null;
 let isMarketStoreListenerRegistered = false;
+let quoteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let activeQuoteRequestId = 0;
 
 const cleanupWalletListeners = () => {
   if (activeInjectedProvider) {
@@ -292,7 +294,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     isMarketsLoading: false,
     marketsError: null,
     lastMarketUpdate: null,
-    marketDataStatus: 'CACHED',
+    marketDataStatus: 'UNAVAILABLE',
 
     setActiveTab: (tab) => set({ activeTab: tab }),
     setProMode: (isProMode) => set({ isProMode }),
@@ -473,9 +475,29 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       get().refreshBalance();
     },
 
-    setAmountIn: (amountIn) => {
-      set({ amountIn });
-      get().fetchQuote();
+    setAmountIn: (rawAmountIn) => {
+      const validation = validateAndSanitizeAmount(rawAmountIn);
+      if (!validation.isValid) {
+        // Reject amounts exceeding 9,999,999.999 or invalid numeric inputs
+        return;
+      }
+      set({ amountIn: validation.sanitized });
+
+      // Clear any pending debounce timer
+      if (quoteDebounceTimer) {
+        clearTimeout(quoteDebounceTimer);
+        quoteDebounceTimer = null;
+      }
+
+      if (validation.numericValue <= 0) {
+        set({ quote: null, isQuoteLoading: false, quoteError: null });
+        return;
+      }
+
+      // 350ms debounce so rapid typing does not trigger network requests on every keystroke
+      quoteDebounceTimer = setTimeout(() => {
+        get().fetchQuote();
+      }, 350);
     },
 
     setSlippage: (preset, customPercent) => {
@@ -833,21 +855,31 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     toggleNotificationDrawer: () => set((state) => ({ isNotificationDrawerOpen: !state.isNotificationDrawerOpen })),
 
     fetchQuote: async () => {
-      const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset } = get();
-      const cleanAmount = amountIn.replace(/,/g, '').trim();
-      const numAmount = parseFloat(cleanAmount);
+      // Clear pending debounce timer if fetchQuote is invoked explicitly (e.g. token switch, network change, manual refresh)
+      if (quoteDebounceTimer) {
+        clearTimeout(quoteDebounceTimer);
+        quoteDebounceTimer = null;
+      }
 
-      if (isNaN(numAmount) || numAmount <= 0) {
+      const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset } = get();
+      
+      const validation = validateAndSanitizeAmount(amountIn);
+      if (!validation.isValid || validation.numericValue <= 0) {
         set({ quote: null, quoteError: null, isQuoteLoading: false });
         return;
       }
+
+      const cleanAmount = validation.sanitized;
+      // Increment quote request sequence counter to discard stale responses
+      const currentRequestId = ++activeQuoteRequestId;
 
       set({ isQuoteLoading: true, quoteError: null });
 
       try {
         const decimals = tokenIn.decimals || 18;
         const [wholePart = '0', fracPart = ''] = cleanAmount.split('.');
-        const paddedFrac = fracPart.padEnd(decimals, '0').slice(0, decimals);
+        const truncatedFrac = fracPart.slice(0, 3);
+        const paddedFrac = truncatedFrac.padEnd(decimals, '0').slice(0, decimals);
         const rawAmountIn = (wholePart + paddedFrac).replace(/^0+/, '') || '0';
 
         const quote = await defaultZenithRouter.getQuote({
@@ -861,6 +893,11 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           gasPreset
         });
 
+        // Stale response guard: discard if a newer quote request was initiated
+        if (currentRequestId !== activeQuoteRequestId) {
+          return;
+        }
+
         set({
           quote,
           isQuoteLoading: false,
@@ -868,6 +905,11 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           quoteError: null
         });
       } catch (err: any) {
+        // Stale response guard
+        if (currentRequestId !== activeQuoteRequestId) {
+          return;
+        }
+
         set({
           quote: null,
           isQuoteLoading: false,
@@ -1001,13 +1043,13 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         (targetSym && inSym === targetSym) ||
         (currentTokenIn.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenIn.address.toLowerCase() === address.toLowerCase())
       ) {
-        updatedTokenIn = { ...currentTokenIn, priceUSD: data.priceUSD };
+        updatedTokenIn = { ...currentTokenIn, priceUSD: data.priceUSD ?? undefined };
       }
       if (
         (targetSym && outSym === targetSym) ||
         (currentTokenOut.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenOut.address.toLowerCase() === address.toLowerCase())
       ) {
-        updatedTokenOut = { ...currentTokenOut, priceUSD: data.priceUSD };
+        updatedTokenOut = { ...currentTokenOut, priceUSD: data.priceUSD ?? undefined };
       }
 
       const symKey = data.symbol?.toLowerCase();
@@ -1021,7 +1063,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         tokenIn: updatedTokenIn,
         tokenOut: updatedTokenOut,
         lastMarketUpdate: Date.now(),
-        marketDataStatus: data.isLive ? 'LIVE' : (state.marketDataStatus || 'CACHED')
+        marketDataStatus: data.isLive ? 'LIVE' : defaultMarketDataService.getOverallStatus()
       }));
     },
 
@@ -1043,27 +1085,26 @@ export const useZenithStore = create<ZenithState>((set, get) => {
 
         const currentTokenIn = get().tokenIn;
         const currentTokenOut = get().tokenOut;
-        const inKey = defaultMarketDataService.getKey(currentTokenIn.chainId, currentTokenIn.address);
-        const outKey = defaultMarketDataService.getKey(currentTokenOut.chainId, currentTokenOut.address);
-        const inSym = defaultMarketDataService.resolveSymbol(currentTokenIn.symbol).toLowerCase();
-        const outSym = defaultMarketDataService.resolveSymbol(currentTokenOut.symbol).toLowerCase();
+        const livePriceIn = resolveTokenLivePrice(currentTokenIn, record);
+        const livePriceOut = resolveTokenLivePrice(currentTokenOut, record);
 
-        const latestInPrice = dataMap.get(inKey)?.priceUSD || dataMap.get(inSym)?.priceUSD;
-        const latestOutPrice = dataMap.get(outKey)?.priceUSD || dataMap.get(outSym)?.priceUSD;
-
-        set((state) => ({
+        set({
           marketData: record,
-          tokenIn: latestInPrice && latestInPrice > 0 ? { ...state.tokenIn, priceUSD: latestInPrice } : state.tokenIn,
-          tokenOut: latestOutPrice && latestOutPrice > 0 ? { ...state.tokenOut, priceUSD: latestOutPrice } : state.tokenOut,
+          tokenIn: livePriceIn ? { ...currentTokenIn, priceUSD: livePriceIn } : currentTokenIn,
+          tokenOut: livePriceOut ? { ...currentTokenOut, priceUSD: livePriceOut } : currentTokenOut,
           isMarketsLoading: false,
           marketsError: defaultMarketDataService.getLastError(),
-          lastMarketUpdate: Date.now(),
-          marketDataStatus: 'LIVE'
-        }));
+          lastMarketUpdate: defaultMarketDataService.getLastUpdated() || Date.now(),
+          marketDataStatus: defaultMarketDataService.getOverallStatus()
+        });
+
+        // Refresh quote with live market prices
+        get().fetchQuote();
       } catch (err: any) {
         set({
           isMarketsLoading: false,
-          marketsError: err.message || 'Failed to fetch live market data'
+          marketsError: err.message || 'Failed to fetch live market data',
+          marketDataStatus: defaultMarketDataService.getOverallStatus()
         });
       }
     }
@@ -1072,4 +1113,12 @@ export const useZenithStore = create<ZenithState>((set, get) => {
 
 if (typeof window !== 'undefined') {
   applyThemeToDom(getStoredTheme());
+
+  window.addEventListener('offline', () => {
+    useZenithStore.setState({ marketDataStatus: 'OFFLINE' });
+  });
+
+  window.addEventListener('online', () => {
+    useZenithStore.getState().fetchMarketData();
+  });
 }

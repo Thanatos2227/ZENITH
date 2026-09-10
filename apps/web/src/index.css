@@ -72,6 +72,19 @@
   -webkit-text-fill-color: transparent;
 }
 
+/* Hide scrollbars for responsive horizontal tab navigation */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ==============================================================================
+   LIGHT THEME OVERRIDES (Comprehensive across the entire ZENITH application)
+   ============================================================================== */
+
 html.light body,
 html[data-theme='light'] body {
   background-color: #F8FAFC;

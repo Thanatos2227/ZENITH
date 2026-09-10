@@ -71,7 +71,7 @@ export const UnifiedTradingView: React.FC = () => {
       if (isMounted && stats) {
         setLiveStats((prev) => ({
           ...stats,
-          currentPrice: prev.currentPrice || stats.currentPrice
+          currentPrice: stats.currentPrice || prev.currentPrice
         }));
       }
     });
@@ -81,7 +81,7 @@ export const UnifiedTradingView: React.FC = () => {
       'USDT',
       '1m',
       (livePrice) => {
-        if (isMounted) {
+        if (isMounted && livePrice > 0) {
           setLiveStats((prev) => ({
             ...prev,
             currentPrice: livePrice,
@@ -98,16 +98,17 @@ export const UnifiedTradingView: React.FC = () => {
     };
   }, [tokenIn.symbol, basePrice, isOnline]);
 
-  const markPrice = storePrice || liveStats.currentPrice;
+  const markPrice = (liveStats.currentPrice > 0 ? liveStats.currentPrice : storePrice) || basePrice;
   const isPositive = liveStats.change24hPercent >= 0;
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-4">
-
-      <div className="glass-panel rounded-2xl p-4 border border-slate-800/80 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
+      {/* Top Header Bar: Pair Stats, Global Network Context & Automated Protection Status */}
+      <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800/80 shadow-xl flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        {/* Row 1 on Narrow / Left on Desktop: Pair & Network Context */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex -space-x-2">
+            <div className="flex -space-x-2 shrink-0">
               {tokenIn.logoURI ? (
                 <img src={tokenIn.logoURI} alt={tokenIn.symbol} className="w-8 h-8 rounded-full border-2 border-[#080B11] z-10" />
               ) : (
@@ -126,24 +127,34 @@ export const UnifiedTradingView: React.FC = () => {
 
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-display font-black text-lg text-white tracking-wide">
+                <h2 className="font-display font-black text-lg sm:text-xl text-white tracking-wide">
                   {currentPair}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 whitespace-nowrap">
                   {isCrossChain ? 'Cross-Chain' : 'Same-Chain'}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono flex-wrap">
-                <span>{sourceChain.shortName}</span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
-                  Network
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono flex-wrap mt-0.5">
+                <span className="font-medium text-slate-300">{sourceChain.shortName}</span>
+                <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                  sourceChain.tier === 'TIER_1' ? 'text-emerald-400 bg-emerald-500/10' :
+                  sourceChain.tier === 'TIER_2' ? 'text-cyan-400 bg-cyan-500/10' :
+                  sourceChain.tier === 'TIER_3' ? 'text-amber-400 bg-amber-500/10' :
+                  'text-purple-400 bg-purple-500/10'
+                }`}>
+                  {sourceChain.tier.replace('_', ' ')}
                 </span>
                 {isCrossChain && (
                   <>
                     <ArrowRight className="w-3 h-3 text-cyan-400" />
-                    <span>{destChain.shortName}</span>
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">
-                      Network
+                    <span className="font-medium text-slate-300">{destChain.shortName}</span>
+                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                      destChain.tier === 'TIER_1' ? 'text-emerald-400 bg-emerald-500/10' :
+                      destChain.tier === 'TIER_2' ? 'text-cyan-400 bg-cyan-500/10' :
+                      destChain.tier === 'TIER_3' ? 'text-amber-400 bg-amber-500/10' :
+                      'text-purple-400 bg-purple-500/10'
+                    }`}>
+                      {destChain.tier.replace('_', ' ')}
                     </span>
                   </>
                 )}
@@ -151,38 +162,46 @@ export const UnifiedTradingView: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden lg:flex items-center gap-5 pl-4 border-l border-slate-800 text-xs font-mono">
-            <div>
-              <span className="text-slate-400 block text-[10px]">Mark Price</span>
-              <span className="font-bold text-white text-sm">
-                ${markPrice >= 1000 ? markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : markPrice >= 1 ? markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : markPrice >= 0.0001 ? markPrice.toFixed(6) : markPrice.toFixed(8)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[10px]">24h Change</span>
-              <span className={`font-bold text-sm flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                {isPositive ? '+' : ''}
-                {liveStats.change24hPercent.toFixed(2)}%
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[10px]">24h High / Low</span>
-              <span className="text-slate-300">
-                ${liveStats.high24h.toLocaleString(undefined, { maximumFractionDigits: 2 })} / ${liveStats.low24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[10px]">24h Volume</span>
-              <span className="text-slate-200 font-semibold">
-                ${(liveStats.volume24hUSD / 1e6).toFixed(1)}M
-              </span>
-            </div>
+          {/* Protection Status Badge (Mobile / Narrow Top Row placement) */}
+          <div className="xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 text-xs font-mono shrink-0">
+            <Lock className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-semibold text-cyan-300">Private Relay Protected</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300">
+        {/* 24h Market Stats Strip — Always visible across all viewports (never hidden) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:flex xl:items-center gap-3 sm:gap-6 pt-3 xl:pt-0 border-t xl:border-t-0 xl:border-l border-slate-800/80 xl:pl-6 text-xs font-mono">
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Mark Price</span>
+            <span className="font-bold text-white text-sm">
+              ${markPrice >= 1000 ? markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : markPrice >= 1 ? markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : markPrice >= 0.0001 ? markPrice.toFixed(6) : markPrice.toFixed(8)}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">24h Change</span>
+            <span className={`font-bold text-sm flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+              {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+              {isPositive ? '+' : ''}
+              {liveStats.change24hPercent.toFixed(2)}%
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">24h High / Low</span>
+            <span className="text-slate-300 font-medium">
+              ${liveStats.high24h.toLocaleString(undefined, { maximumFractionDigits: 2 })} / ${liveStats.low24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">24h Volume</span>
+            <span className="text-slate-200 font-semibold">
+              ${(liveStats.volume24hUSD / 1e6).toFixed(1)}M
+            </span>
+          </div>
+        </div>
+
+        {/* Protection Status Badge (Desktop placement) */}
+        <div className="hidden xl:flex items-center gap-3 text-xs font-mono shrink-0">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 shadow-sm">
             <Lock className="w-3.5 h-3.5 text-cyan-400" />
             <span className="font-semibold text-cyan-300">Private Relay Protected</span>
           </div>

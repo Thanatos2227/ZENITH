@@ -51,8 +51,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   }, [tokenIn, tokenOut, storePrice]);
 
   const latestPriceRef = useRef<number>(baseRate);
+  const authoritativePriceRef = useRef<number>(baseRate);
   useEffect(() => {
     latestPriceRef.current = baseRate;
+    authoritativePriceRef.current = baseRate;
   }, [baseRate]);
 
   const [stats24h, setStats24h] = useState<MarketStats24h>({
@@ -82,7 +84,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       const timeLabel = format1mTimeLabel(d);
       const volatility = lastClose * 0.0025;
       const open = lastClose;
-      const delta = (Math.random() - 0.48) * volatility;
+      const delta = (Math.random() - 0.5) * volatility;
       const close = Math.max(open + delta, 0.000001);
       const high = Math.max(open, close) + Math.random() * volatility * 0.4;
       const low = Math.min(open, close) - Math.random() * volatility * 0.4;
@@ -119,6 +121,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       if (fetchedStats) {
         setStats24h(fetchedStats);
         if (fetchedStats.currentPrice > 0) {
+          authoritativePriceRef.current = fetchedStats.currentPrice;
           latestPriceRef.current = fetchedStats.currentPrice;
         }
       }
@@ -126,7 +129,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       if (fetchedCandles && fetchedCandles.length > 0) {
         setCandles(fetchedCandles);
       } else {
-        setCandles(generateSynthetic1mCandles(latestPriceRef.current || baseRate, 45));
+        setCandles(generateSynthetic1mCandles(authoritativePriceRef.current || baseRate, 45));
       }
     } catch (err) {
       console.error('Error fetching market data:', err);
@@ -173,6 +176,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
       '1m',
       (livePrice, tickCandle) => {
         if (livePrice > 0) {
+          authoritativePriceRef.current = livePrice;
           latestPriceRef.current = livePrice;
           setStats24h((prevStats) => ({
             ...prevStats,
@@ -227,6 +231,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
         const currentMinuteBucket = Math.floor(now.getTime() / 60000) * 60000;
         const timeLabel = format1mTimeLabel(now);
 
+        // Sub-basis micro fluctuation to simulate live orderbook jitter
         const targetPrice = latestPriceRef.current || last.close;
         const microJitter = (Math.random() - 0.495) * (targetPrice * 0.0003);
         const currentPrice = Math.max(targetPrice + microJitter, 0.000001);
@@ -271,8 +276,9 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
     return () => {
       clearInterval(intervalTimer);
     };
-  }, [isOnline]);
+  }, []);
 
+  // Derived stats
   const currentPrice = storePrice || candles[candles.length - 1]?.close || stats24h.currentPrice || baseRate;
   const firstPrice = candles[0]?.open || baseRate;
   const priceChangeUSD = currentPrice - firstPrice;
@@ -401,13 +407,12 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
               {tokenIn.symbol}/{tokenOut.symbol}
             </span>
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
-                !isOnline
+              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${!isOnline
                   ? 'bg-rose-950/70 border-rose-500/40 text-rose-300'
                   : wsStatus === 'CONNECTED'
-                  ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
-                  : 'bg-amber-950/60 border-amber-500/30 text-amber-400'
-              }`}
+                    ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
+                    : 'bg-amber-950/60 border-amber-500/30 text-amber-400'
+                }`}
             >
               {!isOnline ? (
                 <>
@@ -425,23 +430,21 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
 
           <div className="flex items-baseline gap-2">
             <span
-              className={`font-mono font-bold text-lg sm:text-xl tracking-tight transition-colors duration-300 ${
-                !isOnline
+              className={`font-mono font-bold text-lg sm:text-xl tracking-tight transition-colors duration-300 ${!isOnline
                   ? 'text-slate-300'
                   : isTickUp === true
-                  ? 'text-emerald-400'
-                  : isTickUp === false
-                  ? 'text-red-400'
-                  : 'text-white'
-              }`}
+                    ? 'text-emerald-400'
+                    : isTickUp === false
+                      ? 'text-red-400'
+                      : 'text-white'
+                }`}
             >
               ${formatPriceDigits(currentPrice)}
             </span>
 
             <span
-              className={`inline-flex items-center gap-0.5 font-mono text-xs font-bold ${
-                isPositive ? 'text-emerald-400' : 'text-red-400'
-              }`}
+              className={`inline-flex items-center gap-0.5 font-mono text-xs font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'
+                }`}
             >
               {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               {isPositive ? '+' : ''}
@@ -452,11 +455,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
 
         <div className="flex flex-wrap items-center gap-2">
 
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold text-xs shadow-sm transition-colors ${
-            !isOnline
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold text-xs shadow-sm transition-colors ${!isOnline
               ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
               : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
-          }`}>
+            }`}>
             <Activity className={`w-3.5 h-3.5 ${!isOnline ? 'text-rose-400' : 'text-cyan-400'}`} />
             <span className="font-mono">{!isOnline ? 'Feed Paused (Offline)' : 'Zenith Live • 1m'}</span>
           </div>
@@ -464,21 +466,19 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
             <button
               onClick={() => setChartMode('AREA')}
-              className={`px-2 py-0.5 rounded font-semibold transition-colors ${
-                chartMode === 'AREA'
+              className={`px-2 py-0.5 rounded font-semibold transition-colors ${chartMode === 'AREA'
                   ? 'bg-slate-800 text-cyan-300 border border-slate-700 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
-              }`}
+                }`}
             >
               Line
             </button>
             <button
               onClick={() => setChartMode('CANDLE')}
-              className={`px-2 py-0.5 rounded font-semibold transition-colors ${
-                chartMode === 'CANDLE'
+              className={`px-2 py-0.5 rounded font-semibold transition-colors ${chartMode === 'CANDLE'
                   ? 'bg-slate-800 text-cyan-300 border border-slate-700 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
-              }`}
+                }`}
             >
               Candles
             </button>
@@ -486,11 +486,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
 
           <button
             onClick={() => setShowEMA(!showEMA)}
-            className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${
-              showEMA
+            className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${showEMA
                 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
                 : 'bg-slate-900 text-slate-500 border-slate-800'
-            }`}
+              }`}
             title="Toggle EMA 9 & EMA 21 overlays"
           >
             EMA
@@ -498,11 +497,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
 
           <button
             onClick={() => setShowVolume(!showVolume)}
-            className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${
-              showVolume
+            className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold border transition-colors ${showVolume
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                 : 'bg-slate-900 text-slate-500 border-slate-800'
-            }`}
+              }`}
             title="Toggle Volume Histogram"
           >
             Vol
@@ -577,7 +575,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
               <span className="text-indigo-300">{displayedCandle.volume.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
             </div>
           )}
-          <div className="ml-auto text-[11px] text-slate-500 hidden sm:flex items-center gap-2">
+          <div className="sm:ml-auto text-[11px] text-slate-500 flex items-center gap-2">
             <span>Ticks: {tickCounter}</span>
             <span className="text-slate-600">|</span>
             <span className={!isOnline ? "text-rose-400 font-bold" : "text-cyan-400"}>
@@ -823,9 +821,8 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
             top: `${((points[points.length - 1]?.y || usableHeight / 2) / chartHeight) * 100}%`,
             transform: 'translateY(-50%)'
           }}
-          className={`absolute right-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg pointer-events-none ${
-            isPositive ? 'bg-emerald-500 text-slate-950' : 'bg-red-500 text-white'
-          }`}
+          className={`absolute right-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg pointer-events-none ${isPositive ? 'bg-emerald-500 text-slate-950' : 'bg-red-500 text-white'
+            }`}
         >
           ${formatPriceDigits(currentPrice)}
         </div>

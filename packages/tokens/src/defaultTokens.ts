@@ -1,7 +1,10 @@
 import { Token } from '@zenith/types';
+import { ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 
-export const DEFAULT_TOKENS: Token[] = [
-
+const TOKEN_CONFIG: Token[] = [
+  // ==========================================
+  // BITCOIN (UTXO Network)
+  // ==========================================
   {
     address: '0x0000000000000000000000000000000000000000',
     chainId: 'bitcoin',
@@ -2242,5 +2245,149 @@ export const DEFAULT_TOKENS: Token[] = [
     volume24hUSD: 76759744,
     verificationTier: 'VERIFIED_CANONICAL',
     logoURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png'
+  },
+
+  // ==========================================
+  // ADDITIONAL CANONICAL LAYER 2 / SIDECHAIN NATIVE TOKENS
+  // ==========================================
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'arbitrumnova',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 5000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'polygonzkevm',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 2500000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'mode',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 4000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'taiko',
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 3450.5,
+    change24hUSD: 2.84,
+    volume24hUSD: 3500000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'metis',
+    name: 'Metis',
+    symbol: 'METIS',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 42.1,
+    change24hUSD: 3.5,
+    volume24hUSD: 18000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/15595/small/metis.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'moonbeam',
+    name: 'Glimmer',
+    symbol: 'GLMR',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 0.22,
+    change24hUSD: 1.8,
+    volume24hUSD: 8500000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/22459/small/glmr.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'moonriver',
+    name: 'Moonriver',
+    symbol: 'MOVR',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 11.4,
+    change24hUSD: 2.1,
+    volume24hUSD: 6200000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/17984/small/moonriver.png'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 'rootstock',
+    name: 'Smart Bitcoin',
+    symbol: 'RBTC',
+    decimals: 18,
+    isNative: true,
+    priceUSD: 89400,
+    change24hUSD: 4.12,
+    volume24hUSD: 12000000,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://assets.coingecko.com/coins/images/5041/small/rbtc.png'
   }
 ];
+
+const WRAPPED_SYMBOLS = new Set(['WETH', 'WPOL', 'WMATIC', 'WBNB', 'WAVAX', 'WCELO', 'WMNT']);
+
+const NORMALIZED_TOKENS: Token[] = TOKEN_CONFIG.map((token) => {
+  const wrappedToken = token.isNative
+    ? TOKEN_CONFIG.find(
+        (candidate) =>
+          candidate.chainId === token.chainId &&
+          !candidate.isNative &&
+          WRAPPED_SYMBOLS.has(candidate.symbol)
+      )
+    : undefined;
+
+  return {
+    ...token,
+    enabled: token.enabled !== false,
+    ...(wrappedToken ? { wrappedAddress: wrappedToken.address } : {})
+  };
+});
+
+const EVM_NATIVE_TOKENS: Token[] = Object.values(ZENITH_SUPPORTED_CHAINS)
+  .filter((chain) => chain.executionEnvironment === 'EVM')
+  .filter((chain) => !NORMALIZED_TOKENS.some((token) => token.chainId === chain.id && token.isNative))
+  .map((chain) => ({
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+    chainId: chain.id,
+    name: chain.nativeCurrency.name,
+    symbol: chain.nativeCurrency.symbol,
+    decimals: chain.nativeCurrency.decimals,
+    isNative: true,
+    enabled: true,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: chain.nativeCurrency.logoURI || chain.iconURI
+  }));
+
+export const DEFAULT_TOKENS: Token[] = [...NORMALIZED_TOKENS, ...EVM_NATIVE_TOKENS];

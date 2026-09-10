@@ -1,18 +1,21 @@
 import { Token } from '@zenith/types';
 import { DEFAULT_TOKENS } from './defaultTokens';
 
+export type MarketStatus = 'LIVE' | 'FALLBACK' | 'STALE' | 'OFFLINE' | 'UNAVAILABLE';
+export type MarketSource = 'COINGECKO' | 'BINANCE_REST' | 'BINANCE_WS' | 'CACHE' | 'UNAVAILABLE';
+
 export interface LiveMarketData {
   symbol?: string;
-  priceUSD: number;
-  change24hUSD: number;
-  volume24hUSD: number;
+  priceUSD: number | null;
+  change24hUSD: number | null; // 24h percent change (%)
+  volume24hUSD: number | null;
   marketCapUSD?: number | null;
   high24h?: number;
   low24h?: number;
   lastUpdated: number;
   isLive: boolean;
-  status: 'LIVE' | 'CACHED' | 'UNAVAILABLE';
-  source?: string;
+  status: MarketStatus;
+  source?: MarketSource | string;
 }
 
 export interface MarketCandle {
@@ -35,6 +38,7 @@ export interface MarketStats24h {
 
 export type TimeframeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
+// Verified circulating supply numbers for calculating Market Cap (Price * Supply)
 export const VERIFIED_CIRCULATING_SUPPLY: Record<string, number> = {
   BTC: 19750000,
   WBTC: 19750000,
@@ -79,22 +83,115 @@ export const VERIFIED_CIRCULATING_SUPPLY: Record<string, number> = {
   JUP: 1350000000,
   RAY: 290000000,
   PYTH: 3600000000,
-  ORDI: 21000000,
-  STX: 1480000000,
-  TON: 2540000000,
-  ICP: 468000000,
-  ALGO: 8200000000,
-  HBAR: 37600000000,
-  XLM: 29700000000,
-  FTM: 2800000000,
-  DOT: 1430000000,
   USDC: 35000000000,
   USDT: 118000000000,
   DAI: 5300000000,
-  FDUSD: 2500000000,
-  USDE: 3200000000
+  FDUSD: 2500000000
 };
 
+// Comprehensive mapping from token symbol to verified CoinGecko asset ID
+export const TOKEN_COINGECKO_MAP: Record<string, string> = {
+  BTC: 'bitcoin',
+  WBTC: 'wrapped-bitcoin',
+  CBBTC: 'coinbase-wrapped-btc',
+  ORDI: 'ordinals',
+  SATS: 'sats-ordinals',
+  DOG: 'dog-go-to-the-moon-runes',
+  PUPS: 'pups-world-peace',
+  ETH: 'ethereum',
+  WETH: 'weth',
+  WSTETH: 'wrapped-steth',
+  USDC: 'usd-coin',
+  USDT: 'tether',
+  DAI: 'dai',
+  PYUSD: 'paypal-usd',
+  USDS: 'usds',
+  USDE: 'ethena-usde',
+  FDUSD: 'first-digital-usd',
+  UNI: 'uniswap',
+  LINK: 'chainlink',
+  AAVE: 'aave',
+  MKR: 'maker',
+  LDO: 'lido-dao',
+  CRV: 'curve-dao-token',
+  SNX: 'havven',
+  PEPE: 'pepe',
+  SHIB: 'shiba-inu',
+  DOGE: 'dogecoin',
+  ONDO: 'ondo-finance',
+  AERO: 'aerodrome-finance',
+  DEGEN: 'degen-base',
+  BRETT: 'based-brett',
+  TOSHI: 'toshi',
+  VIRTUAL: 'virtuals-protocol',
+  ARB: 'arbitrum',
+  GMX: 'gmx',
+  PENDLE: 'pendle',
+  BLUR: 'blur',
+  GRT: 'the-graph',
+  SOL: 'solana',
+  WSOL: 'solana',
+  JITOSOL: 'jito-staked-sol',
+  JUP: 'jupiter-exchange-solana',
+  RAY: 'raydium',
+  PYTH: 'pyth-network',
+  BONK: 'bonk',
+  WIF: 'dogwifcoin',
+  POPCAT: 'popcat',
+  JTO: 'jito-governance-token',
+  // Verified Polygon Ecosystem Token (POL) - Not legacy matic-network
+  POL: 'polygon-ecosystem-token',
+  MATIC: 'polygon-ecosystem-token',
+  QUICK: 'quickswap',
+  TRX: 'tron',
+  USDD: 'usdd',
+  BTT: 'bittorrent',
+  SUN: 'sun-token',
+  JST: 'just',
+  BNB: 'binancecoin',
+  WBNB: 'binancecoin',
+  AVAX: 'avalanche-2',
+  WAVAX: 'avalanche-2',
+  OP: 'optimism',
+  SUI: 'sui',
+  APT: 'aptos',
+  NEAR: 'near',
+  ATOM: 'cosmos',
+  OSMO: 'osmosis',
+  INJ: 'injective-protocol',
+  SEI: 'sei-network',
+  TIA: 'celestia',
+  CRO: 'crypto-com-chain',
+  TAIKO: 'taiko',
+  METIS: 'metis-token',
+  GLMR: 'moonbeam',
+  MOVR: 'moonriver',
+  TON: 'the-open-network',
+  HBAR: 'hedera-hashgraph',
+  ALGO: 'algorand',
+  XLM: 'stellar',
+  XRP: 'ripple',
+  ADA: 'cardano',
+  DOT: 'polkadot',
+  ICP: 'internet-computer',
+  FET: 'fetch-ai',
+  RENDER: 'render-token',
+  RNDR: 'render-token',
+  FLR: 'flare-networks',
+  FTM: 'fantom',
+  S: 'sonic-3',
+  STX: 'blockstack',
+  CELO: 'celo',
+  MNT: 'mantle',
+  STRK: 'starknet',
+  BLAST: 'blast',
+  MANTA: 'manta-network',
+  SCR: 'scroll',
+  ZK: 'zksync',
+  WLD: 'worldcoin-wld'
+};
+
+// Standardized symbol mapping to Binance trading pairs
 const BINANCE_SYMBOL_MAP: Record<string, string> = {
   ETH: 'ETH',
   WETH: 'ETH',
@@ -123,8 +220,6 @@ const BINANCE_SYMBOL_MAP: Record<string, string> = {
   SHIB: 'SHIB',
   XRP: 'XRP',
   ADA: 'ADA',
-  DOT: 'DOT',
-  TRX: 'TRX',
   FTM: 'FTM',
   S: 'FTM',
   TIA: 'TIA',
@@ -149,75 +244,13 @@ const BINANCE_SYMBOL_MAP: Record<string, string> = {
   PYTH: 'PYTH',
   ORDI: 'ORDI',
   STX: 'STX',
-  TON: 'TON',
-  ICP: 'ICP',
-  ALGO: 'ALGO',
-  HBAR: 'HBAR',
-  XLM: 'XLM',
   USDC: 'USDC',
-  USDT: 'USDT',
   DAI: 'DAI',
   FDUSD: 'FDUSD',
   USDE: 'USDE'
 };
 
-export const COINGECKO_ID_MAP: Record<string, string> = {
-  BTC: 'bitcoin',
-  WBTC: 'wrapped-bitcoin',
-  CBBTC: 'coinbase-wrapped-btc',
-  ETH: 'ethereum',
-  WETH: 'weth',
-  WSTETH: 'wrapped-steth',
-  SOL: 'solana',
-  WSOL: 'solana',
-  JITOSOL: 'jito-staked-sol',
-  BNB: 'binancecoin',
-  WBNB: 'wbnb',
-  XRP: 'ripple',
-  DOGE: 'dogecoin',
-  ADA: 'cardano',
-  TRX: 'tron',
-  AVAX: 'avalanche-2',
-  WAVAX: 'wrapped-avax',
-  DOT: 'polkadot',
-  LINK: 'chainlink',
-  POL: 'matic-network',
-  MATIC: 'matic-network',
-  SHIB: 'shiba-inu',
-  UNI: 'uniswap',
-  NEAR: 'near',
-  APT: 'aptos',
-  SUI: 'sui',
-  PEPE: 'pepe',
-  WIF: 'dogwifcoin',
-  BONK: 'bonk',
-  JUP: 'jupiter-exchange-solana',
-  RAY: 'raydium',
-  PYTH: 'pyth-network',
-  SEI: 'sei-network',
-  INJ: 'injective-protocol',
-  TIA: 'celestia',
-  PENDLE: 'pendle',
-  MKR: 'maker',
-  CRV: 'curve-dao-token',
-  LDO: 'lido-dao',
-  AAVE: 'aave',
-  ARB: 'arbitrum',
-  OP: 'optimism',
-  TON: 'the-open-network',
-  FET: 'fetch-ai',
-  RENDER: 'render-token',
-  RNDR: 'render-token',
-  FTM: 'fantom',
-  STX: 'blockstack',
-  ORDI: 'ordinals',
-  ICP: 'internet-computer',
-  ALGO: 'algorand',
-  HBAR: 'hedera-hashgraph',
-  XLM: 'stellar'
-};
-
-const STABLECOINS = new Set(['USDC', 'USDT', 'DAI', 'FDUSD', 'USDE', 'BUSD', 'PYUSD', 'USDD']);
+const STABLECOINS = new Set(['USDC', 'USDT', 'DAI', 'FDUSD', 'USDE', 'BUSD']);
 
 export type StoreTickCallback = (chainId: string, address: string, data: LiveMarketData) => void;
 
@@ -237,26 +270,18 @@ const KNOWN_BINANCE_SYMBOLS = new Set([
   'STX', 'ORDI', 'GRT', 'SNX', 'BLUR', 'GMX', 'TON', 'HBAR', 'XLM', 'USDC'
 ]);
 
-interface TickerSnapshot {
-  price: number;
-  change: number;
-  volume: number;
-  high: number;
-  low: number;
-  marketCap?: number | null;
-}
-
 export class MarketDataService {
   private static instance: MarketDataService;
   private cache: Map<string, LiveMarketData> = new Map();
   private lastFetchTime = 0;
   private inFlightPromise: Promise<Map<string, LiveMarketData>> | null = null;
   private lastError: string | null = null;
+  private overallStatus: MarketStatus = 'UNAVAILABLE';
 
+  // Global WebSockets state (multiple socket connections for chunked stream capacity)
   private activeSockets: WebSocket[] = [];
   private globalWsStatus: 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED' = 'DISCONNECTED';
   private reconnectTimer: any = null;
-  private pollingTimer: any = null;
   private storeUpdateCallbacks: Set<StoreTickCallback> = new Set();
   private pairListeners: Set<PairListener> = new Set();
   private trackedTokens: Token[] = DEFAULT_TOKENS;
@@ -269,32 +294,22 @@ export class MarketDataService {
   }
 
   constructor() {
-
+    // Initialize cache for all tokens as UNAVAILABLE with null price.
+    // Zero static seed values are ever displayed as live prices!
     DEFAULT_TOKENS.forEach((t) => {
       const key = this.getKey(t.chainId, t.address);
       const sym = t.symbol.toUpperCase();
-      const price = t.priceUSD ?? (STABLECOINS.has(sym) ? 1.0 : 0);
-      const supply = VERIFIED_CIRCULATING_SUPPLY[sym] || null;
-      const cap = supply && price > 0 ? price * supply : null;
-
-      const data: LiveMarketData = {
+      this.cache.set(key, {
         symbol: sym,
-        priceUSD: price,
-        change24hUSD: t.change24hUSD ?? 0,
-        volume24hUSD: t.volume24hUSD ?? 0,
-        marketCapUSD: cap,
-        high24h: price > 0 ? price * 1.03 : undefined,
-        low24h: price > 0 ? price * 0.97 : undefined,
-        lastUpdated: Date.now(),
-        isLive: true,
-        status: price > 0 ? 'LIVE' : 'UNAVAILABLE',
-        source: 'INITIAL_SEED'
-      };
-
-      this.cache.set(key, data);
-      this.cache.set(sym.toLowerCase(), data);
-      const base = this.resolveSymbol(sym);
-      if (base) this.cache.set(base.toLowerCase(), data);
+        priceUSD: null,
+        change24hUSD: null,
+        volume24hUSD: null,
+        marketCapUSD: null,
+        lastUpdated: 0,
+        isLive: false,
+        status: 'UNAVAILABLE',
+        source: 'UNAVAILABLE'
+      });
     });
   }
 
@@ -308,8 +323,7 @@ export class MarketDataService {
   }
 
   public getCachedMarketData(chainId: string, address: string): LiveMarketData | undefined {
-    const key = this.getKey(chainId, address);
-    return this.cache.get(key);
+    return this.cache.get(this.getKey(chainId, address));
   }
 
   public getLastError(): string | null {
@@ -318,6 +332,10 @@ export class MarketDataService {
 
   public getLastUpdated(): number {
     return this.lastFetchTime;
+  }
+
+  public getOverallStatus(): MarketStatus {
+    return this.overallStatus;
   }
 
   public getWsStatus(): 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED' {
@@ -331,324 +349,244 @@ export class MarketDataService {
     };
   }
 
-  public async fetchMarketData(tokens: Token[] = DEFAULT_TOKENS): Promise<Map<string, LiveMarketData>> {
+  /**
+   * Primary entry point: Multi-tier market fetch.
+   * Primary: CoinGecko (/simple/price)
+   * Secondary Fallback: Binance 24h Tickers (/api/v3/ticker/24hr) with derived USDT rate
+   * Stale: Cached data if recent (< 60s)
+   * Offline: Mark unavailable
+   */
+  public async fetchMarketData(tokens: Token[] = DEFAULT_TOKENS, force = false): Promise<Map<string, LiveMarketData>> {
     this.trackedTokens = tokens;
+    const now = Date.now();
+    if (!force && now - this.lastFetchTime < 15000 && this.overallStatus === 'LIVE') {
+      return this.cache;
+    }
+
     if (this.inFlightPromise) {
       return this.inFlightPromise;
     }
 
-    this.inFlightPromise = this.executeMultiProviderFetch(tokens).finally(() => {
+    this.inFlightPromise = this.executeFetchMultiTier(tokens).finally(() => {
       this.inFlightPromise = null;
     });
 
     return this.inFlightPromise;
   }
 
-  private async executeMultiProviderFetch(tokens: Token[]): Promise<Map<string, LiveMarketData>> {
-    const tickerMap = new Map<string, TickerSnapshot>();
-    let successfulSource = 'INITIAL_SEED';
+  private async executeFetchMultiTier(tokens: Token[]): Promise<Map<string, LiveMarketData>> {
+    const idToTokensMap = new Map<string, Token[]>();
+    const cgIdsSet = new Set<string>();
 
-    const binancePromises = [
-      this.fetchBinanceREST('https://api.binance.com/api/v3/ticker/24hr'),
-      this.fetchBinanceREST('https://api.binance.us/api/v3/ticker/24hr')
-    ];
+    tokens.forEach((t) => {
+      const sym = t.symbol.toUpperCase();
+      const cgId = TOKEN_COINGECKO_MAP[sym];
+      if (cgId) {
+        cgIdsSet.add(cgId);
+        const list = idToTokensMap.get(cgId) || [];
+        list.push(t);
+        idToTokensMap.set(cgId, list);
+      }
+    });
 
+    const cgIdsArray = Array.from(cgIdsSet);
+    const now = Date.now();
+
+    // 1. Primary: CoinGecko
     try {
-      const results = await Promise.allSettled(binancePromises);
-      for (const res of results) {
-        if (res.status === 'fulfilled' && res.value && res.value.size > 0) {
-          res.value.forEach((val, sym) => {
-            if (!tickerMap.has(sym) || tickerMap.get(sym)!.price <= 0) {
-              tickerMap.set(sym, val);
-            }
+      if (cgIdsArray.length === 0) {
+        throw new Error('No mapped CoinGecko IDs found');
+      }
+
+      const idsParam = cgIdsArray.join(',');
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(idsParam)}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
+
+      const response = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(8000)
+      });
+
+      if (!response.ok) {
+        throw new Error(`CoinGecko HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      Object.entries(data).forEach(([cgId, info]: [string, any]) => {
+        if (info && typeof info.usd === 'number' && info.usd > 0) {
+          const matchingTokens = idToTokensMap.get(cgId) || [];
+          matchingTokens.forEach((t) => {
+            const sym = t.symbol.toUpperCase();
+            const key = this.getKey(t.chainId, t.address);
+            const supply = VERIFIED_CIRCULATING_SUPPLY[sym] || null;
+            const cap = supply ? info.usd * supply : null;
+
+            const liveData: LiveMarketData = {
+              symbol: sym,
+              priceUSD: info.usd,
+              change24hUSD: typeof info.usd_24h_change === 'number' ? Number(info.usd_24h_change.toFixed(2)) : 0,
+              volume24hUSD: typeof info.usd_24h_vol === 'number' ? Math.round(info.usd_24h_vol) : 0,
+              marketCapUSD: cap,
+              lastUpdated: now,
+              isLive: true,
+              status: 'LIVE',
+              source: 'COINGECKO'
+            };
+
+            this.cache.set(key, liveData);
+            this.cache.set(sym.toLowerCase(), liveData);
+            this.notifyStoreListeners(t.chainId, t.address, liveData);
           });
-          successfulSource = 'BINANCE_LIVE';
         }
-      }
-    } catch {
+      });
 
-    }
+      this.lastFetchTime = now;
+      this.lastError = null;
+      this.overallStatus = 'LIVE';
 
-    if (tickerMap.size < 10) {
-      const fallbackPromises = [
-        this.fetchCoinGeckoMarkets(),
-        this.fetchCryptoComparePrices(),
-        this.fetchCoinCapAssets()
-      ];
+      // Start/maintain WebSockets
+      this.startGlobalWebSocket(tokens);
+      return this.cache;
+    } catch (primaryErr: any) {
+      console.warn('[MarketDataService] CoinGecko fetch failed, trying Binance fallback:', primaryErr?.message || primaryErr);
+      this.lastError = primaryErr?.message || 'CoinGecko API unreachable';
 
+      // 2. Secondary: Binance Fallback
       try {
-        const fallbackResults = await Promise.allSettled(fallbackPromises);
-        for (const res of fallbackResults) {
-          if (res.status === 'fulfilled' && res.value && res.value.size > 0) {
-            res.value.forEach((val, sym) => {
-              if (!tickerMap.has(sym) || tickerMap.get(sym)!.price <= 0) {
-                tickerMap.set(sym, val);
-              }
-            });
-            if (successfulSource === 'INITIAL_SEED') {
-              successfulSource = 'AGGREGATED_LIVE_FEED';
-            }
-          }
-        }
-      } catch {
+        await this.executeFetchBinanceFallback(tokens);
+        this.lastFetchTime = now;
+        this.lastError = null;
+        this.overallStatus = 'FALLBACK';
 
+        this.startGlobalWebSocket(tokens);
+        return this.cache;
+      } catch (fallbackErr: any) {
+        console.warn('[MarketDataService] Fallback also failed:', fallbackErr?.message || fallbackErr);
+        this.lastError = fallbackErr?.message || 'All market APIs unreachable';
+
+        // 3. Stale cache check (if recent within 60s)
+        let hasRecentCache = false;
+        this.cache.forEach((item) => {
+          if (item.priceUSD !== null && item.priceUSD > 0 && now - item.lastUpdated < 60000) {
+            hasRecentCache = true;
+            item.isLive = false;
+            item.status = 'STALE';
+            item.source = 'CACHE';
+          } else if (!hasRecentCache) {
+            item.isLive = false;
+            item.status = 'OFFLINE';
+            item.source = 'UNAVAILABLE';
+          }
+        });
+
+        this.overallStatus = hasRecentCache ? 'STALE' : 'OFFLINE';
+        return this.cache;
       }
     }
+  }
 
+  private async executeFetchBinanceFallback(tokens: Token[]): Promise<void> {
+    const res = await fetch('https://api.binance.com/api/v3/ticker/24hr', {
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Binance HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const tickers: Array<{
+      symbol: string;
+      lastPrice: string;
+      priceChangePercent: string;
+      quoteVolume: string;
+      highPrice?: string;
+      lowPrice?: string;
+    }> = await res.json();
+
+    const tickerMap = new Map<string, { price: number; change: number; volume: number; high?: number; low?: number }>();
+    let usdcUsdtRate = 1.0;
+
+    tickers.forEach((item) => {
+      if (item.symbol === 'USDCUSDT') {
+        const p = parseFloat(item.lastPrice);
+        if (p > 0) usdcUsdtRate = p;
+      }
+
+      if (item.symbol.endsWith('USDT')) {
+        const base = item.symbol.replace(/USDT$/, '');
+        tickerMap.set(base, {
+          price: parseFloat(item.lastPrice) || 0,
+          change: parseFloat(item.priceChangePercent) || 0,
+          volume: parseFloat(item.quoteVolume) || 0,
+          high: parseFloat(item.highPrice || '0') || 0,
+          low: parseFloat(item.lowPrice || '0') || 0
+        });
+      }
+    });
+
+    // Derive reference price for USDT in USD:
+    // On Binance, USDC is priced in USDT via USDCUSDT.
+    // Therefore: 1 USDT = 1 / usdcUsdtRate in USD.
+    const derivedUsdtPrice = usdcUsdtRate > 0 ? Number((1 / usdcUsdtRate).toFixed(6)) : 1.0;
     const now = Date.now();
 
     tokens.forEach((t) => {
       const sym = t.symbol.toUpperCase();
       const baseSymbol = this.resolveSymbol(sym);
 
-      if (STABLECOINS.has(sym) || STABLECOINS.has(baseSymbol)) {
+      let price: number | null = null;
+      let change = 0;
+      let volume = 0;
+      let high = 0;
+      let low = 0;
+
+      if (sym === 'USDT') {
+        // Never request USDTUSDT! Use derived stablecoin reference price
+        price = derivedUsdtPrice;
+        change = 0;
+        volume = tickerMap.get('USDC')?.volume || 0;
+      } else {
+        const ticker = tickerMap.get(baseSymbol);
+        if (ticker && ticker.price > 0) {
+          price = ticker.price;
+          change = ticker.change;
+          volume = ticker.volume;
+          high = ticker.high || 0;
+          low = ticker.low || 0;
+        }
+      }
+
+      if (price !== null && price > 0) {
         const key = this.getKey(t.chainId, t.address);
-        const supply = VERIFIED_CIRCULATING_SUPPLY[sym] || VERIFIED_CIRCULATING_SUPPLY[baseSymbol] || 35000000000;
+        const supply = VERIFIED_CIRCULATING_SUPPLY[sym] || VERIFIED_CIRCULATING_SUPPLY[baseSymbol] || null;
+        const cap = supply ? price * supply : null;
+
         const liveData: LiveMarketData = {
-          symbol: sym,
-          priceUSD: 1.0,
-          change24hUSD: 0.01,
-          volume24hUSD: t.volume24hUSD || 1250000000,
-          marketCapUSD: supply * 1.0,
-          high24h: 1.001,
-          low24h: 0.999,
+          symbol: baseSymbol,
+          priceUSD: price,
+          change24hUSD: Number(change.toFixed(2)),
+          volume24hUSD: Math.round(volume),
+          marketCapUSD: cap,
+          high24h: high || undefined,
+          low24h: low || undefined,
           lastUpdated: now,
           isLive: true,
-          status: 'LIVE',
-          source: 'STABLE_USD_ORACLE'
+          status: 'FALLBACK',
+          source: 'BINANCE_REST'
         };
 
         this.cache.set(key, liveData);
         this.cache.set(sym.toLowerCase(), liveData);
         if (baseSymbol) this.cache.set(baseSymbol.toLowerCase(), liveData);
         this.notifyStoreListeners(t.chainId, t.address, liveData);
-        return;
-      }
-
-      const ticker = tickerMap.get(sym) || tickerMap.get(baseSymbol);
-
-      if (ticker && ticker.price > 0) {
-        const key = this.getKey(t.chainId, t.address);
-        const supply = VERIFIED_CIRCULATING_SUPPLY[sym] || VERIFIED_CIRCULATING_SUPPLY[baseSymbol] || null;
-        const cap = ticker.marketCap ?? (supply ? ticker.price * supply : null);
-
-        const data: LiveMarketData = {
-          symbol: sym,
-          priceUSD: ticker.price,
-          change24hUSD: Number(ticker.change.toFixed(2)),
-          volume24hUSD: Math.round(ticker.volume),
-          marketCapUSD: cap,
-          high24h: ticker.high,
-          low24h: ticker.low,
-          lastUpdated: now,
-          isLive: true,
-          status: 'LIVE',
-          source: successfulSource
-        };
-
-        this.cache.set(key, data);
-        this.cache.set(sym.toLowerCase(), data);
-        if (baseSymbol) this.cache.set(baseSymbol.toLowerCase(), data);
-        this.notifyStoreListeners(t.chainId, t.address, data);
-      } else {
-
-        const key = this.getKey(t.chainId, t.address);
-        const existing = this.cache.get(key);
-        if (existing) {
-          existing.lastUpdated = now;
-          existing.isLive = true;
-          existing.status = 'LIVE';
-          this.notifyStoreListeners(t.chainId, t.address, existing);
-        }
       }
     });
-
-    this.lastFetchTime = now;
-    this.lastError = null;
-
-    this.startGlobalWebSocket(tokens);
-    this.ensureBackgroundPolling();
-
-    return this.cache;
   }
 
-  private async fetchBinanceREST(url: string): Promise<Map<string, TickerSnapshot>> {
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeout = controller ? setTimeout(() => controller.abort(), 3500) : null;
-
-    try {
-      const res = await fetch(url, {
-        signal: controller?.signal
-      });
-      if (timeout) clearTimeout(timeout);
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const tickers: Array<{
-        symbol: string;
-        lastPrice: string;
-        priceChangePercent: string;
-        quoteVolume: string;
-        highPrice: string;
-        lowPrice: string;
-      }> = await res.json();
-
-      const map = new Map<string, TickerSnapshot>();
-      tickers.forEach((item) => {
-        if (item.symbol.endsWith('USDT')) {
-          const base = item.symbol.replace(/USDT$/, '');
-          const price = parseFloat(item.lastPrice) || 0;
-          if (price > 0) {
-            map.set(base, {
-              price,
-              change: parseFloat(item.priceChangePercent) || 0,
-              volume: parseFloat(item.quoteVolume) || 0,
-              high: parseFloat(item.highPrice) || price * 1.02,
-              low: parseFloat(item.lowPrice) || price * 0.98
-            });
-          }
-        }
-      });
-      return map;
-    } catch {
-      if (timeout) clearTimeout(timeout);
-      return new Map();
-    }
-  }
-
-  private async fetchCoinGeckoMarkets(): Promise<Map<string, TickerSnapshot>> {
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeout = controller ? setTimeout(() => controller.abort(), 4000) : null;
-
-    try {
-      const res = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h',
-        { signal: controller?.signal }
-      );
-      if (timeout) clearTimeout(timeout);
-
-      if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
-
-      const coins: Array<{
-        symbol: string;
-        current_price: number;
-        price_change_percentage_24h: number;
-        total_volume: number;
-        market_cap: number;
-        high_24h: number;
-        low_24h: number;
-      }> = await res.json();
-
-      const map = new Map<string, TickerSnapshot>();
-      coins.forEach((c) => {
-        const sym = c.symbol.toUpperCase();
-        if (c.current_price > 0) {
-          map.set(sym, {
-            price: c.current_price,
-            change: c.price_change_percentage_24h || 0,
-            volume: c.total_volume || 0,
-            high: c.high_24h || c.current_price * 1.02,
-            low: c.low_24h || c.current_price * 0.98,
-            marketCap: c.market_cap
-          });
-        }
-      });
-      return map;
-    } catch {
-      if (timeout) clearTimeout(timeout);
-      return new Map();
-    }
-  }
-
-  private async fetchCryptoComparePrices(): Promise<Map<string, TickerSnapshot>> {
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeout = controller ? setTimeout(() => controller.abort(), 3500) : null;
-
-    try {
-      const fsyms = Array.from(KNOWN_BINANCE_SYMBOLS).join(',');
-      const res = await fetch(
-        `https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${fsyms}&tsyms=USD`,
-        { signal: controller?.signal }
-      );
-      if (timeout) clearTimeout(timeout);
-
-      if (!res.ok) throw new Error(`CryptoCompare HTTP ${res.status}`);
-
-      const json = await res.json();
-      const raw = json.RAW || {};
-      const map = new Map<string, TickerSnapshot>();
-
-      Object.keys(raw).forEach((sym) => {
-        const usd = raw[sym]?.USD;
-        if (usd && usd.PRICE > 0) {
-          map.set(sym.toUpperCase(), {
-            price: usd.PRICE,
-            change: usd.CHANGEPCT24HOUR || 0,
-            volume: usd.TOTALVOLUME24HTO || usd.VOLUME24HOURTO || 0,
-            high: usd.HIGH24HOUR || usd.PRICE * 1.02,
-            low: usd.LOW24HOUR || usd.PRICE * 0.98,
-            marketCap: usd.MKTCAP
-          });
-        }
-      });
-      return map;
-    } catch {
-      if (timeout) clearTimeout(timeout);
-      return new Map();
-    }
-  }
-
-  private async fetchCoinCapAssets(): Promise<Map<string, TickerSnapshot>> {
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeout = controller ? setTimeout(() => controller.abort(), 3500) : null;
-
-    try {
-      const res = await fetch('https://api.coincap.io/v2/assets?limit=200', {
-        signal: controller?.signal
-      });
-      if (timeout) clearTimeout(timeout);
-
-      if (!res.ok) throw new Error(`CoinCap HTTP ${res.status}`);
-
-      const json = await res.json();
-      const data: Array<{
-        symbol: string;
-        priceUsd: string;
-        changePercent24Hr: string;
-        volumeUsd24Hr: string;
-        marketCapUsd: string;
-      }> = json.data || [];
-
-      const map = new Map<string, TickerSnapshot>();
-      data.forEach((item) => {
-        const price = parseFloat(item.priceUsd) || 0;
-        if (price > 0) {
-          map.set(item.symbol.toUpperCase(), {
-            price,
-            change: parseFloat(item.changePercent24Hr) || 0,
-            volume: parseFloat(item.volumeUsd24Hr) || 0,
-            high: price * 1.02,
-            low: price * 0.98,
-            marketCap: parseFloat(item.marketCapUsd) || null
-          });
-        }
-      });
-      return map;
-    } catch {
-      if (timeout) clearTimeout(timeout);
-      return new Map();
-    }
-  }
-
-  private ensureBackgroundPolling(): void {
-    if (typeof window === 'undefined') return;
-    if (this.pollingTimer) return;
-
-    this.pollingTimer = setInterval(() => {
-      this.executeMultiProviderFetch(this.trackedTokens).catch(() => {});
-    }, 12000);
-  }
-
+  /**
+   * Starts/attaches continuous Binance WebSocket stream matching Trade View's exact `@kline_1m` stream format.
+   * Streams live kline ticks for ALL supported token symbols (XRP, TRX, BTC, ETH, LINK, SOL, DOGE, etc.) continuously.
+   */
   public startGlobalWebSocket(tokens: Token[] = this.trackedTokens): void {
     this.trackedTokens = tokens;
 
@@ -656,7 +594,7 @@ export class MarketDataService {
       const allActive = this.activeSockets.every(
         (s) => s.readyState === WebSocket.OPEN || s.readyState === WebSocket.CONNECTING
       );
-      if (allActive) return;
+      if (allActive) return; // Connections already active
     }
 
     if (typeof window === 'undefined' || !window.WebSocket) return;
@@ -665,14 +603,16 @@ export class MarketDataService {
     this.globalWsStatus = 'CONNECTING';
 
     try {
+      // Filter supported symbols strictly to verified Binance USDT trading pairs
       const supportedSymbols = Array.from(
         new Set(
           tokens
             .map((t) => this.resolveSymbol(t.symbol))
-            .filter((s) => Boolean(s) && !STABLECOINS.has(s) && KNOWN_BINANCE_SYMBOLS.has(s))
+            .filter((s) => Boolean(s) && s !== 'USDT' && s !== 'USDE' && KNOWN_BINANCE_SYMBOLS.has(s))
         )
       );
 
+      // Chunk stream names into batches of max 12 streams per socket for max stability
       const BATCH_SIZE = 12;
       const batches: string[][] = [];
       for (let i = 0; i < supportedSymbols.length; i += BATCH_SIZE) {
@@ -706,7 +646,7 @@ export class MarketDataService {
             if (!data || !data.k) return;
 
             const k = data.k;
-            const binanceSymbol = k.s;
+            const binanceSymbol = k.s; // e.g. "XRPUSDT", "BTCUSDT", "TRXUSDT"
             if (!binanceSymbol || !binanceSymbol.endsWith('USDT')) return;
 
             const baseSymbol = binanceSymbol.replace(/USDT$/, '');
@@ -719,11 +659,12 @@ export class MarketDataService {
 
             if (closePrice <= 0) return;
 
+            // Update internal cache and notify store listeners (Markets)
             this.trackedTokens.forEach((t) => {
               const sym = t.symbol.toUpperCase();
               const mappedBase = this.resolveSymbol(sym);
 
-              if (mappedBase === baseSymbol || sym === baseSymbol) {
+              if (mappedBase === baseSymbol) {
                 const key = this.getKey(t.chainId, t.address);
                 const existing = this.cache.get(key);
                 const supply = VERIFIED_CIRCULATING_SUPPLY[sym] || VERIFIED_CIRCULATING_SUPPLY[mappedBase] || null;
@@ -734,7 +675,7 @@ export class MarketDataService {
                   : (openPrice > 0 ? Number((((closePrice - openPrice) / openPrice) * 100).toFixed(2)) : 0);
 
                 const liveData: LiveMarketData = {
-                  symbol: sym,
+                  symbol: baseSymbol,
                   priceUSD: closePrice,
                   change24hUSD: change24hPercent,
                   volume24hUSD: Math.round(volUSD) || (existing?.volume24hUSD ?? 0),
@@ -754,6 +695,7 @@ export class MarketDataService {
               }
             });
 
+            // Notify registered Trade View pair listeners
             this.pairListeners.forEach((listener) => {
               const pair = this.getPairConfig(listener.symbolIn, listener.symbolOut);
               if (pair.baseSymbol === baseSymbol || (pair.isCrossRate && pair.quoteSymbol === baseSymbol)) {
@@ -799,8 +741,8 @@ export class MarketDataService {
                 listener.onPriceUpdate(pairPrice, tickCandle);
               }
             });
-          } catch {
-
+          } catch (parseErr) {
+            // Ignore parse errors
           }
         };
 
@@ -814,7 +756,7 @@ export class MarketDataService {
 
         this.activeSockets.push(ws);
       });
-    } catch {
+    } catch (err) {
       this.handleWsDisconnect();
     }
   }
@@ -833,6 +775,14 @@ export class MarketDataService {
     this.closeExistingSockets();
     this.pairListeners.forEach((l) => l.onStatusChange?.('DISCONNECTED'));
 
+    // Mark current cached entries as STALE rather than LIVE
+    this.cache.forEach((val) => {
+      val.isLive = false;
+      val.status = 'STALE';
+    });
+    this.overallStatus = 'STALE';
+
+    // Schedule WebSocket auto-reconnect after 3 seconds
     if (!this.reconnectTimer) {
       this.reconnectTimer = setTimeout(() => {
         this.reconnectTimer = null;
@@ -845,6 +795,9 @@ export class MarketDataService {
     this.storeUpdateCallbacks.forEach((cb) => cb(chainId, address, data));
   }
 
+  /**
+   * Helper to determine pair configuration for TradingView / LivePriceChart
+   */
   public getPairConfig(symbolIn: string, symbolOut: string): {
     isDirect: boolean;
     binanceSymbol: string;
@@ -902,6 +855,9 @@ export class MarketDataService {
     };
   }
 
+  /**
+   * Fetch historical OHLCV candlestick data from Binance API
+   */
   public async fetchKlines(
     symbolIn: string,
     symbolOut: string,
@@ -929,10 +885,14 @@ export class MarketDataService {
               const volume = parseFloat(k[5]);
 
               if (pair.invertRate) {
-                open = open > 0 ? 1 / open : 0;
-                high = low > 0 ? 1 / low : 0;
-                low = high > 0 ? 1 / high : 0;
-                close = close > 0 ? 1 / close : 0;
+                const origOpen = open;
+                const origHigh = high;
+                const origLow = low;
+                const origClose = close;
+                open = origOpen > 0 ? 1 / origOpen : 0;
+                high = origLow > 0 ? 1 / origLow : 0;
+                low = origHigh > 0 ? 1 / origHigh : 0;
+                close = origClose > 0 ? 1 / origClose : 0;
               }
 
               return { timestamp: ts, timeLabel, open, high, low, close, volume };
@@ -978,13 +938,16 @@ export class MarketDataService {
           if (candles.length > 0) return candles;
         }
       }
-    } catch {
-
+    } catch (err) {
+      console.warn('[MarketDataService] fetchKlines error:', err);
     }
 
     return this.generateSyntheticCandles(fallbackPriceUSD, interval, limit);
   }
 
+  /**
+   * Fetch 24-hour real ticker statistics for a specific token pair
+   */
   public async fetch24hStats(
     symbolIn: string,
     symbolOut: string,
@@ -1036,8 +999,8 @@ export class MarketDataService {
           return { currentPrice, change24hPercent, high24h, low24h, volume24hUSD };
         }
       }
-    } catch {
-
+    } catch (err) {
+      console.warn('[MarketDataService] fetch24hStats error:', err);
     }
 
     return {
@@ -1049,6 +1012,10 @@ export class MarketDataService {
     };
   }
 
+  /**
+   * Subscribe to real-time live pair tick stream for Trade View
+   * Reuses the single shared global WebSocket streaming pipeline.
+   */
   public subscribeLiveStream(
     symbolIn: string,
     symbolOut: string,
@@ -1056,6 +1023,7 @@ export class MarketDataService {
     onPriceUpdate: (price: number, tickCandle?: MarketCandle) => void,
     onStatusChange?: (status: 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED') => void
   ): () => void {
+    // Ensure the shared global WebSocket streaming pipeline is started
     this.startGlobalWebSocket();
 
     const listener: PairListener = {
@@ -1069,12 +1037,13 @@ export class MarketDataService {
     this.pairListeners.add(listener);
     onStatusChange?.(this.globalWsStatus);
 
+    // Deliver immediate price update if cached live price exists
     const pair = this.getPairConfig(symbolIn, symbolOut);
     const baseTok = this.trackedTokens.find((t) => this.resolveSymbol(t.symbol) === pair.baseSymbol);
     if (baseTok) {
       const cached = this.cache.get(this.getKey(baseTok.chainId, baseTok.address));
-      if (cached && cached.priceUSD > 0) {
-        let initPrice = cached.priceUSD;
+      if (cached && typeof cached.priceUSD === 'number' && cached.priceUSD > 0) {
+        let initPrice: number = cached.priceUSD;
         if (pair.invertRate) {
           initPrice = initPrice > 0 ? 1 / initPrice : 0;
         }
@@ -1121,7 +1090,7 @@ export class MarketDataService {
       const timeLabel = this.formatTimeLabel(d, interval);
       const volatility = lastClose * 0.003;
       const open = lastClose;
-      const delta = (Math.random() - 0.48) * volatility;
+      const delta = (Math.random() - 0.5) * volatility;
       const close = Math.max(open + delta, 0.000001);
       const high = Math.max(open, close) + Math.random() * volatility * 0.5;
       const low = Math.min(open, close) - Math.random() * volatility * 0.5;
@@ -1135,3 +1104,4 @@ export class MarketDataService {
 }
 
 export const defaultMarketDataService = MarketDataService.getInstance();
+

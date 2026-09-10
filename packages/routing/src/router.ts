@@ -1,10 +1,11 @@
-import { QuoteRequest, QuoteResponse, SwapRoute, TradeType, CrossChainIntent } from '@zenith/types';
+import { QuoteRequest, QuoteResponse, SwapRoute, TradeType, CrossChainIntent, SwapFee } from '@zenith/types';
 import { defaultChainRegistry } from '@zenith/chains';
 import { defaultDEXAggregator, DEXAggregator } from './dexAggregator';
 import { defaultBridgeAggregator, BridgeAggregator } from './bridgeAggregator';
 import { defaultScoringService, ScoringService } from './scoring';
 import { defaultSimulationEngine, SimulationEngine } from '@zenith/security';
 import { ConstantProductMath } from './math/ammMath';
+import { MAX_SWAP_AMOUNT_NUM } from './amountValidation';
 
 export class ZenithRouter {
   private dexAggregator: DEXAggregator;
@@ -42,8 +43,15 @@ export class ZenithRouter {
     const tokenInDecimals = request.tokenIn.decimals || 18;
     const tokenOutDecimals = request.tokenOut.decimals || 18;
 
+    const hasValidPrices = Boolean(
+      request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 &&
+      request.tokenOut.priceUSD && request.tokenOut.priceUSD > 0
+    );
     const priceInUSD = request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 ? request.tokenIn.priceUSD : 1;
     const priceOutUSD = request.tokenOut.priceUSD && request.tokenOut.priceUSD > 0 ? request.tokenOut.priceUSD : 1;
+
+    // Pre-trade reference market exchange rate (in tokenOut per tokenIn)
+    const referencePrice = hasValidPrices ? (request.tokenIn.priceUSD! / request.tokenOut.priceUSD!) : undefined;
 
     let amountInBig: bigint = 0n;
     let amountOutBig: bigint = 0n;
@@ -60,6 +68,9 @@ export class ZenithRouter {
     if (tradeType === 'EXACT_INPUT') {
       amountInBig = BigInt(request.amountInRaw || '0');
       amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
+      if (amountInNum > MAX_SWAP_AMOUNT_NUM) {
+        throw new Error(`Swap amount (${amountInNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
+      }
 
       const protocolFee = this.scoringService.calculateProtocolFee({
         tokenIn: request.tokenIn,
@@ -86,6 +97,9 @@ export class ZenithRouter {
 
       amountOutBig = BigInt(request.amountOutRaw || '0');
       amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
+      if (amountOutNum > MAX_SWAP_AMOUNT_NUM) {
+        throw new Error(`Swap amount (${amountOutNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
+      }
 
       const rawAmountInRequired = ConstantProductMath.getAmountIn(
         amountOutBig,
@@ -112,12 +126,17 @@ export class ZenithRouter {
     const spotPrice = (priceInUSD / priceOutUSD);
     const executionPrice = amountInNum > 0 && amountOutNum > 0 ? (amountOutNum / amountInNum) : spotPrice;
 
-    const priceImpact = this.scoringService.calculatePriceImpact({
-      tokenIn: request.tokenIn,
-      tokenOut: request.tokenOut,
-      amountInNum,
-      amountOutExpectedNum: amountOutNum
-    });
+    // Separate LP pool swap fee (30 bps / 0.30%) from platform fee and price impact
+    const poolFeeBps = 30;
+    const swapFeeRaw = ((amountInBig * BigInt(poolFeeBps)) / 10000n).toString();
+    const swapFeeNum = (amountInNum * poolFeeBps) / 10000;
+    const swapFeeUSD = request.tokenIn.priceUSD ? swapFeeNum * request.tokenIn.priceUSD : 0;
+    const swapFee: SwapFee = {
+      feeBps: poolFeeBps,
+      feeAmountRaw: swapFeeRaw,
+      feeAmountFormatted: swapFeeNum.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+      feeUSD: Number(swapFeeUSD.toFixed(4))
+    };
 
     const protocolFee = this.scoringService.calculateProtocolFee({
       tokenIn: request.tokenIn,
@@ -125,6 +144,18 @@ export class ZenithRouter {
       amountInNum
     });
 
+    // Pure price impact: compares liquidity curve execution against reference price without fee distortion
+    const totalFeeBps = protocolFee.feeBps + poolFeeBps;
+    const priceImpact = this.scoringService.calculatePriceImpact({
+      tokenIn: request.tokenIn,
+      tokenOut: request.tokenOut,
+      amountInNum,
+      amountOutExpectedNum: amountOutNum,
+      referencePrice,
+      feeBpsTotal: totalFeeBps
+    });
+
+    // Discover Routes (Direct, Multi-Hop, Split, Cross-Chain)
     let routes: SwapRoute[] = [];
     if (isCrossChain) {
       routes = this.bridgeAggregator.findCrossChainRoutes({
@@ -147,21 +178,13 @@ export class ZenithRouter {
       });
     }
 
-    const bestRoute = routes[0] || {
-      id: 'fallback-direct',
-      routeType: 'DIRECT',
-      hops: [{
-        dexProtocol: 'UNISWAP_V3',
-        poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
-        tokenIn: request.tokenIn,
-        tokenOut: request.tokenOut,
-        feeTierBps: 5,
-        proportionPercent: 100,
-        estimatedGas: 120000n
-      }],
-      gasCostUSD: 0.02,
-      estimatedGasUnits: 120000n
-    };
+    if (routes.length === 0) {
+      throw new Error(
+        `[ZenithRouter] No liquidity/route available for ${request.tokenIn.symbol}/${request.tokenOut.symbol}`
+      );
+    }
+
+    const bestRoute = routes[0];
 
     const effectiveExecutionScore = this.scoringService.calculateEffectiveExecutionScore({
       priceImpactPercent: priceImpact.percentage,
@@ -221,8 +244,10 @@ export class ZenithRouter {
       maximumInputRaw,
       maximumInputFormatted,
       executionPrice,
+      referencePrice,
       priceImpact,
       protocolFee,
+      swapFee,
       effectiveExecutionScore,
       quoteTimestamp,
       expiresAt,

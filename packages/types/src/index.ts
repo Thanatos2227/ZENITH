@@ -115,6 +115,7 @@ export interface ChainConfig {
   productionStatus: 'ACTIVE' | 'BETA' | 'MAINTENANCE' | 'PLANNED';
   color: string;
   iconURI: string;
+  defaultTokens?: Token[];
 }
 
 export type VerificationTier = 'VERIFIED_CANONICAL' | 'COMMUNITY_VERIFIED' | 'UNVERIFIED' | 'SUSPICIOUS';
@@ -141,6 +142,8 @@ export interface Token {
   symbol: string;
   decimals: number;
   logoURI?: string;
+  wrappedAddress?: string;
+  enabled?: boolean;
   priceUSD?: number;
   change24hUSD?: number;
   volume24hUSD?: number;
@@ -219,6 +222,13 @@ export interface ProtocolFee {
   feeAmountFormatted: string;
   feeUSD: number;
   treasuryRecipient: string;
+}
+
+export interface SwapFee {
+  feeBps: number;
+  feeAmountRaw: string;
+  feeAmountFormatted: string;
+  feeUSD: number;
 }
 
 export type TradeType = 'EXACT_INPUT' | 'EXACT_OUTPUT';
@@ -321,8 +331,10 @@ export interface QuoteResponse {
   maximumInputRaw?: string;
   maximumInputFormatted?: string;
   executionPrice: number;
+  referencePrice?: number;
   priceImpact: PriceImpact;
   protocolFee: ProtocolFee;
+  swapFee?: SwapFee;
   effectiveExecutionScore: number;
   quoteTimestamp: number;
   expiresAt: number;
