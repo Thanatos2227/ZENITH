@@ -157,21 +157,13 @@ export class ZenithRouter {
       });
     }
 
-    const bestRoute = routes[0] || {
-      id: 'fallback-direct',
-      routeType: 'DIRECT',
-      hops: [{
-        dexProtocol: 'UNISWAP_V3',
-        poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
-        tokenIn: request.tokenIn,
-        tokenOut: request.tokenOut,
-        feeTierBps: 5,
-        proportionPercent: 100,
-        estimatedGas: 120000n
-      }],
-      gasCostUSD: 0.02,
-      estimatedGasUnits: 120000n
-    };
+    if (routes.length === 0) {
+      throw new Error(
+        `[ZenithRouter] No liquidity/route available for ${request.tokenIn.symbol}/${request.tokenOut.symbol}`
+      );
+    }
+
+    const bestRoute = routes[0];
 
     const effectiveExecutionScore = this.scoringService.calculateEffectiveExecutionScore({
       priceImpactPercent: priceImpact.percentage,

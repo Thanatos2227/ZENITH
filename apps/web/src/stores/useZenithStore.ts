@@ -14,7 +14,7 @@ import {
   ZenithNotification
 } from '@zenith/types';
 import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
-import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData } from '@zenith/tokens';
+import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData, MarketStatus } from '@zenith/tokens';
 import { defaultZenithRouter, validateAndSanitizeAmount } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
@@ -123,7 +123,7 @@ export interface ZenithState {
   isMarketsLoading: boolean;
   marketsError: string | null;
   lastMarketUpdate: number | null;
-  marketDataStatus: 'LIVE' | 'CACHED' | 'UNAVAILABLE';
+  marketDataStatus: MarketStatus;
 
   setActiveTab: (tab: ZenithState['activeTab']) => void;
   setProMode: (pro: boolean) => void;
@@ -301,7 +301,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     isMarketsLoading: false,
     marketsError: null,
     lastMarketUpdate: null,
-    marketDataStatus: 'CACHED',
+    marketDataStatus: 'UNAVAILABLE',
 
     setActiveTab: (tab) => set({ activeTab: tab }),
     setProMode: (isProMode) => set({ isProMode }),
@@ -1026,13 +1026,13 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         (targetSym && inSym === targetSym) ||
         (currentTokenIn.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenIn.address.toLowerCase() === address.toLowerCase())
       ) {
-        updatedTokenIn = { ...currentTokenIn, priceUSD: data.priceUSD };
+        updatedTokenIn = { ...currentTokenIn, priceUSD: data.priceUSD ?? undefined };
       }
       if (
         (targetSym && outSym === targetSym) ||
         (currentTokenOut.chainId.toLowerCase() === chainId.toLowerCase() && currentTokenOut.address.toLowerCase() === address.toLowerCase())
       ) {
-        updatedTokenOut = { ...currentTokenOut, priceUSD: data.priceUSD };
+        updatedTokenOut = { ...currentTokenOut, priceUSD: data.priceUSD ?? undefined };
       }
 
       const symKey = data.symbol?.toLowerCase();
@@ -1046,7 +1046,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         tokenIn: updatedTokenIn,
         tokenOut: updatedTokenOut,
         lastMarketUpdate: Date.now(),
-        marketDataStatus: data.isLive ? 'LIVE' : (state.marketDataStatus || 'CACHED')
+        marketDataStatus: data.isLive ? 'LIVE' : defaultMarketDataService.getOverallStatus()
       }));
     },
 
@@ -1078,8 +1078,8 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           tokenOut: livePriceOut ? { ...currentTokenOut, priceUSD: livePriceOut } : currentTokenOut,
           isMarketsLoading: false,
           marketsError: defaultMarketDataService.getLastError(),
-          lastMarketUpdate: Date.now(),
-          marketDataStatus: defaultMarketDataService.getWsStatus() === 'CONNECTED' ? 'LIVE' : 'CACHED'
+          lastMarketUpdate: defaultMarketDataService.getLastUpdated() || Date.now(),
+          marketDataStatus: defaultMarketDataService.getOverallStatus()
         });
 
         // Refresh quote with live market prices
@@ -1087,7 +1087,8 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       } catch (err: any) {
         set({
           isMarketsLoading: false,
-          marketsError: err.message || 'Failed to fetch live market data'
+          marketsError: err.message || 'Failed to fetch live market data',
+          marketDataStatus: defaultMarketDataService.getOverallStatus()
         });
       }
     }
@@ -1096,5 +1097,13 @@ export const useZenithStore = create<ZenithState>((set, get) => {
 
 if (typeof window !== 'undefined') {
   applyThemeToDom(getStoredTheme());
+
+  window.addEventListener('offline', () => {
+    useZenithStore.setState({ marketDataStatus: 'OFFLINE' });
+  });
+
+  window.addEventListener('online', () => {
+    useZenithStore.getState().fetchMarketData();
+  });
 }
 

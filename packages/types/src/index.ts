@@ -141,6 +141,8 @@ export interface Token {
   symbol: string;
   decimals: number;
   logoURI?: string;
+  wrappedAddress?: string;
+  enabled?: boolean;
   priceUSD?: number;
   change24hUSD?: number;
   volume24hUSD?: number;
