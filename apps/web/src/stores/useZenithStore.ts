@@ -960,35 +960,33 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const { quote, walletAddress, isWalletConnected, openWalletModal, signer, provider, sourceChain, chainId, isWrongNetwork, walletBalances } = get();
       if (!quote) return;
 
-      if (!isWalletConnected || !walletAddress || !signer) {
+      if (!isWalletConnected || !walletAddress) {
         openWalletModal();
         return;
       }
 
-      if (isWrongNetwork) {
-        get().addNotification({
-          title: 'Wrong Network',
-          message: 'Please switch your wallet network to match the source chain before swapping.',
-          type: 'WARNING'
-        });
-        return;
-      }
-
-      if (chainId !== null && sourceChain.chainId !== chainId) {
-        get().addNotification({
-          title: 'Network Mismatch',
-          message: `Your wallet is on Chain ID ${chainId}, but the swap source is ${sourceChain.canonicalName} (Chain ID: ${sourceChain.chainId}). Please switch networks.`,
-          type: 'WARNING'
-        });
-        return;
+      if (sourceChain.executionEnvironment === 'EVM' && chainId !== null && sourceChain.chainId !== undefined && sourceChain.chainId !== chainId) {
+        try {
+          await get().switchNetwork(sourceChain.chainId);
+        } catch {
+          get().addNotification({
+            title: 'Network Mismatch',
+            message: `Please switch your wallet to ${sourceChain.canonicalName} (Chain ID: ${sourceChain.chainId}) to execute this swap.`,
+            type: 'WARNING'
+          });
+          return;
+        }
       }
 
       const tokenInKey = `${sourceChain.id}:${quote.request.tokenIn.address}`;
-      const userBalanceStr = walletBalances[tokenInKey] || '0';
-      const userBalanceNum = parseFloat(userBalanceStr);
+      const tokenInKeyLower = `${sourceChain.id}:${quote.request.tokenIn.address.toLowerCase()}`;
+      const nativeKey = `${sourceChain.id}:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`;
+      const nativeKeyAlt = `${sourceChain.id}:0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`;
+      const userBalanceStr = walletBalances[tokenInKey] ?? walletBalances[tokenInKeyLower] ?? (quote.request.tokenIn.isNative ? (walletBalances[nativeKey] ?? walletBalances[nativeKeyAlt]) : undefined);
+      const userBalanceNum = userBalanceStr !== undefined ? parseFloat(userBalanceStr) : undefined;
       const amountInNum = parseFloat(quote.amountInFormatted.replace(/,/g, ''));
 
-      if (userBalanceNum < amountInNum) {
+      if (userBalanceNum !== undefined && userBalanceNum > 0 && userBalanceNum < amountInNum && isWalletConnected && signer) {
         get().addNotification({
           title: 'Insufficient Balance',
           message: `You have ${userBalanceStr} ${quote.request.tokenIn.symbol}, but trying to swap ${quote.amountInFormatted} ${quote.request.tokenIn.symbol}.`,
