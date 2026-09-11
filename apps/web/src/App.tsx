@@ -17,12 +17,13 @@ import { NotificationCenter } from './components/notifications/NotificationCente
 import { ShieldCheck, Lock, Globe } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { activeTab, theme, fetchMarketData } = useZenithStore();
+  const { activeTab, theme, fetchMarketData, initializeWalletSession } = useZenithStore();
   const isDark = theme === 'dark';
 
   useEffect(() => {
     fetchMarketData();
-  }, [fetchMarketData]);
+    initializeWalletSession();
+  }, [fetchMarketData, initializeWalletSession]);
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#080B11] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'} font-sans selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-200`}>

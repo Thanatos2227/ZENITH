@@ -112,9 +112,9 @@ export const WalletModal: React.FC = () => {
             </div>
 
             <button
-              onClick={() => {
-                disconnectWallet();
+              onClick={async () => {
                 closeWalletModal();
+                await disconnectWallet();
               }}
               className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold text-sm transition-colors"
             >

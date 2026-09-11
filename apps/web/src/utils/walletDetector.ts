@@ -6,6 +6,110 @@ export const formatAddress = (address: string, prefixLen = 6, suffixLen = 4): st
   return `${address.slice(0, prefixLen)}...${address.slice(-suffixLen)}`;
 };
 
+export const ZENITH_WALLET_DISCONNECTED_KEY = 'zenith_wallet_disconnected';
+export const ZENITH_WALLET_CONNECTED_KEY = 'zenith_wallet_connected';
+export const ZENITH_WALLET_TYPE_KEY = 'zenith_wallet_type';
+export const ZENITH_WALLET_ADDRESS_KEY = 'zenith_wallet_address';
+
+/**
+ * Returns true if the user explicitly clicked "Disconnect" in Zenith.
+ * When true, auto-connect and session restoration are strictly prohibited.
+ */
+export const isExplicitlyDisconnected = (): boolean => {
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  try {
+    return window.localStorage.getItem(ZENITH_WALLET_DISCONNECTED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Sets or clears the explicit disconnected flag in persistent storage.
+ */
+export const setExplicitlyDisconnected = (disconnected: boolean): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (disconnected) {
+      if (window.localStorage) {
+        window.localStorage.setItem(ZENITH_WALLET_DISCONNECTED_KEY, 'true');
+      }
+      clearStoredWalletSession();
+    } else {
+      if (window.localStorage) {
+        window.localStorage.removeItem(ZENITH_WALLET_DISCONNECTED_KEY);
+      }
+    }
+  } catch (err) {
+    console.warn('[Wallet] Failed to update disconnect flag:', err);
+  }
+};
+
+/**
+ * Retrieves the stored wallet session if the user did not explicitly disconnect.
+ */
+export const getStoredWalletSession = (): {
+  isConnected: boolean;
+  walletType: WalletType | null;
+  address: string | null;
+} => {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return { isConnected: false, walletType: null, address: null };
+  }
+  try {
+    const isDisconnected = window.localStorage.getItem(ZENITH_WALLET_DISCONNECTED_KEY) === 'true';
+    if (isDisconnected) {
+      return { isConnected: false, walletType: null, address: null };
+    }
+    const isConnected = window.localStorage.getItem(ZENITH_WALLET_CONNECTED_KEY) === 'true';
+    const walletType = (window.localStorage.getItem(ZENITH_WALLET_TYPE_KEY) as WalletType) || null;
+    const address = window.localStorage.getItem(ZENITH_WALLET_ADDRESS_KEY) || null;
+    return { isConnected, walletType, address };
+  } catch {
+    return { isConnected: false, walletType: null, address: null };
+  }
+};
+
+/**
+ * Persists an active wallet session.
+ */
+export const setStoredWalletSession = (walletType: WalletType, address: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage) {
+      window.localStorage.removeItem(ZENITH_WALLET_DISCONNECTED_KEY);
+      window.localStorage.setItem(ZENITH_WALLET_CONNECTED_KEY, 'true');
+      window.localStorage.setItem(ZENITH_WALLET_TYPE_KEY, walletType);
+      window.localStorage.setItem(ZENITH_WALLET_ADDRESS_KEY, address);
+    }
+  } catch (err) {
+    console.warn('[Wallet] Failed to persist wallet session:', err);
+  }
+};
+
+/**
+ * Completely clears any persisted Zenith wallet connection and session state.
+ */
+export const clearStoredWalletSession = (): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage) {
+      window.localStorage.removeItem(ZENITH_WALLET_CONNECTED_KEY);
+      window.localStorage.removeItem(ZENITH_WALLET_TYPE_KEY);
+      window.localStorage.removeItem(ZENITH_WALLET_ADDRESS_KEY);
+      window.localStorage.removeItem('walletconnect');
+      window.localStorage.removeItem('WALLETCONNECT_DEEPLINK_CHOICE');
+    }
+    if (window.sessionStorage) {
+      window.sessionStorage.removeItem(ZENITH_WALLET_CONNECTED_KEY);
+      window.sessionStorage.removeItem(ZENITH_WALLET_TYPE_KEY);
+      window.sessionStorage.removeItem(ZENITH_WALLET_ADDRESS_KEY);
+    }
+  } catch (err) {
+    console.warn('[Wallet] Failed to clear stored wallet session:', err);
+  }
+};
+
 export const getInjectedEthereumProvider = (walletType: WalletType): any => {
   if (typeof window === 'undefined') return null;
 
@@ -203,3 +307,109 @@ export const connectToWalletProvider = async (
     chainId
   };
 };
+
+/**
+ * Checks for previously authorized accounts using eth_accounts silently.
+ * NEVER prompts the user or opens an extension popup.
+ */
+export const checkAuthorizedAccounts = async (
+  walletType: WalletType
+): Promise<{ address: string; walletName: string; rawProvider: any; chainId?: number } | null> => {
+  if (typeof window === 'undefined') return null;
+
+  if (walletType === 'PHANTOM') {
+    const solana = (window as any).phantom?.solana || (window as any).solana;
+    if (solana && solana.isConnected && solana.publicKey) {
+      return {
+        address: solana.publicKey.toString(),
+        walletName: 'Phantom',
+        rawProvider: solana
+      };
+    }
+    return null;
+  }
+
+  const rawProvider = getInjectedEthereumProvider(walletType);
+  if (!rawProvider || typeof rawProvider.request !== 'function') {
+    return null;
+  }
+
+  try {
+    const accounts: string[] = await rawProvider.request({ method: 'eth_accounts' });
+    if (!accounts || accounts.length === 0 || !accounts[0]) {
+      return null;
+    }
+
+    let chainId: number | undefined;
+    try {
+      const hexChainId = await rawProvider.request({ method: 'eth_chainId' });
+      if (hexChainId) {
+        chainId = parseInt(hexChainId, 16);
+      }
+    } catch {}
+
+    const walletNameMap: Record<WalletType, string> = {
+      METAMASK: 'MetaMask',
+      COINBASE: 'Coinbase Wallet',
+      RABBY: 'Rabby Wallet',
+      OKX: 'OKX Wallet',
+      RAINBOW: 'Rainbow',
+      WALLETCONNECT: 'WalletConnect',
+      PHANTOM: 'Phantom',
+      INJECTED: 'Injected Web3'
+    };
+
+    return {
+      address: accounts[0],
+      walletName: walletNameMap[walletType] || walletType,
+      rawProvider,
+      chainId
+    };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Revokes eth_accounts permissions via wallet_revokePermissions if supported by the provider (e.g. MetaMask).
+ * Returns true if successfully revoked, false if unsupported or rejected.
+ */
+export const revokeWalletPermissions = async (rawProvider: any): Promise<boolean> => {
+  if (!rawProvider || typeof rawProvider.request !== 'function') {
+    return false;
+  }
+
+  try {
+    console.log('[Wallet] Attempting wallet_revokePermissions for eth_accounts...');
+    await rawProvider.request({
+      method: 'wallet_revokePermissions',
+      params: [{ eth_accounts: {} }]
+    });
+    console.log('[Wallet] wallet_revokePermissions successfully revoked eth_accounts permission');
+    return true;
+  } catch (err: any) {
+    // Some wallets don't support wallet_revokePermissions (or user rejected)
+    console.warn('[Wallet] wallet_revokePermissions not supported or failed:', err?.message || err);
+    return false;
+  }
+};
+
+/**
+ * Verifies post-disconnect permission state by calling eth_accounts.
+ * If permissions were revoked, returns an empty array [].
+ */
+export const verifyRevocation = async (rawProvider: any): Promise<string[]> => {
+  if (!rawProvider || typeof rawProvider.request !== 'function') {
+    return [];
+  }
+
+  try {
+    const remainingAccounts: string[] = await rawProvider.request({ method: 'eth_accounts' });
+    console.log('[Wallet] Verification after disconnect (eth_accounts):', remainingAccounts);
+    return remainingAccounts || [];
+  } catch (err: any) {
+    console.warn('[Wallet] Error verifying post-disconnect accounts:', err?.message || err);
+    return [];
+  }
+};
+

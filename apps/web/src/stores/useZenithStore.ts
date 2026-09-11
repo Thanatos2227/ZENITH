@@ -18,7 +18,18 @@ import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMark
 import { defaultZenithRouter, validateAndSanitizeAmount } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
-import { connectToWalletProvider, formatAddress } from '../utils/walletDetector';
+import {
+  connectToWalletProvider,
+  checkAuthorizedAccounts,
+  revokeWalletPermissions,
+  verifyRevocation,
+  formatAddress,
+  isExplicitlyDisconnected,
+  setExplicitlyDisconnected,
+  getStoredWalletSession,
+  setStoredWalletSession,
+  clearStoredWalletSession
+} from '../utils/walletDetector';
 
 const THEME_STORAGE_KEY = 'zenith-theme';
 
@@ -88,6 +99,7 @@ export interface ZenithState {
   mevProtection: MEVProtectionLevel;
 
   isWalletConnected: boolean;
+  isConnected: boolean;
   isWalletConnecting: boolean;
   walletAddress: string;
   connectedWalletName: string;
@@ -146,9 +158,10 @@ export interface ZenithState {
   setMEVProtection: (level: MEVProtectionLevel) => void;
   openWalletModal: () => void;
   closeWalletModal: () => void;
-  connectWalletWithType: (walletType: WalletType) => Promise<void>;
+  connectWalletWithType: (walletType: WalletType, isSilentRestore?: boolean) => Promise<void>;
   connectWallet: () => void;
-  disconnectWallet: () => void;
+  disconnectWallet: () => Promise<void>;
+  initializeWalletSession: () => Promise<void>;
   refreshBalance: () => Promise<void>;
   switchNetwork: (chainId: number) => Promise<void>;
   openTokenPicker: (target: 'IN' | 'OUT') => void;
@@ -180,11 +193,23 @@ let activeQuoteRequestId = 0;
 
 const cleanupWalletListeners = () => {
   if (activeInjectedProvider) {
-    if (activeAccountsChangedListener && typeof activeInjectedProvider.removeListener === 'function') {
-      activeInjectedProvider.removeListener('accountsChanged', activeAccountsChangedListener);
-    }
-    if (activeChainChangedListener && typeof activeInjectedProvider.removeListener === 'function') {
-      activeInjectedProvider.removeListener('chainChanged', activeChainChangedListener);
+    try {
+      if (activeAccountsChangedListener) {
+        if (typeof activeInjectedProvider.removeListener === 'function') {
+          activeInjectedProvider.removeListener('accountsChanged', activeAccountsChangedListener);
+        } else if (typeof activeInjectedProvider.off === 'function') {
+          activeInjectedProvider.off('accountsChanged', activeAccountsChangedListener);
+        }
+      }
+      if (activeChainChangedListener) {
+        if (typeof activeInjectedProvider.removeListener === 'function') {
+          activeInjectedProvider.removeListener('chainChanged', activeChainChangedListener);
+        } else if (typeof activeInjectedProvider.off === 'function') {
+          activeInjectedProvider.off('chainChanged', activeChainChangedListener);
+        }
+      }
+    } catch (err) {
+      console.warn('[Wallet] Listener cleanup error:', err);
     }
   }
   activeInjectedProvider = null;
@@ -273,6 +298,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     mevProtection: 'FLASHBOTS_PRIVATE',
 
     isWalletConnected: false,
+    isConnected: false,
     isWalletConnecting: false,
     walletAddress: '',
     connectedWalletName: '',
@@ -546,12 +572,49 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     openWalletModal: () => set({ isWalletModalOpen: true }),
     closeWalletModal: () => set({ isWalletModalOpen: false }),
 
-    connectWalletWithType: async (walletType: WalletType) => {
+    connectWalletWithType: async (walletType: WalletType, isSilentRestore = false) => {
+      if (!isSilentRestore) {
+        if (isExplicitlyDisconnected()) {
+          console.log('[Wallet] Reconnect requested by user');
+        }
+        setExplicitlyDisconnected(false);
+        console.log('[Wallet] Connect requested');
+      } else {
+        if (isExplicitlyDisconnected()) {
+          console.log('[Wallet] Auto-connect blocked after explicit disconnect');
+          return;
+        }
+      }
+
       set({ isWalletConnecting: true, walletError: null });
       cleanupWalletListeners();
 
       try {
-        const { address, walletName, rawProvider, chainId: initialChainId } = await connectToWalletProvider(walletType);
+        let address: string;
+        let walletName: string;
+        let rawProvider: any;
+        let initialChainId: number | undefined;
+
+        if (isSilentRestore) {
+          const check = await checkAuthorizedAccounts(walletType);
+          if (!check || !check.address) {
+            set({ isWalletConnecting: false });
+            return;
+          }
+          address = check.address;
+          walletName = check.walletName;
+          rawProvider = check.rawProvider;
+          initialChainId = check.chainId;
+        } else {
+          const result = await connectToWalletProvider(walletType);
+          address = result.address;
+          walletName = result.walletName;
+          rawProvider = result.rawProvider;
+          initialChainId = result.chainId;
+          console.log('[Wallet] Connection approved');
+        }
+
+        console.log(`[Wallet] Connected: ${address}`);
 
         let provider: BrowserProvider | null = null;
         let signer: JsonRpcSigner | null = null;
@@ -564,7 +627,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         let initialDestChain = get().destChain;
 
         if (walletType !== 'PHANTOM') {
-
           provider = new BrowserProvider(rawProvider, 'any');
           try {
             signer = await provider.getSigner();
@@ -599,8 +661,12 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           }
         }
 
+        // Persist session only after explicit approval / connection
+        setStoredWalletSession(walletType, address);
+
         set({
           isWalletConnected: true,
+          isConnected: true,
           isWalletConnecting: false,
           walletAddress: address,
           connectedWalletName: walletName,
@@ -619,11 +685,13 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           } : {})
         });
 
-        get().addNotification({
-          title: 'Wallet Connected',
-          message: `Connected ${walletName} (${formatAddress(address)})`,
-          type: 'SUCCESS'
-        });
+        if (!isSilentRestore) {
+          get().addNotification({
+            title: 'Wallet Connected',
+            message: `Connected ${walletName} (${formatAddress(address)})`,
+            type: 'SUCCESS'
+          });
+        }
 
         if (isWrongNetwork && connectedChainId !== null) {
           get().addNotification({
@@ -641,7 +709,13 @@ export const useZenithStore = create<ZenithState>((set, get) => {
 
           activeAccountsChangedListener = async (accounts: string[]) => {
             console.log('[Zenith Web3] accountsChanged:', accounts);
+            if (isExplicitlyDisconnected() || !get().isWalletConnected) {
+              console.log('[Wallet] Auto-connect blocked after explicit disconnect (accountsChanged ignored)');
+              return;
+            }
+
             if (!accounts || accounts.length === 0) {
+              console.log('[Wallet] accountsChanged reported zero accounts - disconnecting Zenith');
               get().disconnectWallet();
               return;
             }
@@ -652,6 +726,8 @@ export const useZenithStore = create<ZenithState>((set, get) => {
             if (currentProvider) {
               newSigner = await currentProvider.getSigner().catch(() => null);
             }
+
+            setStoredWalletSession(walletType, newAddress);
 
             set({
               walletAddress: newAddress,
@@ -669,6 +745,10 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           };
 
           activeChainChangedListener = async (hexChainId: string) => {
+            if (isExplicitlyDisconnected() || !get().isWalletConnected) {
+              return;
+            }
+
             const newChainId = typeof hexChainId === 'string' && hexChainId.startsWith('0x')
               ? parseInt(hexChainId, 16)
               : Number(hexChainId);
@@ -729,15 +809,33 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           rawProvider.on('chainChanged', activeChainChangedListener);
         }
       } catch (err: any) {
+        let errorMessage = err?.message || 'Could not connect to wallet';
+        if (
+          err?.code === 4001 ||
+          err?.message?.includes('User rejected') ||
+          err?.message?.includes('user rejected') ||
+          err?.message?.includes('User denied')
+        ) {
+          errorMessage = 'Connection request was rejected by user in wallet.';
+        } else if (err?.code === -32002) {
+          errorMessage = 'Connection request is already pending in wallet. Please open the extension.';
+        }
+
+        console.warn('[Wallet] Connection failed or rejected:', errorMessage, err);
+
         set({
+          isWalletConnected: false,
+          isConnected: false,
           isWalletConnecting: false,
-          walletError: err.message || 'Could not connect to wallet'
+          walletError: errorMessage
         });
-        get().addNotification({
-          title: 'Connection Failed',
-          message: err.message || 'Could not connect to wallet',
-          type: 'ERROR'
-        });
+        if (!isSilentRestore) {
+          get().addNotification({
+            title: 'Connection Rejected / Failed',
+            message: errorMessage,
+            type: 'ERROR'
+          });
+        }
       }
     },
 
@@ -745,10 +843,21 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       set({ isWalletModalOpen: true });
     },
 
-    disconnectWallet: () => {
+    disconnectWallet: async () => {
+      console.log('[Wallet] Disconnect requested');
+      // Capture provider to revoke permissions BEFORE tearing down activeInjectedProvider
+      const providerToRevoke =
+        activeInjectedProvider ||
+        (typeof window !== 'undefined' ? (window as any).ethereum : null);
+
+      setExplicitlyDisconnected(true);
+      console.log('[Wallet] Explicit disconnect flag set');
+      clearStoredWalletSession();
       cleanupWalletListeners();
+
       set({
         isWalletConnected: false,
+        isConnected: false,
         isWalletConnecting: false,
         walletAddress: '',
         connectedWalletName: '',
@@ -760,11 +869,50 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         isBalanceLoading: false,
         walletError: null
       });
+
       get().addNotification({
         title: 'Wallet Disconnected',
         message: 'Wallet session ended',
         type: 'INFO'
       });
+
+      // Attempt to revoke permissions via wallet_revokePermissions (MetaMask EIP-2255)
+      if (providerToRevoke && typeof providerToRevoke.request === 'function') {
+        try {
+          const revoked = await revokeWalletPermissions(providerToRevoke);
+          if (revoked) {
+            // STEP 4: verify revocation using eth_accounts
+            const remaining = await verifyRevocation(providerToRevoke);
+            if (remaining.length === 0) {
+              console.log('[Wallet] Permission revocation verified: 0 accounts authorized');
+            } else {
+              console.log('[Wallet] Post-revocation accounts reported:', remaining);
+            }
+          }
+        } catch (revokeErr) {
+          console.warn('[Wallet] Permission revocation step error:', revokeErr);
+        }
+      }
+    },
+
+    initializeWalletSession: async () => {
+      if (typeof window === 'undefined') return;
+
+      if (isExplicitlyDisconnected()) {
+        console.log('[Wallet] Auto-connect blocked after explicit disconnect');
+        return;
+      }
+
+      const session = getStoredWalletSession();
+      if (!session.isConnected || !session.walletType) {
+        return;
+      }
+
+      try {
+        await get().connectWalletWithType(session.walletType, true /* isSilentRestore */);
+      } catch (err) {
+        console.warn('[Wallet] Failed to restore session on initialization:', err);
+      }
     },
 
     refreshBalance: async () => {
