@@ -8,8 +8,6 @@ import {
   TrendingUp,
   TrendingDown,
   Search,
-  ShieldCheck,
-  ShieldAlert,
   ArrowRight,
   RefreshCw,
   AlertCircle
@@ -96,12 +94,6 @@ export const MarketsView: React.FC = () => {
     return val.toFixed(8);
   };
 
-  const formatVolume = (vol: number): string => {
-    if (vol >= 1e9) return `$${(vol / 1e9).toFixed(2)}B`;
-    if (vol >= 1e6) return `$${(vol / 1e6).toFixed(1)}M`;
-    if (vol >= 1e3) return `$${(vol / 1e3).toFixed(0)}K`;
-    return `$${vol.toLocaleString()}`;
-  };
 
   const formatMarketCap = (cap?: number | null): string => {
     if (!cap || cap <= 0) return '—';
@@ -237,9 +229,7 @@ export const MarketsView: React.FC = () => {
                 <th className="py-3.5 px-4">Network</th>
                 <th className="py-3.5 px-4">Live Price (USD)</th>
                 <th className="py-3.5 px-4">24h Change</th>
-                <th className="py-3.5 px-4">24h Volume</th>
                 <th className="py-3.5 px-4">Market Cap</th>
-                <th className="py-3.5 px-4">Risk Rating</th>
                 <th className="py-3.5 px-4 text-right">Action</th>
               </tr>
             </thead>
@@ -256,11 +246,9 @@ export const MarketsView: React.FC = () => {
 
                 const currentPrice = (live?.priceUSD !== undefined && live.priceUSD !== null && live.priceUSD > 0) ? live.priceUSD : null;
                 const change24h = (live?.change24hUSD !== undefined && live.change24hUSD !== null) ? live.change24hUSD : null;
-                const volume24h = (live?.volume24hUSD !== undefined && live.volume24hUSD !== null && live.volume24hUSD > 0) ? live.volume24hUSD : null;
                 const marketCapUSD = live?.marketCapUSD ?? null;
                 const isAvailable = currentPrice !== null;
                 const isPositive = change24h !== null && change24h >= 0;
-                const riskScore = t.securityProfile?.riskScore ?? 0;
 
                 return (
                   <tr key={`${t.chainId}-${t.address}`} className="hover:bg-slate-800/40 transition-colors">
@@ -315,27 +303,8 @@ export const MarketsView: React.FC = () => {
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4 text-slate-300">
-                      {volume24h !== null ? formatVolume(volume24h) : <span className="text-slate-500">—</span>}
-                    </td>
-
                     <td className="py-3.5 px-4 text-slate-200 font-semibold">
                       {formatMarketCap(marketCapUSD)}
-                    </td>
-
-                    <td className="py-3.5 px-4 font-sans">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          riskScore > 30
-                            ? 'bg-red-500/20 text-red-300'
-                            : riskScore > 10
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-emerald-500/20 text-emerald-300'
-                        }`}
-                      >
-                        {riskScore > 20 ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
-                        Score: {riskScore}/100
-                      </span>
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
