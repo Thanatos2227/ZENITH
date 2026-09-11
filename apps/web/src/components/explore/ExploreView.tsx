@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
 import { defaultMarketDataService } from '@zenith/tokens';
-import { ProtocolAnalytics, ZenithPool, Token } from '@zenith/types';
+import { ProtocolAnalytics, Token } from '@zenith/types';
+import { TokenLogo } from '../common/TokenLogo';
 import {
   BarChart3,
   TrendingUp,
@@ -9,18 +10,12 @@ import {
   Activity,
   Layers,
   Search,
-  ArrowUpRight,
-  ExternalLink,
-  ShieldCheck,
   Zap,
   DollarSign
 } from 'lucide-react';
 
 export const ExploreView: React.FC = () => {
-  const { theme, setTokenIn, setActiveTab } = useZenithStore();
-  const isDark = theme === 'dark';
-
-  const [timeframe, setTimeframe] = useState<'24H' | '7D' | '30D' | 'ALL'>('30D');
+  const { setTokenIn, setActiveTab } = useZenithStore();
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const analytics: ProtocolAnalytics = defaultMarketDataService.getProtocolAnalytics();
@@ -38,7 +33,7 @@ export const ExploreView: React.FC = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
-      {}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
         <div>
           <div className="flex items-center gap-2">
@@ -57,7 +52,7 @@ export const ExploreView: React.FC = () => {
           </p>
         </div>
 
-        {}
+        {/* Search */}
         <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -65,12 +60,12 @@ export const ExploreView: React.FC = () => {
             placeholder="Search token or pool..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/90 border border-slate-800 text-sm rounded-xl pl-9 pr-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+            className="w-full bg-slate-900/90 border border-slate-800 text-sm rounded-xl pl-9 pr-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
           />
         </div>
       </div>
 
-      {}
+      {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass-panel p-5 rounded-2xl border border-slate-800">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase">
@@ -125,75 +120,35 @@ export const ExploreView: React.FC = () => {
         </div>
       </div>
 
-      {}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">
-              Protocol Volume & TVL History
-            </h2>
-            <span className="text-xs text-slate-400">Aggregated trading volume across all chains</span>
-          </div>
-
-          <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-mono">
-            {(['24H', '7D', '30D', 'ALL'] as const).map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setTimeframe(tf)}
-                className={`px-3 py-1 rounded-lg transition-all ${
-                  timeframe === tf ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {}
-        <div className="h-44 flex items-end justify-between gap-1.5 pt-4">
-          {analytics.historicalVolume.map((pt, i) => {
-            const heightPercent = Math.min(100, Math.max(15, (pt.volumeUSD / 250000000) * 100));
-            return (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group relative">
-                <div
-                  style={{ height: `${heightPercent}%` }}
-                  className="w-full rounded-t bg-cyan-500/60 group-hover:bg-cyan-400 transition-all shadow-glow-cyan"
-                />
-                {i % 5 === 0 && (
-                  <span className="text-[10px] font-mono text-slate-500 hidden sm:block">
-                    {new Date(pt.timestamp).getDate()}d
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {}
+      {/* Grid: Top Tokens & Pools */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {}
+        {/* Top Verified Tokens */}
         <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h2 className="text-sm font-bold text-white uppercase font-mono">Top Verified Tokens</h2>
             <span className="text-xs text-slate-400 font-mono">By Market Cap</span>
           </div>
           <div className="divide-y divide-slate-800/40 text-sm">
-            {tokens.slice(0, 6).map((tok) => (
+            {tokens.slice(0, 8).map((tok) => (
               <div
-                key={tok.symbol}
+                key={`${tok.chainId}-${tok.symbol}-${tok.address}`}
                 onClick={() => handleTradeToken(tok)}
-                className="p-3.5 hover:bg-slate-800/30 transition-colors flex items-center justify-between cursor-pointer"
+                className="p-3.5 hover:bg-slate-800/30 transition-colors flex items-center justify-between cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <img
-                    src={tok.logoURI || 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'}
-                    alt={tok.symbol}
+                  <TokenLogo
+                    logoURI={tok.logoURI}
+                    symbol={tok.symbol}
+                    name={tok.name}
+                    chainId={tok.chainId}
+                    address={tok.address}
+                    isNative={tok.isNative}
                     className="w-7 h-7 rounded-full"
                   />
                   <div>
-                    <div className="font-semibold text-white">{tok.name}</div>
+                    <div className="font-semibold text-white group-hover:text-cyan-400 transition-colors">
+                      {tok.name}
+                    </div>
                     <span className="text-xs font-mono text-slate-400">{tok.symbol}</span>
                   </div>
                 </div>
@@ -218,34 +173,42 @@ export const ExploreView: React.FC = () => {
           </div>
         </div>
 
-        {}
+        {/* Top Concentrated Pools */}
         <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h2 className="text-sm font-bold text-white uppercase font-mono">Top Concentrated Pools</h2>
             <span className="text-xs text-cyan-400 font-mono">v4 Singleton</span>
           </div>
           <div className="divide-y divide-slate-800/40 text-sm">
-            {pools.map((p) => (
+            {pools.slice(0, 8).map((p) => (
               <div
                 key={p.id}
                 onClick={() => setActiveTab('POOLS')}
-                className="p-3.5 hover:bg-slate-800/30 transition-colors flex items-center justify-between cursor-pointer"
+                className="p-3.5 hover:bg-slate-800/30 transition-colors flex items-center justify-between cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex -space-x-1.5">
-                    <img
-                      src={p.token0.logoURI || 'https://assets.coingecko.com/coins/images/6319/small/usdc.png'}
-                      alt={p.token0.symbol}
+                  <div className="flex -space-x-1.5 shrink-0">
+                    <TokenLogo
+                      logoURI={p.token0.logoURI}
+                      symbol={p.token0.symbol}
+                      name={p.token0.name}
+                      chainId={p.token0.chainId}
+                      address={p.token0.address}
+                      isNative={p.token0.isNative}
                       className="w-6 h-6 rounded-full border border-slate-900"
                     />
-                    <img
-                      src={p.token1.logoURI || 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'}
-                      alt={p.token1.symbol}
+                    <TokenLogo
+                      logoURI={p.token1.logoURI}
+                      symbol={p.token1.symbol}
+                      name={p.token1.name}
+                      chainId={p.token1.chainId}
+                      address={p.token1.address}
+                      isNative={p.token1.isNative}
                       className="w-6 h-6 rounded-full border border-slate-900"
                     />
                   </div>
                   <div>
-                    <div className="font-semibold text-white">
+                    <div className="font-semibold text-white group-hover:text-cyan-400 transition-colors">
                       {p.token0.symbol}/{p.token1.symbol}
                     </div>
                     <span className="text-[11px] font-mono text-cyan-300">{(p.feeBps / 100).toFixed(2)}% fee</span>
