@@ -1068,18 +1068,58 @@ export class MarketDataService {
   }
 
   public getPools(): ZenithPool[] {
-    const eth = DEFAULT_TOKENS.find(t => t.symbol === 'ETH') || DEFAULT_TOKENS[0];
-    const usdc = DEFAULT_TOKENS.find(t => t.symbol === 'USDC') || DEFAULT_TOKENS[1];
-    const wbtc = DEFAULT_TOKENS.find(t => t.symbol === 'WBTC') || DEFAULT_TOKENS[2];
-    const usdt = DEFAULT_TOKENS.find(t => t.symbol === 'USDT') || DEFAULT_TOKENS[3];
-    const sol = DEFAULT_TOKENS.find(t => t.symbol === 'SOL') || DEFAULT_TOKENS[4];
+    const getToken = (symbol: string, chainId?: string): Token => {
+      if (chainId) {
+        const found = DEFAULT_TOKENS.find(
+          t => t.symbol.toUpperCase() === symbol.toUpperCase() && t.chainId.toLowerCase() === chainId.toLowerCase()
+        );
+        if (found) return found;
+      }
+      const foundBySym = DEFAULT_TOKENS.find(t => t.symbol.toUpperCase() === symbol.toUpperCase());
+      if (foundBySym) return foundBySym;
+      return DEFAULT_TOKENS[0];
+    };
+
+    const eth = getToken('ETH', 'ethereum');
+    const usdcEth = getToken('USDC', 'ethereum');
+    const wbtc = getToken('WBTC', 'ethereum');
+    const usdtEth = getToken('USDT', 'ethereum');
+    const linkEth = getToken('LINK', 'ethereum');
+    const uniEth = getToken('UNI', 'ethereum');
+    const pepeEth = getToken('PEPE', 'ethereum');
+
+    const sol = getToken('SOL', 'solana');
+    const usdcSol = getToken('USDC', 'solana');
+    const jitoSol = getToken('JITOSOL', 'solana');
+    const bonkSol = getToken('BONK', 'solana');
+
+    const usdcBase = getToken('USDC', 'base');
+    const ethBase = getToken('ETH', 'base');
+    const degenBase = getToken('DEGEN', 'base');
+    const aeroBase = getToken('AERO', 'base');
+
+    const arbArb = getToken('ARB', 'arbitrum');
+    const usdcArb = getToken('USDC', 'arbitrum');
+    const ethArb = getToken('ETH', 'arbitrum');
+
+    const polPolygon = getToken('POL', 'polygon') || getToken('POLYGON', 'polygon');
+    const usdcPolygon = getToken('USDC', 'polygon');
+
+    const opOptimism = getToken('OP', 'optimism');
+    const usdcOptimism = getToken('USDC', 'optimism');
+
+    const wbnbBnb = getToken('WBNB', 'bnb') || getToken('BNB', 'bnb');
+    const usdtBnb = getToken('USDT', 'bnb');
+
+    const wavaxAvax = getToken('WAVAX', 'avalanche') || getToken('AVAX', 'avalanche');
+    const usdcAvax = getToken('USDC', 'avalanche');
 
     return [
       {
         id: 'pool-eth-usdc-5',
         poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
         chainId: 'ethereum',
-        token0: usdc,
+        token0: usdcEth,
         token1: eth,
         feeBps: 5,
         tickSpacing: 10,
@@ -1116,8 +1156,8 @@ export class MarketDataService {
         id: 'pool-usdc-usdt-1',
         poolAddress: '0x3416cf6c708da44db26246036dd20e4505682f6e',
         chainId: 'ethereum',
-        token0: usdc,
-        token1: usdt,
+        token0: usdcEth,
+        token1: usdtEth,
         feeBps: 1,
         tickSpacing: 1,
         sqrtPriceX96: '79228162514264337593543950336',
@@ -1130,23 +1170,273 @@ export class MarketDataService {
         aprPercent: 8.6
       },
       {
+        id: 'pool-pepe-eth-30',
+        poolAddress: '0xa43fe1690fb5055b73983c3e0159b04c7380a5ac',
+        chainId: 'ethereum',
+        token0: pepeEth,
+        token1: eth,
+        feeBps: 30,
+        tickSpacing: 60,
+        sqrtPriceX96: '1890000000000000000000',
+        currentTick: -198400,
+        liquidity: '8400000000000000000',
+        tvlUSD: 41200000,
+        volume24hUSD: 28500000,
+        volume7dUSD: 184000000,
+        fees24hUSD: 85500,
+        aprPercent: 44.6,
+        hookName: 'DynamicVolFee',
+        isDynamicFee: true
+      },
+      {
+        id: 'pool-link-eth-30',
+        poolAddress: '0xa6cc3c2531fda8bc185641cecdac7b8238646d80',
+        chainId: 'ethereum',
+        token0: linkEth,
+        token1: eth,
+        feeBps: 30,
+        tickSpacing: 60,
+        sqrtPriceX96: '512000000000000000000',
+        currentTick: 182300,
+        liquidity: '12400000000000000000',
+        tvlUSD: 36800000,
+        volume24hUSD: 14200000,
+        volume7dUSD: 98000000,
+        fees24hUSD: 42600,
+        aprPercent: 21.8
+      },
+      {
+        id: 'pool-uni-eth-30',
+        poolAddress: '0x1d42064fc4beb5f8aaf85f4617ae8b3b5b8bd801',
+        chainId: 'ethereum',
+        token0: uniEth,
+        token1: eth,
+        feeBps: 30,
+        tickSpacing: 60,
+        sqrtPriceX96: '450000000000000000000',
+        currentTick: 174000,
+        liquidity: '9800000000000000000',
+        tvlUSD: 28900000,
+        volume24hUSD: 11800000,
+        volume7dUSD: 75000000,
+        fees24hUSD: 35400,
+        aprPercent: 19.5
+      },
+      {
         id: 'pool-sol-usdc-30',
         poolAddress: '0xsolusdcwhirlpool0000000000000000001',
         chainId: 'solana',
-        token0: usdc,
+        token0: usdcSol,
         token1: sol,
         feeBps: 30,
         tickSpacing: 60,
         sqrtPriceX96: '254100000000000000000000',
         currentTick: 142000,
         liquidity: '35000000000000000000',
-        tvlUSD: 76200000,
-        volume24hUSD: 45000000,
-        volume7dUSD: 290000000,
-        fees24hUSD: 135000,
-        aprPercent: 32.8,
+        tvlUSD: 88400000,
+        volume24hUSD: 52000000,
+        volume7dUSD: 340000000,
+        fees24hUSD: 156000,
+        aprPercent: 34.2,
         hookName: 'MEVCaptureLPReward',
         isDynamicFee: true
+      },
+      {
+        id: 'pool-jitosol-sol-1',
+        poolAddress: '0xjitosolpoolwhirlpool000000000000002',
+        chainId: 'solana',
+        token0: jitoSol,
+        token1: sol,
+        feeBps: 1,
+        tickSpacing: 1,
+        sqrtPriceX96: '79228162514264337593543950336',
+        currentTick: 100,
+        liquidity: '45000000000000000000',
+        tvlUSD: 62500000,
+        volume24hUSD: 18400000,
+        volume7dUSD: 120000000,
+        fees24hUSD: 1840,
+        aprPercent: 9.8,
+        hookName: 'TWAMMAutoRebalance'
+      },
+      {
+        id: 'pool-bonk-sol-100',
+        poolAddress: '0xbonksolpool000000000000000000000003',
+        chainId: 'solana',
+        token0: bonkSol,
+        token1: sol,
+        feeBps: 100,
+        tickSpacing: 200,
+        sqrtPriceX96: '1200000000000000000',
+        currentTick: -340000,
+        liquidity: '6000000000000000000',
+        tvlUSD: 18400000,
+        volume24hUSD: 15200000,
+        volume7dUSD: 95000000,
+        fees24hUSD: 152000,
+        aprPercent: 58.4,
+        hookName: 'DynamicVolFee',
+        isDynamicFee: true
+      },
+      {
+        id: 'pool-base-eth-usdc-5',
+        poolAddress: '0xd0b53d9277642d899df5c87a3966a349a798f224',
+        chainId: 'base',
+        token0: usdcBase,
+        token1: ethBase,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '14614467034852101032872730522',
+        currentTick: 201240,
+        liquidity: '32000000000000000000',
+        tvlUSD: 74200000,
+        volume24hUSD: 41800000,
+        volume7dUSD: 270000000,
+        fees24hUSD: 20900,
+        aprPercent: 20.8,
+        hookName: 'DynamicVolFee',
+        isDynamicFee: true
+      },
+      {
+        id: 'pool-base-degen-eth-30',
+        poolAddress: '0xc9034c3e7fde0fb3c70754d04397b34f02fbdefb',
+        chainId: 'base',
+        token0: degenBase,
+        token1: ethBase,
+        feeBps: 30,
+        tickSpacing: 60,
+        sqrtPriceX96: '2500000000000000',
+        currentTick: -250000,
+        liquidity: '4500000000000000000',
+        tvlUSD: 12400000,
+        volume24hUSD: 9800000,
+        volume7dUSD: 62000000,
+        fees24hUSD: 29400,
+        aprPercent: 41.2,
+        hookName: 'DynamicVolFee',
+        isDynamicFee: true
+      },
+      {
+        id: 'pool-base-aero-usdc-30',
+        poolAddress: '0x2222222222222222222222222222222222222222',
+        chainId: 'base',
+        token0: aeroBase,
+        token1: usdcBase,
+        feeBps: 30,
+        tickSpacing: 60,
+        sqrtPriceX96: '85000000000000000000000',
+        currentTick: 120000,
+        liquidity: '7800000000000000000',
+        tvlUSD: 24500000,
+        volume24hUSD: 14200000,
+        volume7dUSD: 90000000,
+        fees24hUSD: 42600,
+        aprPercent: 31.6
+      },
+      {
+        id: 'pool-arb-eth-usdc-5',
+        poolAddress: '0xc6962004f452be9203591991d15f6b388e09e8d0',
+        chainId: 'arbitrum',
+        token0: usdcArb,
+        token1: ethArb,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '14614467034852101032872730522',
+        currentTick: 201240,
+        liquidity: '48000000000000000000',
+        tvlUSD: 82500000,
+        volume24hUSD: 46200000,
+        volume7dUSD: 310000000,
+        fees24hUSD: 23100,
+        aprPercent: 22.4,
+        hookName: 'MEVCaptureLPReward',
+        isDynamicFee: true
+      },
+      {
+        id: 'pool-arb-arb-usdc-5',
+        poolAddress: '0xb1a9d18e84c0cbcf1097db361fb5f0376cb2b3c1',
+        chainId: 'arbitrum',
+        token0: arbArb,
+        token1: usdcArb,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '65000000000000000000000',
+        currentTick: 110000,
+        liquidity: '15000000000000000000',
+        tvlUSD: 31400000,
+        volume24hUSD: 16800000,
+        volume7dUSD: 105000000,
+        fees24hUSD: 8400,
+        aprPercent: 19.8
+      },
+      {
+        id: 'pool-polygon-pol-usdc-5',
+        poolAddress: '0x45dda9cb7c25131df268515131f647d726f50608',
+        chainId: 'polygon',
+        token0: polPolygon,
+        token1: usdcPolygon,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '55000000000000000000000',
+        currentTick: 98000,
+        liquidity: '18000000000000000000',
+        tvlUSD: 26800000,
+        volume24hUSD: 12400000,
+        volume7dUSD: 82000000,
+        fees24hUSD: 6200,
+        aprPercent: 18.2
+      },
+      {
+        id: 'pool-optimism-op-usdc-5',
+        poolAddress: '0x1634d1b821ad6850c95a32b69414e21a2c918c5e',
+        chainId: 'optimism',
+        token0: opOptimism,
+        token1: usdcOptimism,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '92000000000000000000000',
+        currentTick: 135000,
+        liquidity: '14000000000000000000',
+        tvlUSD: 22100000,
+        volume24hUSD: 10500000,
+        volume7dUSD: 68000000,
+        fees24hUSD: 5250,
+        aprPercent: 17.6
+      },
+      {
+        id: 'pool-bnb-wbnb-usdt-5',
+        poolAddress: '0x36696169c63e42cd08ce11f5deeebbcebfa52ac0',
+        chainId: 'bnb',
+        token0: usdtBnb,
+        token1: wbnbBnb,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '110000000000000000000000',
+        currentTick: 185000,
+        liquidity: '25000000000000000000',
+        tvlUSD: 58400000,
+        volume24hUSD: 31200000,
+        volume7dUSD: 210000000,
+        fees24hUSD: 15600,
+        aprPercent: 21.2,
+        hookName: 'TWAMMAutoRebalance'
+      },
+      {
+        id: 'pool-avax-wavax-usdc-5',
+        poolAddress: '0xfae22303c7372ea7b513dd91122a20e2ef64d7ee',
+        chainId: 'avalanche',
+        token0: usdcAvax,
+        token1: wavaxAvax,
+        feeBps: 5,
+        tickSpacing: 10,
+        sqrtPriceX96: '75000000000000000000000',
+        currentTick: 125000,
+        liquidity: '16000000000000000000',
+        tvlUSD: 29500000,
+        volume24hUSD: 14800000,
+        volume7dUSD: 96000000,
+        fees24hUSD: 7400,
+        aprPercent: 19.4
       }
     ];
   }
