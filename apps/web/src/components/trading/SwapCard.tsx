@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useZenithStore, resolveTokenLivePrice } from '../../stores/useZenithStore';
 import { defaultMarketDataService } from '../../services/marketDataService';
+import { TokenLogo } from '../common/TokenLogo';
 import {
   ArrowDownUp,
   RefreshCw,
@@ -310,13 +311,15 @@ export const SwapCard: React.FC = () => {
               onClick={() => openTokenPicker('IN')}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/80 transition-colors shrink-0"
             >
-              {tokenIn.logoURI ? (
-                <img src={tokenIn.logoURI} alt={tokenIn.symbol} className="w-6 h-6 rounded-full" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center font-bold text-xs text-slate-950">
-                  {tokenIn.symbol.slice(0, 1)}
-                </div>
-              )}
+              <TokenLogo
+                symbol={tokenIn.symbol}
+                name={tokenIn.name}
+                logoURI={tokenIn.logoURI}
+                chainId={tokenIn.chainId}
+                address={tokenIn.address}
+                isNative={tokenIn.isNative}
+                className="w-6 h-6 rounded-full"
+              />
               <span className="font-bold text-base text-white">{tokenIn.symbol}</span>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
@@ -376,13 +379,15 @@ export const SwapCard: React.FC = () => {
               onClick={() => openTokenPicker('OUT')}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/80 transition-colors shrink-0"
             >
-              {tokenOut.logoURI ? (
-                <img src={tokenOut.logoURI} alt={tokenOut.symbol} className="w-6 h-6 rounded-full" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-xs text-white">
-                  {tokenOut.symbol.slice(0, 1)}
-                </div>
-              )}
+              <TokenLogo
+                symbol={tokenOut.symbol}
+                name={tokenOut.name}
+                logoURI={tokenOut.logoURI}
+                chainId={tokenOut.chainId}
+                address={tokenOut.address}
+                isNative={tokenOut.isNative}
+                className="w-6 h-6 rounded-full"
+              />
               <span className="font-bold text-base text-white">{tokenOut.symbol}</span>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
@@ -445,6 +450,31 @@ export const SwapCard: React.FC = () => {
                 {quote.priceImpact.percentage}%
               </span>
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Swap Fee (LP)</span>
+              <span className="font-mono text-slate-200">
+                {quote.swapFee
+                  ? `${quote.swapFee.feeAmountFormatted} ${tokenIn.symbol} (~$${quote.swapFee.feeUSD < 0.01 ? quote.swapFee.feeUSD.toFixed(4) : quote.swapFee.feeUSD.toFixed(2)})`
+                  : '0.30%'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Platform Fee</span>
+              <span className="font-mono text-slate-200">
+                {quote.protocolFee
+                  ? `${quote.protocolFee.feeAmountFormatted} ${tokenIn.symbol} (~$${quote.protocolFee.feeUSD < 0.01 ? quote.protocolFee.feeUSD.toFixed(4) : quote.protocolFee.feeUSD.toFixed(2)})`
+                  : '0.05%'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Network Fee (Est.)</span>
+              <span className="font-mono text-emerald-400 font-semibold">
+                ~${quote.bestRoute.gasCostUSD < 0.01 ? quote.bestRoute.gasCostUSD.toFixed(4) : quote.bestRoute.gasCostUSD.toFixed(2)}
+              </span>
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Route</span>
               <span className="font-mono text-cyan-300 font-medium">

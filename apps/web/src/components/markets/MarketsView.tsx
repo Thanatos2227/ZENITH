@@ -3,6 +3,7 @@ import { useZenithStore } from '../../stores/useZenithStore';
 import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, VERIFIED_CIRCULATING_SUPPLY } from '@zenith/tokens';
 import { defaultChainRegistry } from '@zenith/chains';
 import { Token } from '@zenith/types';
+import { TokenLogo } from '../common/TokenLogo';
 import {
   TrendingUp,
   TrendingDown,
@@ -265,21 +266,15 @@ export const MarketsView: React.FC = () => {
                   <tr key={`${t.chainId}-${t.address}`} className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-3.5 px-4 font-sans">
                       <div className="flex items-center gap-3">
-                        {t.logoURI ? (
-                          <img
-                            src={t.logoURI}
-                            alt={t.symbol}
-                            className="w-7 h-7 rounded-full"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-xs">
-                            {t.symbol.slice(0, 2)}
-                          </div>
-                        )}
+                        <TokenLogo
+                          symbol={t.symbol}
+                          name={t.name}
+                          logoURI={t.logoURI}
+                          chainId={t.chainId}
+                          address={t.address}
+                          isNative={t.isNative}
+                          className="w-7 h-7 rounded-full"
+                        />
                         <div>
                           <p className="font-bold text-sm text-white">{t.symbol}</p>
                           <p className="text-xs text-slate-400 font-sans">{t.name}</p>

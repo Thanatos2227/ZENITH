@@ -141,7 +141,6 @@ export class EVMExecutionAdapter {
 
       const routerContract = new Contract(routerAddress, SWAP_ROUTER_ABI, signer);
 
-      const actualTokenIn = tokenIn.isNative ? wrappedNative : tokenIn.address;
       const actualTokenOut = tokenOut.isNative ? wrappedNative : tokenOut.address;
 
       const feeTierBps = quote.bestRoute.hops[0]?.feeTierBps || 30;

@@ -50,6 +50,7 @@ export class ZenithRouter {
     const priceInUSD = request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 ? request.tokenIn.priceUSD : 1;
     const priceOutUSD = request.tokenOut.priceUSD && request.tokenOut.priceUSD > 0 ? request.tokenOut.priceUSD : 1;
 
+
     const referencePrice = hasValidPrices ? (request.tokenIn.priceUSD! / request.tokenOut.priceUSD!) : undefined;
 
     let amountInBig: bigint = 0n;
@@ -125,6 +126,7 @@ export class ZenithRouter {
     const spotPrice = (priceInUSD / priceOutUSD);
     const executionPrice = amountInNum > 0 && amountOutNum > 0 ? (amountOutNum / amountInNum) : spotPrice;
 
+
     const poolFeeBps = 30;
     const swapFeeRaw = ((amountInBig * BigInt(poolFeeBps)) / 10000n).toString();
     const swapFeeNum = (amountInNum * poolFeeBps) / 10000;
@@ -142,6 +144,7 @@ export class ZenithRouter {
       amountInNum
     });
 
+
     const totalFeeBps = protocolFee.feeBps + poolFeeBps;
     const priceImpact = this.scoringService.calculatePriceImpact({
       tokenIn: request.tokenIn,
@@ -151,6 +154,7 @@ export class ZenithRouter {
       referencePrice,
       feeBpsTotal: totalFeeBps
     });
+
 
     let routes: SwapRoute[] = [];
     if (isCrossChain) {

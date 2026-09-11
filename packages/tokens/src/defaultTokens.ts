@@ -52,7 +52,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.74,
     volume24hUSD: 25225,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/33054/small/sats.png'
+    logoURI: 'https://assets.coingecko.com/coins/images/33713/small/sats.png'
   },
   {
     address: 'rune:dog_go_to_the_moon',
@@ -64,7 +64,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 1.27,
     volume24hUSD: 219999,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/37326/small/dog.png'
+    logoURI: 'https://assets.coingecko.com/coins/images/37383/small/dog.png'
   },
   {
     address: 'rune:pups_world_peace',
@@ -76,7 +76,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.2,
     volume24hUSD: 4500000,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/34320/small/pups.png'
+    logoURI: 'https://assets.coingecko.com/coins/images/37159/small/token_logo.png'
   },
 
   {
@@ -154,7 +154,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 3.2,
     volume24hUSD: 281646,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/22457/small/btt_logo.png'
+    logoURI: 'https://coin-images.coingecko.com/coins/images/22457/large/btt_logo.png'
   },
   {
     address: 'TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S',
@@ -166,7 +166,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -0.35,
     volume24hUSD: 554608,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/12389/small/sun.png'
+    logoURI: 'https://coin-images.coingecko.com/coins/images/12424/large/RSFOmQ.png'
   },
   {
     address: 'TCFLLCrdoUzAcTXkp1D4pcmC6LmmCxpmG4',
@@ -292,7 +292,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 0.01,
     volume24hUSD: 6981,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/31212/small/pyusd.png'
+    logoURI: '/tokens/pyusd.png'
   },
   {
     address: '0xdC035D45d973E3EC169d2276DDab1CEF12B266fe',
@@ -304,7 +304,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 0.01,
     volume24hUSD: 140795,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/39943/small/usds.png'
+    logoURI: 'https://coin-images.coingecko.com/coins/images/39926/large/usds.webp'
   },
   {
     address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
@@ -340,7 +340,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -2.54,
     volume24hUSD: 10581546,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/12645/small/AAVE.png'
+    logoURI: '/tokens/aave.png'
   },
   {
     address: '0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2',
@@ -412,7 +412,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.11,
     volume24hUSD: 13494232,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/34633/small/ondo.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3/logo.png'
   },
   {
     address: '0x455e53C3640fD1f044e5522f9611D1a7E02a3a0e',
@@ -425,7 +425,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 1.8,
     volume24hUSD: 11783024,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/4713/small/polygon.png'
+    logoURI: '/tokens/pol.png'
   },
 
   {
@@ -463,7 +463,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 4.12,
     volume24hUSD: 180000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/39945/small/cbbtc.webp'
+    logoURI: 'https://assets.coingecko.com/coins/images/40143/small/cbbtc.png'
   },
   {
     address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -487,7 +487,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -10.4,
     volume24hUSD: 5315559,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/31732/small/Aero.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0x940181a94A35A4569E4529A3CDfB74e38FD98631/logo.png'
   },
   {
     address: '0x4ed4E862860be51a747027084693a100E916B2D2',
@@ -499,7 +499,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 3.46,
     volume24hUSD: 24062,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/34515/small/degen.png'
+    logoURI: '/tokens/degen.png'
   },
   {
     address: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
@@ -511,7 +511,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -6.27,
     volume24hUSD: 121688,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/35552/small/brett.png'
+    logoURI: 'https://assets.coingecko.com/coins/images/35564/small/brett.png'
   },
   {
     address: '0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4',
@@ -523,7 +523,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -5.75,
     volume24hUSD: 126269,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/31326/small/toshi.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4/logo.png'
   },
   {
     address: '0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b',
@@ -535,7 +535,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -7.5,
     volume24hUSD: 7668633,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/38605/small/virtual.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b/logo.png'
   },
 
   {
@@ -609,7 +609,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -7.15,
     volume24hUSD: 53168891,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/16547/small/arbitrum.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png'
   },
   {
     address: '0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a',
@@ -633,7 +633,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -6.15,
     volume24hUSD: 3320489,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/15069/small/pendle.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x808507121B80c02388fAd14726482e061B8da827/logo.png'
   },
 
   {
@@ -733,7 +733,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -2.6,
     volume24hUSD: 4949883,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/33058/small/pyth.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3/logo.png'
   },
   {
     address: 'J1toso1uCk3RKmjehLLmJaNMuUmZE5CQNJbZPumuzSf',
@@ -745,7 +745,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 6.3,
     volume24hUSD: 95000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/28046/small/jitosol.png'
+    logoURI: '/tokens/jitosol.png'
   },
   {
     address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
@@ -781,7 +781,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.86,
     volume24hUSD: 63997,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/33760/small/popcat.jpg'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr/logo.png'
   },
 
   {
@@ -807,7 +807,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 0.01,
     volume24hUSD: 12000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/31388/small/base.png',
+    logoURI: 'undefined',
     tags: ['RWA', 'TREASURY', 'ACCREDITED']
   },
   {
@@ -944,7 +944,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 5.4,
     volume24hUSD: 35000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://tempo.network/favicon.ico'
+    logoURI: '/tokens/tempo.png'
   },
   {
     address: '0x0000000000000000000000000000000000000010',
@@ -1028,7 +1028,8 @@ const TOKEN_CONFIG: Token[] = [
     priceUSD: 0.045,
     change24hUSD: 18.5,
     volume24hUSD: 24000000,
-    verificationTier: 'COMMUNITY_VERIFIED'
+    verificationTier: 'COMMUNITY_VERIFIED',
+    logoURI: '/tokens/chog.png'
   },
   {
     address: '0x0000000000000000000000000000000000000026',
@@ -1039,7 +1040,8 @@ const TOKEN_CONFIG: Token[] = [
     priceUSD: 0.012,
     change24hUSD: 22.1,
     volume24hUSD: 15000000,
-    verificationTier: 'COMMUNITY_VERIFIED'
+    verificationTier: 'COMMUNITY_VERIFIED',
+    logoURI: '/tokens/moyaki.png'
   },
 
   {
@@ -1053,7 +1055,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 1.8,
     volume24hUSD: 11783024,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/4713/small/polygon.png'
+    logoURI: '/tokens/pol.png'
   },
   {
     address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
@@ -1127,7 +1129,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -1,
     volume24hUSD: 2202881,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/4463/small/okb_token.png'
+    logoURI: '/tokens/okb.png'
   },
   {
     address: '0x0000000000000000000000000000000000000030',
@@ -1251,7 +1253,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -3.98,
     volume24hUSD: 129428437,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png'
+    logoURI: '/tokens/wbnb.png'
   },
   {
     address: '0x55d398326f99059fF775485246999027B3197955',
@@ -1299,7 +1301,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -1.1,
     volume24hUSD: 7238750,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/12632/small/pancakeswap-cake-logo_animated.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82/logo.png'
   },
   {
     address: '0xfb5B838b6cfEEdC2873aB27866079AC55363D37E',
@@ -1373,7 +1375,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 4.12,
     volume24hUSD: 95000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/26115/small/btcb.png'
+    logoURI: '/tokens/btcb.png'
   },
   {
     address: '0x6e84a6216eA6dACC71eE8E6b0a5B7322EEbC0fDd',
@@ -1385,7 +1387,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.04,
     volume24hUSD: 190731,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/17569/small/joe_200x200.png'
+    logoURI: '/tokens/joe.png'
   },
 
   {
@@ -1447,7 +1449,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -5.29,
     volume24hUSD: 3066,
     verificationTier: 'COMMUNITY_VERIFIED',
-    logoURI: 'https://assets.coingecko.com/coins/images/36888/small/foxy.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/linea/assets/0x5FBDF89403270a1846F5ae7D113A989F850d1566/logo.png'
   },
 
   {
@@ -1461,7 +1463,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -8.96,
     volume24hUSD: 33562904,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/31062/small/worldcoin.png'
+    logoURI: '/tokens/wld.png'
   },
   {
     address: '0x0000000000000000000000000000000000000050',
@@ -1523,7 +1525,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -3.01,
     volume24hUSD: 2306362,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/38604/small/zksync.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/zksync/info/logo.png'
   },
   {
     address: '0x1d17CBcF0D6D143135aE902365D2E5e2A16538D4',
@@ -1558,7 +1560,8 @@ const TOKEN_CONFIG: Token[] = [
     priceUSD: 0.00000541,
     change24hUSD: -5,
     volume24hUSD: 543,
-    verificationTier: 'COMMUNITY_VERIFIED'
+    verificationTier: 'COMMUNITY_VERIFIED',
+    logoURI: '/tokens/hold.png'
   },
 
   {
@@ -1607,7 +1610,8 @@ const TOKEN_CONFIG: Token[] = [
     priceUSD: 0.03932,
     change24hUSD: -6.93,
     volume24hUSD: 3684838,
-    verificationTier: 'VERIFIED_CANONICAL'
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: '/tokens/mega.png'
   },
 
   {
@@ -1656,7 +1660,8 @@ const TOKEN_CONFIG: Token[] = [
     priceUSD: 0.35,
     change24hUSD: 8.9,
     volume24hUSD: 65000000,
-    verificationTier: 'VERIFIED_CANONICAL'
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: '/tokens/sony.png'
   },
   {
     address: '0x0000000000000000000000000000000000000083',
@@ -1693,7 +1698,8 @@ const TOKEN_CONFIG: Token[] = [
     priceUSD: 0.000085,
     change24hUSD: 14.2,
     volume24hUSD: 18000000,
-    verificationTier: 'COMMUNITY_VERIFIED'
+    verificationTier: 'COMMUNITY_VERIFIED',
+    logoURI: '/tokens/enjoy.png'
   },
   {
     address: '0x0000000000000000000000000000000000000091',
@@ -1704,7 +1710,8 @@ const TOKEN_CONFIG: Token[] = [
     priceUSD: 0.0014,
     change24hUSD: 9.5,
     volume24hUSD: 8500000,
-    verificationTier: 'COMMUNITY_VERIFIED'
+    verificationTier: 'COMMUNITY_VERIFIED',
+    logoURI: '/tokens/imagine.png'
   },
   {
     address: '0x0000000000000000000000000000000000000093',
@@ -1750,6 +1757,7 @@ const TOKEN_CONFIG: Token[] = [
     name: 'Celo Euro',
     symbol: 'cEUR',
     decimals: 18,
+    logoURI: '/tokens/ceur.png',
     priceUSD: 1.08,
     change24hUSD: -0.15,
     volume24hUSD: 45000000,
@@ -1815,7 +1823,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 0.01,
     volume24hUSD: 1500000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/35544/small/usdb.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/blast/assets/0x4300000000000000000000000000000000000003/logo.png'
   },
   {
     address: '0xb1a5700fA2358173Fe465e6eA4Ff52E36e88E2ad',
@@ -1827,7 +1835,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.01,
     volume24hUSD: 55303,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/38698/small/blast.png'
+    logoURI: '/tokens/blast.png'
   },
   {
     address: '0x00000000000000000000000000000000000000A1',
@@ -1876,7 +1884,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.98,
     volume24hUSD: 1596657,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/32280/small/scroll.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/scroll/info/logo.png'
   },
 
   {
@@ -1890,7 +1898,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -5.07,
     volume24hUSD: 249465,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/30980/small/mantle.png'
+    logoURI: '/tokens/mnt.png'
   },
   {
     address: '0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9',
@@ -1916,7 +1924,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 0.01,
     volume24hUSD: 1500000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/11062/small/xdai.png'
+    logoURI: '/tokens/xdai.png'
   },
   {
     address: '0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb',
@@ -1928,7 +1936,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -1.2,
     volume24hUSD: 150671,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/662/small/gnosis_logo.png'
+    logoURI: '/tokens/gno.png'
   },
 
   {
@@ -1942,7 +1950,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.52,
     volume24hUSD: 1006117,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/38108/small/sonic.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/sonic/info/logo.png'
   },
   {
     address: '0x29219dd400f2Bf60E5a23d13Be72B486D4038894',
@@ -1968,7 +1976,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -2.96,
     volume24hUSD: 855455,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/29729/small/berachain.png'
+    logoURI: '/tokens/bera.png'
   },
   {
     address: '0x0E4aaF1351de4c0264C5c7056Ef3777b41BD8e03',
@@ -1980,7 +1988,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 0.01,
     volume24hUSD: 10042,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/29729/small/berachain.png'
+    logoURI: 'https://assets.coingecko.com/coins/images/34390/small/honey.png'
   },
 
   {
@@ -2104,7 +2112,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -4.37,
     volume24hUSD: 11372852,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/12882/small/injective_logo.png'
+    logoURI: 'https://assets.coingecko.com/coins/images/12882/small/Secondary_Symbol.png'
   },
 
   {
@@ -2214,7 +2222,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: -9.88,
     volume24hUSD: 21775064,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/12171/small/polkadot.png'
+    logoURI: '/tokens/dot.png'
   },
 
   {
@@ -2308,7 +2316,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 3.5,
     volume24hUSD: 18000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/15595/small/metis.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/metis/info/logo.png'
   },
   {
     address: '0x0000000000000000000000000000000000000000',
@@ -2321,7 +2329,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 1.8,
     volume24hUSD: 8500000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/22459/small/glmr.png'
+    logoURI: '/tokens/glmr.png'
   },
   {
     address: '0x0000000000000000000000000000000000000000',
@@ -2334,7 +2342,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 2.1,
     volume24hUSD: 6200000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/17984/small/moonriver.png'
+    logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/moonriver/info/logo.png'
   },
   {
     address: '0x0000000000000000000000000000000000000000',
@@ -2347,7 +2355,7 @@ const TOKEN_CONFIG: Token[] = [
     change24hUSD: 4.12,
     volume24hUSD: 12000000,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://assets.coingecko.com/coins/images/5041/small/rbtc.png'
+    logoURI: '/tokens/rbtc.png'
   }
 ];
 

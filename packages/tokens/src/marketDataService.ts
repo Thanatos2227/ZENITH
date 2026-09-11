@@ -1182,7 +1182,7 @@ export class MarketDataService {
     };
   }
 
-  public getUserPositions(userAddress?: string): LPPosition[] {
+  public getUserPositions(_userAddress?: string): LPPosition[] {
     const eth = DEFAULT_TOKENS.find(t => t.symbol === 'ETH') || DEFAULT_TOKENS[0];
     const usdc = DEFAULT_TOKENS.find(t => t.symbol === 'USDC') || DEFAULT_TOKENS[1];
     const wbtc = DEFAULT_TOKENS.find(t => t.symbol === 'WBTC') || DEFAULT_TOKENS[2];

@@ -85,7 +85,7 @@ export const Navbar: React.FC = () => {
               alt={sourceChain.shortName}
               className="w-4 h-4 rounded-full"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
+                (e.target as HTMLImageElement).style.opacity = '0.3';
               }}
             />
             <span className="font-semibold">{sourceChain.shortName}</span>

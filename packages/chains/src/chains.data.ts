@@ -122,7 +122,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'PYUSD',
         decimals: 6,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/31212/small/pyusd.png'
+        logoURI: '/tokens/pyusd.svg'
       },
       {
         address: '0xdC035D45d973E3EC169d2276DDab1CEF12B266fe',
@@ -131,7 +131,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'USDS',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/39943/small/usds.png'
+        logoURI: 'https://coin-images.coingecko.com/coins/images/39926/large/usds.webp'
       },
       {
         address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
@@ -158,7 +158,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'AAVE',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/12645/small/AAVE.png'
+        logoURI: '/tokens/aave.svg'
       },
       {
         address: '0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2',
@@ -212,7 +212,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'ONDO',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/34633/small/ondo.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3/logo.png'
       },
       {
         address: '0x455e53C3640fD1f044e5522f9611D1a7E02a3a0e',
@@ -309,7 +309,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'cbBTC',
         decimals: 8,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/39945/small/cbbtc.webp'
+        logoURI: 'https://assets.coingecko.com/coins/images/40143/small/cbbtc.png'
       },
       {
         address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -327,7 +327,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'AERO',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/31732/small/Aero.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0x940181a94A35A4569E4529A3CDfB74e38FD98631/logo.png'
       },
       {
         address: '0x4ed4E862860be51a747027084693a100E916B2D2',
@@ -336,7 +336,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'DEGEN',
         decimals: 18,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/34515/small/degen.png'
+        logoURI: '/tokens/degen.png'
       },
       {
         address: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
@@ -345,7 +345,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'BRETT',
         decimals: 18,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/35552/small/brett.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/35564/small/brett.png'
       },
       {
         address: '0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4',
@@ -354,7 +354,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'TOSHI',
         decimals: 18,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/31326/small/toshi.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4/logo.png'
       },
       {
         address: '0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b',
@@ -363,7 +363,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'VIRTUAL',
         decimals: 18,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/38605/small/virtual.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b/logo.png'
       }
     ]
   },
@@ -423,7 +423,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'DEEP',
     productionStatus: 'ACTIVE',
     color: '#28A0F0',
-    iconURI: 'https://assets.coingecko.com/coins/images/16547/small/arbitrum.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -478,7 +478,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'ARB',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/16547/small/arbitrum.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png'
       },
       {
         address: '0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a',
@@ -496,7 +496,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'PENDLE',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/15069/small/pendle.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x808507121B80c02388fAd14726482e061B8da827/logo.png'
       }
     ]
   },
@@ -834,7 +834,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'CAKE',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/12632/small/pancakeswap-cake-logo_animated.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82/logo.png'
       },
       {
         address: '0xfb5B838b6cfEEdC2873aB27866079AC55363D37E',
@@ -1082,7 +1082,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'PYTH',
         decimals: 6,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/33058/small/pyth.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3/logo.png'
       },
       {
         address: 'J1toso1uCk3RKmjehLLmJaNMuUmZE5CQNJbZPumuzSf',
@@ -1091,7 +1091,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'JitoSOL',
         decimals: 9,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/28046/small/jitosol.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/28048/small/jitosol.png'
       },
       {
         address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
@@ -1118,7 +1118,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'POPCAT',
         decimals: 9,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/33760/small/popcat.jpg'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr/logo.png'
       }
     ]
   },
@@ -1268,7 +1268,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'FOXY',
         decimals: 18,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/36888/small/foxy.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/linea/assets/0x5FBDF89403270a1846F5ae7D113A989F850d1566/logo.png'
       }
     ]
   },
@@ -1316,7 +1316,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'ZK',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/38604/small/zksync.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/zksync/info/logo.png'
       },
       {
         address: '0x1d17CBcF0D6D143135aE902365D2E5e2A16538D4',
@@ -1342,7 +1342,8 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         name: 'Holdstation',
         symbol: 'HOLD',
         decimals: 18,
-        verificationTier: 'COMMUNITY_VERIFIED'
+        verificationTier: 'COMMUNITY_VERIFIED',
+        logoURI: '/tokens/hold.png'
       }
     ]
   },
@@ -1371,7 +1372,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#FFE7B9',
-    iconURI: 'https://assets.coingecko.com/coins/images/32280/small/scroll.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/scroll/info/logo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1399,7 +1400,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'SCR',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/32280/small/scroll.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/scroll/info/logo.png'
       }
     ]
   },
@@ -1456,7 +1457,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'USDB',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/35544/small/usdb.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/blast/assets/0x4300000000000000000000000000000000000003/logo.png'
       },
       {
         address: '0xb1a5700fA2358173Fe465e6eA4Ff52E36e88E2ad',
@@ -1465,7 +1466,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'BLAST',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/38698/small/blast.png'
+        logoURI: '/tokens/blast.png'
       },
       {
         address: '0x00000000000000000000000000000000000000A1',
@@ -1520,7 +1521,8 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         name: 'Enjoy',
         symbol: 'ENJOY',
         decimals: 18,
-        verificationTier: 'COMMUNITY_VERIFIED'
+        verificationTier: 'COMMUNITY_VERIFIED',
+        logoURI: '/tokens/enjoy.png'
       },
       {
         address: '0x0000000000000000000000000000000000000091',
@@ -1528,7 +1530,8 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         name: 'Imagine',
         symbol: 'IMAGINE',
         decimals: 18,
-        verificationTier: 'COMMUNITY_VERIFIED'
+        verificationTier: 'COMMUNITY_VERIFIED',
+        logoURI: '/tokens/imagine.png'
       },
       {
         address: '0x0000000000000000000000000000000000000093',
@@ -1566,7 +1569,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#1E1E1E',
-    iconURI: 'https://assets.coingecko.com/coins/images/31062/small/worldcoin.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x16373015E5939361A290ee0640666531de00B4F3/logo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1576,7 +1579,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/31062/small/worldcoin.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/31069/small/worldcoin.png'
       },
       {
         address: '0x0000000000000000000000000000000000000050',
@@ -1618,7 +1621,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_2',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['ERC-20', 'ERC-721', 'Permit2'],
-    nativeCurrency: { name: 'Mantle', symbol: 'MNT', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/30980/small/mantle.png' },
+    nativeCurrency: { name: 'Mantle', symbol: 'MNT', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/30980/small/Mantle.png' },
     rpcEndpoints: [{ url: 'https://rpc.mantle.xyz', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Mantle Explorer', baseUrl: 'https://explorer.mantle.xyz', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 10, instantFinality: false, typicalBlockTimeSec: 1, safeFinalityTimeSec: 30 },
@@ -1632,7 +1635,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#000000',
-    iconURI: 'https://assets.coingecko.com/coins/images/30980/small/mantle.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/mantle/info/logo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1642,7 +1645,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/30980/small/mantle.png'
+        logoURI: '/tokens/mnt.png'
       },
       {
         address: '0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9',
@@ -1707,6 +1710,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         name: 'Celo Euro',
         symbol: 'cEUR',
         decimals: 18,
+        logoURI: '/tokens/ceur.png',
         verificationTier: 'VERIFIED_CANONICAL'
       },
       {
@@ -1716,7 +1720,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'USDC',
         decimals: 6,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/15168/small/celo-euro.png'
       },
       {
         address: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
@@ -1754,7 +1758,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#133629',
-    iconURI: 'https://assets.coingecko.com/coins/images/662/small/gnosis_logo.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x6810e776880C02933D47DB1b9fc05908e5386b96/logo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1764,7 +1768,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/11062/small/xdai.png'
+        logoURI: '/tokens/xdai.png'
       },
       {
         address: '0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb',
@@ -1773,7 +1777,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'GNO',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/662/small/gnosis_logo.png'
+        logoURI: '/tokens/gno.png'
       }
     ]
   },
@@ -1788,7 +1792,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_2',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['ERC-20', 'Permit2'],
-    nativeCurrency: { name: 'Sonic', symbol: 'S', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/38108/small/sonic.png' },
+    nativeCurrency: { name: 'Sonic', symbol: 'S', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/sonic/info/logo.png' },
     rpcEndpoints: [{ url: 'https://rpc.soniclabs.com', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'SonicScan', baseUrl: 'https://sonicscan.org', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 1, instantFinality: true, typicalBlockTimeSec: 0.5, safeFinalityTimeSec: 1 },
@@ -1802,7 +1806,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#0055FF',
-    iconURI: 'https://assets.coingecko.com/coins/images/38108/small/sonic.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/sonic/info/logo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1812,7 +1816,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/38108/small/sonic.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/sonic/info/logo.png'
       },
       {
         address: '0x29219dd400f2Bf60E5a23d13Be72B486D4038894',
@@ -1886,7 +1890,8 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         name: 'Sony Ecosystem Token',
         symbol: 'SONY',
         decimals: 18,
-        verificationTier: 'VERIFIED_CANONICAL'
+        verificationTier: 'VERIFIED_CANONICAL',
+        logoURI: '/tokens/sony.png'
       },
       {
         address: '0x0000000000000000000000000000000000000083',
@@ -1910,7 +1915,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_2',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['ERC-20', 'Proof of Liquidity', 'Permit2'],
-    nativeCurrency: { name: 'Bera', symbol: 'BERA', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/29729/small/berachain.png' },
+    nativeCurrency: { name: 'Bera', symbol: 'BERA', decimals: 18, logoURI: '/tokens/bera.png' },
     rpcEndpoints: [{ url: 'https://rpc.berachain.com', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Berascan', baseUrl: 'https://berascan.com', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 10, instantFinality: false, typicalBlockTimeSec: 2, safeFinalityTimeSec: 30 },
@@ -1924,7 +1929,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#8B4513',
-    iconURI: 'https://assets.coingecko.com/coins/images/29729/small/berachain.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/berachain/info/logo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1934,7 +1939,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/29729/small/berachain.png'
+        logoURI: '/tokens/bera.png'
       },
       {
         address: '0x0E4aaF1351de4c0264C5c7056Ef3777b41BD8e03',
@@ -1943,7 +1948,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'HONEY',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/29729/small/berachain.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/34390/small/honey.png'
       }
     ]
   },
@@ -2306,7 +2311,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_2',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['Native', 'IBC', 'Injective Orderbook'],
-    nativeCurrency: { name: 'Injective', symbol: 'INJ', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/12882/small/injective_logo.png' },
+    nativeCurrency: { name: 'Injective', symbol: 'INJ', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/12882/small/Secondary_Symbol.png' },
     rpcEndpoints: [{ url: 'https://sentry.lcd.injective.network', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Injective Explorer', baseUrl: 'https://explorer.injective.network', txPath: '/transaction/', addressPath: '/account/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 1, instantFinality: true, typicalBlockTimeSec: 0.8, safeFinalityTimeSec: 1.6 },
@@ -2320,7 +2325,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#00F2FE',
-    iconURI: 'https://assets.coingecko.com/coins/images/12882/small/injective_logo.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/injective/info/logo.png',
     defaultTokens: [
       {
         address: 'inj',
@@ -2330,7 +2335,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/12882/small/injective_logo.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/12882/small/Secondary_Symbol.png'
       }
     ]
   },
@@ -2359,7 +2364,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EMERGING',
     productionStatus: 'ACTIVE',
     color: '#E06214',
-    iconURI: 'https://assets.coingecko.com/coins/images/16547/small/arbitrum.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
     defaultTokens: [
       {
         address: '0x0000000000000000000000000000000000000000',
@@ -2501,7 +2506,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_3',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['ERC-20'],
-    nativeCurrency: { name: 'Metis', symbol: 'METIS', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/15595/small/metis.png' },
+    nativeCurrency: { name: 'Metis', symbol: 'METIS', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/metis/info/logo.png' },
     rpcEndpoints: [{ url: 'https://andromeda.metis.io/?owner=1088', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Metis Explorer', baseUrl: 'https://andromeda-explorer.metis.io', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 10, instantFinality: false, typicalBlockTimeSec: 2, safeFinalityTimeSec: 60 },
@@ -2515,7 +2520,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EMERGING',
     productionStatus: 'ACTIVE',
     color: '#00DACC',
-    iconURI: 'https://assets.coingecko.com/coins/images/15595/small/metis.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/metis/info/logo.png',
     defaultTokens: [
       {
         address: '0x0000000000000000000000000000000000000000',
@@ -2525,7 +2530,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/15595/small/metis.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/metis/info/logo.png'
       }
     ]
   },
@@ -2540,7 +2545,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_3',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['ERC-20', 'XC-20'],
-    nativeCurrency: { name: 'Glimmer', symbol: 'GLMR', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/22459/small/glmr.png' },
+    nativeCurrency: { name: 'Glimmer', symbol: 'GLMR', decimals: 18, logoURI: '/tokens/glmr.png' },
     rpcEndpoints: [{ url: 'https://rpc.api.moonbeam.network', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Moonscan', baseUrl: 'https://moonscan.io', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 10, instantFinality: false, typicalBlockTimeSec: 6, safeFinalityTimeSec: 30 },
@@ -2564,7 +2569,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/22459/small/glmr.png'
+        logoURI: '/tokens/glmr.png'
       }
     ]
   },
@@ -2579,7 +2584,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_3',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['ERC-20', 'XC-20'],
-    nativeCurrency: { name: 'Moonriver', symbol: 'MOVR', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/17984/small/moonriver.png' },
+    nativeCurrency: { name: 'Moonriver', symbol: 'MOVR', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/moonriver/info/logo.png' },
     rpcEndpoints: [{ url: 'https://rpc.api.moonriver.moonbeam.network', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Moonriver Scan', baseUrl: 'https://moonriver.moonscan.io', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 10, instantFinality: false, typicalBlockTimeSec: 6, safeFinalityTimeSec: 30 },
@@ -2593,7 +2598,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EMERGING',
     productionStatus: 'ACTIVE',
     color: '#F4B400',
-    iconURI: 'https://assets.coingecko.com/coins/images/17984/small/moonriver.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/moonriver/info/logo.png',
     defaultTokens: [
       {
         address: '0x0000000000000000000000000000000000000000',
@@ -2603,7 +2608,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/17984/small/moonriver.png'
+        logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/moonriver/info/logo.png'
       }
     ]
   },
@@ -2618,7 +2623,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_3',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['ERC-20', 'Merged Mining BTC'],
-    nativeCurrency: { name: 'Smart Bitcoin', symbol: 'RBTC', decimals: 18, logoURI: 'https://assets.coingecko.com/coins/images/5041/small/rbtc.png' },
+    nativeCurrency: { name: 'Smart Bitcoin', symbol: 'RBTC', decimals: 18, logoURI: '/tokens/rbtc.png' },
     rpcEndpoints: [{ url: 'https://public-node.rsk.co', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Rootstock Explorer', baseUrl: 'https://explorer.rootstock.io', txPath: '/tx/', addressPath: '/address/', tokenPath: '/token/' },
     finality: { reorgSafetyBlocks: 10, instantFinality: false, typicalBlockTimeSec: 30, safeFinalityTimeSec: 180 },
@@ -2632,7 +2637,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EMERGING',
     productionStatus: 'ACTIVE',
     color: '#00B48A',
-    iconURI: 'https://assets.coingecko.com/coins/images/5041/small/rbtc.png',
+    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/rootstock/info/logo.png',
     defaultTokens: [
       {
         address: '0x0000000000000000000000000000000000000000',
@@ -2642,7 +2647,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/5041/small/rbtc.png'
+        logoURI: '/tokens/rbtc.png'
       }
     ]
   },
@@ -2708,7 +2713,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'BTT',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/22457/small/btt_logo.png'
+        logoURI: 'https://coin-images.coingecko.com/coins/images/22457/large/btt_logo.png'
       },
       {
         address: 'TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S',
@@ -2717,7 +2722,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'SUN',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/12389/small/sun.png'
+        logoURI: 'https://coin-images.coingecko.com/coins/images/12424/large/RSFOmQ.png'
       },
       {
         address: 'TCFLLCrdoUzAcTXkp1D4pcmC6LmmCxpmG4',
@@ -2984,7 +2989,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     tier: 'TIER_3',
     operationalStatus: 'HEALTHY',
     supportedStandards: ['DOT', 'Asset Hub Assets', 'XCM'],
-    nativeCurrency: { name: 'Polkadot', symbol: 'DOT', decimals: 10, logoURI: 'https://assets.coingecko.com/coins/images/12171/small/polkadot.png' },
+    nativeCurrency: { name: 'Polkadot', symbol: 'DOT', decimals: 10, logoURI: '/tokens/dot.png' },
     rpcEndpoints: [{ url: 'https://rpc.polkadot.io', priority: 1, status: 'HEALTHY' }],
     explorer: { name: 'Subscan', baseUrl: 'https://polkadot.subscan.io', txPath: '/extrinsic/', addressPath: '/account/', tokenPath: '/asset/' },
     finality: { reorgSafetyBlocks: 2, instantFinality: true, typicalBlockTimeSec: 6, safeFinalityTimeSec: 12 },
@@ -3008,7 +3013,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         decimals: 10,
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
-        logoURI: 'https://assets.coingecko.com/coins/images/12171/small/polkadot.png'
+        logoURI: '/tokens/dot.png'
       }
     ]
   },
@@ -3146,7 +3151,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'SATS',
         decimals: 8,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/33054/small/sats.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/33713/small/sats.png'
       },
       {
         address: 'rune:dog_go_to_the_moon',
@@ -3155,7 +3160,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'DOG',
         decimals: 8,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/37326/small/dog.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/37383/small/dog.png'
       },
       {
         address: 'rune:pups_world_peace',
@@ -3164,7 +3169,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'PUPS',
         decimals: 8,
         verificationTier: 'COMMUNITY_VERIFIED',
-        logoURI: 'https://assets.coingecko.com/coins/images/34320/small/pups.png'
+        logoURI: 'https://assets.coingecko.com/coins/images/37159/small/token_logo.png'
       }
     ]
   },
@@ -3285,7 +3290,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         symbol: 'rUSTB',
         decimals: 6,
         verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'https://assets.coingecko.com/coins/images/31388/small/base.png'
+        logoURI: 'undefined'
       },
       {
         address: '0x2222222222222222222222222222222222222222',
@@ -3455,7 +3460,8 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         name: 'MegaETH Governance',
         symbol: 'MEGA',
         decimals: 18,
-        verificationTier: 'VERIFIED_CANONICAL'
+        verificationTier: 'VERIFIED_CANONICAL',
+        logoURI: '/tokens/mega.png'
       }
     ]
   }

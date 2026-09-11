@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
+import { TokenLogo } from '../common/TokenLogo';
 import {
   Share2,
   Lock,
@@ -105,34 +106,40 @@ export const UnifiedTradingView: React.FC = () => {
     <div className="w-full max-w-7xl mx-auto space-y-4">
       {}
       {/* Market Header */}
-      <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800/80 shadow-xl flex flex-wrap items-center justify-between gap-4">
-        {/* Token Pair & Chain Info */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex -space-x-2 shrink-0">
-            {tokenIn.logoURI ? (
-              <img src={tokenIn.logoURI} alt={tokenIn.symbol} className="w-8 h-8 rounded-full border-2 border-[#080B11] z-10" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center font-bold text-xs text-slate-950 border-2 border-[#080B11] z-10">
-                {tokenIn.symbol.slice(0, 1)}
-              </div>
-            )}
-            {tokenOut.logoURI ? (
-              <img src={tokenOut.logoURI} alt={tokenOut.symbol} className="w-8 h-8 rounded-full border-2 border-[#080B11]" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-xs text-white border-2 border-[#080B11]">
-                {tokenOut.symbol.slice(0, 1)}
-              </div>
-            )}
-          </div>
+      <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800/80 shadow-xl flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        {}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-2 shrink-0">
+              <TokenLogo
+                symbol={tokenIn.symbol}
+                name={tokenIn.name}
+                logoURI={tokenIn.logoURI}
+                chainId={tokenIn.chainId}
+                address={tokenIn.address}
+                isNative={tokenIn.isNative}
+                className="w-8 h-8 rounded-full border-2 border-[#080B11] z-10"
+              />
+              <TokenLogo
+                symbol={tokenOut.symbol}
+                name={tokenOut.name}
+                logoURI={tokenOut.logoURI}
+                chainId={tokenOut.chainId}
+                address={tokenOut.address}
+                isNative={tokenOut.isNative}
+                className="w-8 h-8 rounded-full border-2 border-[#080B11]"
+              />
+            </div>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-display font-black text-lg sm:text-xl text-white tracking-wide">
-                {currentPair}
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 whitespace-nowrap">
-                {isCrossChain ? 'Cross-Chain' : 'Same-Chain'}
-              </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display font-black text-lg sm:text-xl text-white tracking-wide">
+                  {currentPair}
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 whitespace-nowrap">
+                  {isCrossChain ? 'Cross-Chain' : 'Same-Chain'}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400 font-mono flex-wrap mt-0.5">
               <span className="font-medium text-slate-300">{sourceChain.shortName}</span>

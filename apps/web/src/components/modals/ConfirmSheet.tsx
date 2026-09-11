@@ -1,5 +1,6 @@
 import React from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
+import { TokenLogo } from '../common/TokenLogo';
 import {
   X,
   ShieldCheck,
@@ -77,7 +78,15 @@ export const ConfirmSheet: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <img src={tokenIn.logoURI} alt={tokenIn.symbol} className="w-7 h-7 rounded-full" />
+                <TokenLogo
+                  symbol={tokenIn.symbol}
+                  name={tokenIn.name}
+                  logoURI={tokenIn.logoURI}
+                  chainId={tokenIn.chainId}
+                  address={tokenIn.address}
+                  isNative={tokenIn.isNative}
+                  className="w-7 h-7 rounded-full"
+                />
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                   {sourceChain.shortName}
                 </span>
@@ -96,7 +105,15 @@ export const ConfirmSheet: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <img src={tokenOut.logoURI} alt={tokenOut.symbol} className="w-7 h-7 rounded-full" />
+                <TokenLogo
+                  symbol={tokenOut.symbol}
+                  name={tokenOut.name}
+                  logoURI={tokenOut.logoURI}
+                  chainId={tokenOut.chainId}
+                  address={tokenOut.address}
+                  isNative={tokenOut.isNative}
+                  className="w-7 h-7 rounded-full"
+                />
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                   {destChain.shortName}
                 </span>

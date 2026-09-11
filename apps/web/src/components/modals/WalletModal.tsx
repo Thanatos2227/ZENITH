@@ -175,8 +175,7 @@ export const WalletModal: React.FC = () => {
                       alt={w.name}
                       className="w-7 h-7 rounded-lg"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
+                        (e.target as HTMLImageElement).style.opacity = '0.3';
                       }}
                     />
                     <div>

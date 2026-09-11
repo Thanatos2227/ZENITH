@@ -3,6 +3,7 @@ import { useZenithStore } from '../../stores/useZenithStore';
 import { formatAddress } from '../../utils/walletDetector';
 import { defaultTokenService } from '@zenith/tokens';
 import { defaultChainRegistry } from '@zenith/chains';
+import { TokenLogo } from '../common/TokenLogo';
 import { Wallet, ShieldCheck, Zap, RefreshCw, Loader2 } from 'lucide-react';
 
 export const PortfolioView: React.FC = () => {
@@ -162,21 +163,15 @@ export const PortfolioView: React.FC = () => {
                     <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-4 font-sans">
                         <div className="flex items-center gap-3">
-                          {item.token.logoURI ? (
-                            <img
-                              src={item.token.logoURI}
-                              alt={item.token.symbol}
-                              className="w-7 h-7 rounded-full"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-white">
-                              {item.token.symbol.slice(0, 2)}
-                            </div>
-                          )}
+                          <TokenLogo
+                            symbol={item.token.symbol}
+                            name={item.token.name}
+                            logoURI={item.token.logoURI}
+                            chainId={item.token.chainId}
+                            address={item.token.address}
+                            isNative={item.token.isNative}
+                            className="w-7 h-7 rounded-full"
+                          />
                           <div>
                             <p className="font-bold text-sm text-white">{item.token.symbol}</p>
                             <p className="text-xs text-slate-400">{item.token.name}</p>

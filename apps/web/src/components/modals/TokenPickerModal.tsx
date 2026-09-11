@@ -3,6 +3,7 @@ import { useZenithStore } from '../../stores/useZenithStore';
 import { defaultTokenService } from '@zenith/tokens';
 import { defaultChainRegistry } from '@zenith/chains';
 import { Token, ChainConfig } from '@zenith/types';
+import { TokenLogo } from '../common/TokenLogo';
 import {
   X,
   Search,
@@ -159,9 +160,15 @@ export const TokenPickerModal: React.FC = () => {
                   onClick={() => handleSelectToken(t)}
                   className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs text-white font-medium inline-flex items-center gap-1.5 transition-colors"
                 >
-                  {t.logoURI ? (
-                    <img src={t.logoURI} alt={t.symbol} className="w-3.5 h-3.5 rounded-full" />
-                  ) : null}
+                  <TokenLogo
+                    symbol={t.symbol}
+                    name={t.name}
+                    logoURI={t.logoURI}
+                    chainId={t.chainId}
+                    address={t.address}
+                    isNative={t.isNative}
+                    className="w-3.5 h-3.5 rounded-full"
+                  />
                   {t.symbol}
                 </button>
               ))}
@@ -197,21 +204,15 @@ export const TokenPickerModal: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    {t.logoURI ? (
-                      <img
-                        src={t.logoURI}
-                        alt={t.symbol}
-                        className="w-8 h-8 rounded-full"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-xs">
-                        {t.symbol.slice(0, 2)}
-                      </div>
-                    )}
+                    <TokenLogo
+                      symbol={t.symbol}
+                      name={t.name}
+                      logoURI={t.logoURI}
+                      chainId={t.chainId}
+                      address={t.address}
+                      isNative={t.isNative}
+                      className="w-8 h-8 rounded-full"
+                    />
 
                     <div>
                       <div className="flex items-center gap-1.5">

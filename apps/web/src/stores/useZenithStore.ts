@@ -511,6 +511,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       }
       set({ amountIn: validation.sanitized });
 
+
       if (quoteDebounceTimer) {
         clearTimeout(quoteDebounceTimer);
         quoteDebounceTimer = null;
@@ -520,6 +521,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         set({ quote: null, isQuoteLoading: false, quoteError: null });
         return;
       }
+
 
       quoteDebounceTimer = setTimeout(() => {
         get().fetchQuote();
@@ -888,7 +890,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       }
 
       const { sourceChain, destChain, tokenIn, tokenOut, amountIn, slippageTolerancePercent, walletAddress, gasPreset, marketData } = get();
-
+      
       const validation = validateAndSanitizeAmount(amountIn);
       if (!validation.isValid || validation.numericValue <= 0) {
         set({ quote: null, quoteError: null, isQuoteLoading: false });
@@ -896,7 +898,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       }
 
       const cleanAmount = validation.sanitized;
-
+      // Increment quote request sequence counter to discard stale responses
       const currentRequestId = ++activeQuoteRequestId;
 
       set({ isQuoteLoading: true, quoteError: null });
@@ -931,6 +933,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           userWalletAddress: walletAddress || undefined,
           gasPreset
         });
+
 
         if (currentRequestId !== activeQuoteRequestId) {
           return;

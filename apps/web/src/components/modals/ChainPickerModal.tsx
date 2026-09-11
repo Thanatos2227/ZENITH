@@ -159,8 +159,7 @@ export const ChainPickerModal: React.FC = () => {
                         alt={c.canonicalName}
                         className="w-9 h-9 rounded-full bg-slate-900 p-0.5"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            'https://assets.coingecko.com/coins/images/279/small/ethereum.png';
+                          (e.target as HTMLImageElement).style.opacity = '0.3';
                         }}
                       />
                       <span
