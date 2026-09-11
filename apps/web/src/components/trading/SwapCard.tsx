@@ -92,12 +92,20 @@ export const SwapCard: React.FC = () => {
   const isCrossChain = sourceChain.id !== destChain.id;
   const isSwapSupported = sourceChain.capabilities.swap && destChain.capabilities.swap;
   const numAmountIn = parseFloat(amountIn) || 0;
+  const currentValidation = validateAndSanitizeAmount(amountIn);
+  const isAmountValid = currentValidation.isValid && currentValidation.numericValue > 0 && currentValidation.numericValue <= MAX_SWAP_AMOUNT_NUM;
+  const hasInputError = !currentValidation.isValid || currentValidation.numericValue > MAX_SWAP_AMOUNT_NUM;
+  const inputErrorMessage = !currentValidation.isValid
+    ? currentValidation.error
+    : currentValidation.numericValue > MAX_SWAP_AMOUNT_NUM
+    ? 'Amount exceeds maximum allowed limit of 9,999,999.999'
+    : null;
 
   const liveInUSD: number = resolveTokenLivePrice(tokenIn, marketData) || tokenIn.priceUSD || 0;
   const liveOutUSD: number = resolveTokenLivePrice(tokenOut, marketData) || tokenOut.priceUSD || 0;
 
-  const tradeValueUSD = liveInUSD > 0 ? numAmountIn * liveInUSD : 0;
-  const receiveValueUSD = quote && liveOutUSD > 0
+  const tradeValueUSD = isAmountValid && liveInUSD > 0 ? numAmountIn * liveInUSD : 0;
+  const receiveValueUSD = isAmountValid && quote && liveOutUSD > 0
     ? parseFloat(quote.amountOutFormatted.replace(/,/g, '')) * liveOutUSD
     : 0;
 
@@ -322,6 +330,13 @@ export const SwapCard: React.FC = () => {
               <span>1 {tokenIn.symbol} ≈ ${liveInUSD >= 1 ? liveInUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : liveInUSD.toFixed(6)}</span>
             )}
           </div>
+
+          {inputErrorMessage && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-400 mt-2 font-mono bg-amber-500/10 px-2.5 py-1.5 rounded-lg border border-amber-500/20">
+              <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+              <span>{inputErrorMessage}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-center -my-2.5 relative z-10">
@@ -339,7 +354,7 @@ export const SwapCard: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               You Receive (Estimated)
             </span>
-            {quote && (
+            {quote && isAmountValid && (
               <span className="text-xs font-mono text-cyan-400">
                 Score: {quote.effectiveExecutionScore}/100
               </span>
@@ -352,7 +367,7 @@ export const SwapCard: React.FC = () => {
                 <div className="h-9 w-40 bg-slate-800/60 animate-pulse rounded-lg" />
               ) : (
                 <span className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight">
-                  {quote ? quote.amountOutFormatted : '0.00'}
+                  {quote && isAmountValid ? quote.amountOutFormatted : '0.00'}
                 </span>
               )}
             </div>
@@ -379,7 +394,7 @@ export const SwapCard: React.FC = () => {
                 ? `~$${receiveValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : '$0.00'}
             </span>
-            {quote && (
+            {quote && isAmountValid && (
               <span className="font-mono">
                 Min: {quote.minimumReceivedFormatted} {tokenOut.symbol}
               </span>
@@ -387,7 +402,7 @@ export const SwapCard: React.FC = () => {
           </div>
         </div>
 
-        {quote && (
+        {quote && isAmountValid && (
           <div className="space-y-2 mb-4 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50 text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
@@ -399,9 +414,13 @@ export const SwapCard: React.FC = () => {
               </div>
               <div className="text-right font-mono">
                 <div className="text-slate-100 font-semibold">
-                  1 {tokenIn.symbol} ≈ {formatRateValue(quote.executionPrice)} {tokenOut.symbol}
+                  {quote.executionPrice > 0 ? (
+                    `1 ${tokenIn.symbol} ≈ ${formatRateValue(quote.executionPrice)} ${tokenOut.symbol}`
+                  ) : (
+                    <span className="text-amber-400 font-normal">Extreme Impact — Rate Depleted</span>
+                  )}
                 </div>
-                {marketRate && (
+                {marketRate && marketRate > 0 && (
                   <div className="text-[11px] text-slate-400 flex items-center justify-end gap-1">
                     <span>Market:</span>
                     <span className="text-cyan-300">
@@ -485,7 +504,15 @@ export const SwapCard: React.FC = () => {
             <ShieldAlert className="w-5 h-5" />
             Switch Network to {sourceChain.shortName}
           </button>
-        ) : !amountIn || parseFloat(amountIn) <= 0 ? (
+        ) : hasInputError ? (
+          <button
+            disabled
+            className="w-full py-4 rounded-xl bg-slate-900/80 border border-amber-500/40 text-amber-400 font-display font-bold text-base cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <ShieldAlert className="w-5 h-5 text-amber-400" />
+            {inputErrorMessage || 'Invalid Amount'}
+          </button>
+        ) : !amountIn || !isAmountValid || numAmountIn <= 0 ? (
           <button
             disabled
             className="w-full py-4 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-500 font-display font-bold text-base cursor-not-allowed flex items-center justify-center gap-2"
@@ -507,7 +534,7 @@ export const SwapCard: React.FC = () => {
             <RefreshCw className="w-5 h-5 animate-spin text-cyan-400" />
             Fetching Best Route...
           </button>
-        ) : quote ? (
+        ) : quote && isAmountValid ? (
           <button
             onClick={openConfirmSheet}
             className="w-full py-4 rounded-xl gradient-brand text-slate-950 font-display font-extrabold text-base tracking-wide shadow-glow-cyan hover:opacity-95 transition-all flex items-center justify-center gap-2"

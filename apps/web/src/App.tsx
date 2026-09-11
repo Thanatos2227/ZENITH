@@ -28,7 +28,7 @@ export const App: React.FC = () => {
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#080B11] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'} font-sans selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-200`}>
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col justify-start">
         {activeTab === 'TRADE' && <UnifiedTradingView />}
         {activeTab === 'POOLS' && <PoolsView />}
         {activeTab === 'EXPLORE' && <ExploreView />}
