@@ -1,4 +1,5 @@
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 contract ZenithCircuitBreaker {
     address public immutable governance;

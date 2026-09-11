@@ -1,5 +1,5 @@
-
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPermit2.sol";
@@ -151,6 +151,9 @@ contract ZenithReactor {
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        require(token != address(0), "ZenithReactor: ZERO_TOKEN");
+        require(from != address(0), "ZenithReactor: ZERO_SENDER");
+        require(to != address(0), "ZenithReactor: ZERO_RECIPIENT");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value)
         );

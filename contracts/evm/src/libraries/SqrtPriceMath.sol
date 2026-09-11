@@ -1,10 +1,9 @@
-
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 import "./FullMath.sol";
 
 library SqrtPriceMath {
-
     function getAmount0Delta(
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
@@ -52,11 +51,9 @@ library SqrtPriceMath {
         require(liquidity > 0, "SqrtPriceMath: ZERO_LIQ");
 
         if (zeroForOne) {
-
             uint256 quotient = FullMath.mulDiv(amountIn, sqrtPX96, (uint256(liquidity) << 96) + (amountIn * sqrtPX96));
             return uint160(sqrtPX96 - quotient);
         } else {
-
             uint256 quotient = FullMath.mulDiv(amountIn, 1 << 96, liquidity);
             return uint160(uint256(sqrtPX96) + quotient);
         }

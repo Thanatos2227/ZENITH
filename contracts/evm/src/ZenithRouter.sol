@@ -1,5 +1,5 @@
-
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH9.sol";
@@ -19,6 +19,8 @@ contract ZenithRouter is IZenithRouter {
     uint256 private _status;
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
+
+    event PoolManagerUpdated(address indexed previousPoolManager, address indexed newPoolManager);
 
     modifier nonReentrant() {
         require(_status != _ENTERED, "ZenithRouter: Reentrant call");
@@ -58,10 +60,14 @@ contract ZenithRouter is IZenithRouter {
 
     function setPoolManager(address _poolManager) external {
         require(msg.sender == feeManager.governance(), "ZenithRouter: Only governance");
+        require(_poolManager != address(0), "ZenithRouter: Zero pool manager");
+        emit PoolManagerUpdated(address(poolManager), _poolManager);
         poolManager = ZenithPoolManager(_poolManager);
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
+        require(token != address(0), "ZenithRouter: Zero token address");
+        require(to != address(0), "ZenithRouter: Zero recipient address");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, to, value)
         );
@@ -69,6 +75,9 @@ contract ZenithRouter is IZenithRouter {
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        require(token != address(0), "ZenithRouter: Zero token address");
+        require(from != address(0), "ZenithRouter: Zero sender address");
+        require(to != address(0), "ZenithRouter: Zero recipient address");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value)
         );
@@ -76,6 +85,8 @@ contract ZenithRouter is IZenithRouter {
     }
 
     function _safeApprove(address token, address spender, uint256 value) internal {
+        require(token != address(0), "ZenithRouter: Zero token address");
+        require(spender != address(0), "ZenithRouter: Zero spender address");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.approve.selector, spender, value)
         );
@@ -125,13 +136,15 @@ contract ZenithRouter is IZenithRouter {
                     key: ZenithPoolManager.PoolKey({
                         currency0: c0,
                         currency1: c1,
-                        feeBps: uint24(params.feeBps > 0 ? params.feeBps : 30),
+                        feeBps: uint24(params.fee > 0 ? params.fee : 30),
                         tickSpacing: 60,
                         hook: IZenithHook(address(0))
                     }),
                     zeroForOne: zeroForOne,
                     amountSpecified: int256(netAmountIn),
-                    sqrtPriceLimitX96: zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+                    sqrtPriceLimitX96: params.sqrtPriceLimitX96 != 0
+                        ? params.sqrtPriceLimitX96
+                        : (zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1),
                     hookData: ""
                 })
             );
@@ -317,5 +330,26 @@ contract ZenithRouter is IZenithRouter {
             protocolFee,
             params.recipient
         );
+    }
+
+    function unwrapWETH9(uint256 amountMinimum, address recipient) external payable override nonReentrant whenNotPaused {
+        require(recipient != address(0), "ZenithRouter: Zero recipient");
+        require(WETH9 != address(0), "ZenithRouter: WETH9 not configured");
+        uint256 wethBalance = IERC20(WETH9).balanceOf(address(this));
+        require(wethBalance >= amountMinimum, "ZenithRouter: Insufficient WETH9");
+        if (wethBalance > 0) {
+            IWETH9(WETH9).withdraw(wethBalance);
+            (bool success, ) = recipient.call{value: wethBalance}("");
+            require(success, "ZenithRouter: ETH transfer failed");
+        }
+    }
+
+    function refundETH() external payable override nonReentrant whenNotPaused {
+        if (address(this).balance > 0) {
+            uint256 refundAmount = address(this).balance;
+            (bool success, ) = msg.sender.call{value: refundAmount}("");
+            require(success, "ZenithRouter: Refund failed");
+            emit RefundInitiated(msg.sender, refundAmount);
+        }
     }
 }

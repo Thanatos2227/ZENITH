@@ -1,5 +1,5 @@
-
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IZenithHook.sol";
@@ -125,6 +125,7 @@ contract ZenithPoolManager {
     }
 
     constructor(address _circuitBreaker) {
+        require(_circuitBreaker != address(0), "ZenithPoolManager: ZERO_CIRCUIT_BREAKER");
         owner = msg.sender;
         circuitBreaker = ZenithCircuitBreaker(_circuitBreaker);
     }
@@ -134,6 +135,7 @@ contract ZenithPoolManager {
     }
 
     function toPositionId(address ownerAddress, int24 tickLower, int24 tickUpper) public pure returns (bytes32) {
+        require(ownerAddress != address(0), "ZenithPoolManager: ZERO_OWNER");
         return keccak256(abi.encodePacked(ownerAddress, tickLower, tickUpper));
     }
 
@@ -142,6 +144,7 @@ contract ZenithPoolManager {
         uint160 sqrtPriceX96,
         bytes calldata hookData
     ) external onlyWhenNotPaused returns (int24 tick) {
+        require(key.currency0 != address(0) && key.currency1 != address(0), "ZenithPoolManager: ZERO_CURRENCY");
         require(key.currency0 < key.currency1, "ZenithPoolManager: CURRENCY_ORDER");
         require(key.tickSpacing > 0, "ZenithPoolManager: INVALID_SPACING");
         require(
@@ -314,7 +317,6 @@ contract ZenithPoolManager {
                 amountOut = SqrtPriceMath.getAmount0Delta(pool.sqrtPriceX96, nextSqrtPriceX96, pool.liquidity, false);
             }
         } else {
-
             if (params.zeroForOne) {
                 require(pool.reserve0 > 0 && pool.reserve1 > 0, "ZenithPoolManager: INSUFFICIENT_LIQUIDITY");
                 amountOut = (netAmountIn * pool.reserve1) / (pool.reserve0 + netAmountIn);
@@ -369,6 +371,8 @@ contract ZenithPoolManager {
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
+        require(token != address(0), "ZenithPoolManager: ZERO_TOKEN");
+        require(to != address(0), "ZenithPoolManager: ZERO_RECIPIENT");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, to, value)
         );
@@ -376,6 +380,9 @@ contract ZenithPoolManager {
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        require(token != address(0), "ZenithPoolManager: ZERO_TOKEN");
+        require(from != address(0), "ZenithPoolManager: ZERO_SENDER");
+        require(to != address(0), "ZenithPoolManager: ZERO_RECIPIENT");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value)
         );

@@ -1,5 +1,5 @@
-
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 import "./ZenithPoolManager.sol";
 
@@ -89,6 +89,7 @@ contract ZenithPositionNFT {
     }
 
     constructor(address _poolManager) {
+        require(_poolManager != address(0), "ZenithPositionNFT: ZERO_POOL_MANAGER");
         poolManager = ZenithPoolManager(_poolManager);
     }
 
@@ -207,6 +208,7 @@ contract ZenithPositionNFT {
         isAuthorizedForToken(params.tokenId)
         returns (uint256 amount0, uint256 amount1)
     {
+        require(params.recipient != address(0), "ZenithPositionNFT: ZERO_RECIPIENT");
         Position storage position = positions[params.tokenId];
         amount0 = params.amount0Max > position.tokensOwed0 ? position.tokensOwed0 : params.amount0Max;
         amount1 = params.amount1Max > position.tokensOwed1 ? position.tokensOwed1 : params.amount1Max;
@@ -237,6 +239,8 @@ contract ZenithPositionNFT {
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
+        require(token != address(0), "ZenithPositionNFT: ZERO_TOKEN");
+        require(to != address(0), "ZenithPositionNFT: ZERO_RECIPIENT");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, to, value)
         );
@@ -244,6 +248,9 @@ contract ZenithPositionNFT {
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        require(token != address(0), "ZenithPositionNFT: ZERO_TOKEN");
+        require(from != address(0), "ZenithPositionNFT: ZERO_SENDER");
+        require(to != address(0), "ZenithPositionNFT: ZERO_RECIPIENT");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value)
         );
@@ -251,6 +258,8 @@ contract ZenithPositionNFT {
     }
 
     function _safeApprove(address token, address spender, uint256 value) internal {
+        require(token != address(0), "ZenithPositionNFT: ZERO_TOKEN");
+        require(spender != address(0), "ZenithPositionNFT: ZERO_SPENDER");
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.approve.selector, spender, value)
         );

@@ -1,5 +1,5 @@
-
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 import "../interfaces/IZenithHook.sol";
 
@@ -12,6 +12,7 @@ contract DynamicFeeHook is IZenithHook {
     mapping(bytes32 => uint256) public blockVolume;
 
     event FeeUpdated(uint24 newBaseFee, uint24 newMaxFee);
+    event DynamicFeeApplied(bytes32 indexed poolId, address indexed sender, uint24 dynamicFeeBps, uint256 currentBlockVolume);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "DynamicFeeHook: NOT_OWNER");
@@ -54,7 +55,7 @@ contract DynamicFeeHook is IZenithHook {
     }
 
     function beforeSwap(
-        address,
+        address sender,
         bytes32 poolId,
         bool,
         int256 amountSpecified,
@@ -75,6 +76,8 @@ contract DynamicFeeHook is IZenithHook {
         } else {
             dynamicFeeBps = baseFeeBps;
         }
+
+        emit DynamicFeeApplied(poolId, sender, dynamicFeeBps, blockVolume[poolId]);
 
         return (this.beforeSwap.selector, dynamicFeeBps);
     }

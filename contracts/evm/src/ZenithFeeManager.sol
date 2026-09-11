@@ -1,5 +1,5 @@
-
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
 
 import "./interfaces/IERC20.sol";
 
@@ -41,6 +41,7 @@ contract ZenithFeeManager {
     }
 
     function setStakingDistributor(address _newDistributor) external onlyGovernance {
+        require(_newDistributor != address(0), "ZenithFee: Zero distributor");
         emit StakingDistributorUpdated(stakingDistributor, _newDistributor);
         stakingDistributor = _newDistributor;
     }
@@ -58,6 +59,7 @@ contract ZenithFeeManager {
     }
 
     function setUserDiscount(address user, uint256 discountBps) external onlyGovernance {
+        require(user != address(0), "ZenithFee: Zero user address");
         require(discountBps <= 10000, "ZenithFee: Exceeds 100%");
         userFeeDiscountBps[user] = discountBps;
         emit UserDiscountUpdated(user, discountBps);
@@ -69,6 +71,9 @@ contract ZenithFeeManager {
 
     function calculateUserFee(address user, uint256 amount) public view returns (uint256 feeAmount) {
         uint256 baseFee = calculateFee(amount);
+        if (user == address(0)) {
+            return baseFee;
+        }
         uint256 discount = userFeeDiscountBps[user];
         if (discount > 0) {
             return baseFee - ((baseFee * discount) / 10000);
@@ -77,6 +82,7 @@ contract ZenithFeeManager {
     }
 
     function collectFee(address token, address from, uint256 amount) external returns (uint256 feeAmount) {
+        require(from != address(0), "ZenithFee: Zero from address");
         feeAmount = calculateUserFee(from, amount);
         if (feeAmount > 0) {
             uint256 stakingPart = (stakingDistributor != address(0)) ? (feeAmount * stakingShareBps) / 10000 : 0;
