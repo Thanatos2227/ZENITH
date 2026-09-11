@@ -153,6 +153,16 @@ export interface Token {
   tags?: string[];
 }
 
+export interface UnsupportedTokenMetadata {
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoURI?: string;
+  coingeckoId?: string;
+  supportedNetworks: string[];
+  reason: string;
+}
+
 export type DEXProtocol =
   | 'UNISWAP_V2'
   | 'UNISWAP_V3'

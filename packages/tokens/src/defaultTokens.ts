@@ -1,4 +1,4 @@
-import { Token } from '@zenith/types';
+import { Token, UnsupportedTokenMetadata } from '@zenith/types';
 import { ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 
 const TOKEN_CONFIG: Token[] = [
@@ -2359,6 +2359,172 @@ const TOKEN_CONFIG: Token[] = [
   }
 ];
 
+export const UNSUPPORTED_TOKEN_METADATA: UnsupportedTokenMetadata[] = [
+  {
+    symbol: 'BCH',
+    name: 'Bitcoin Cash',
+    decimals: 8,
+    logoURI: 'https://assets.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+    coingeckoId: 'bitcoin-cash',
+    supportedNetworks: [],
+    reason: 'Bitcoin Cash native-chain support is not present in the configured chain registry.'
+  },
+  {
+    symbol: 'LTC',
+    name: 'Litecoin',
+    decimals: 8,
+    logoURI: 'https://assets.coingecko.com/coins/images/2/small/litecoin.png',
+    coingeckoId: 'litecoin',
+    supportedNetworks: [],
+    reason: 'Litecoin native-chain support is not present in the configured chain registry.'
+  },
+  {
+    symbol: 'ZEC',
+    name: 'Zcash',
+    decimals: 8,
+    logoURI: 'https://coin-images.coingecko.com/coins/images/486/small/Brandmark-Yellow_%281%29.png',
+    coingeckoId: 'zcash',
+    supportedNetworks: [],
+    reason: 'Zcash native-chain support is not present in the configured chain registry.'
+  },
+  {
+    symbol: 'TAO',
+    name: 'Bittensor',
+    decimals: 9,
+    logoURI: 'https://coin-images.coingecko.com/coins/images/28452/small/bittensor.png',
+    coingeckoId: 'bittensor',
+    supportedNetworks: [],
+    reason: 'Bittensor/Subtensor support is not present in the configured chain registry.'
+  },
+  {
+    symbol: 'PUMP',
+    name: 'Pump.fun token',
+    decimals: 6,
+    coingeckoId: 'pump-fun',
+    supportedNetworks: [],
+    reason: 'No verified deployment for the requested Pump.fun token is configured.'
+  },
+  {
+    symbol: 'BFUSD',
+    name: 'BFUSD',
+    decimals: 18,
+    coingeckoId: 'bf-usa',
+    supportedNetworks: [],
+    reason: 'No verified deployment for BFUSD is configured on a supported chain.'
+  }
+];
+
+const VERIFIED_ADDITIONAL_TOKENS: Token[] = [
+  {
+    address: '0xa2e3356610840701bdf5611a53974510ae27e2e1',
+    chainId: 'ethereum',
+    name: 'Wrapped Beacon ETH',
+    symbol: 'WBETH',
+    decimals: 8,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/30061/small/wbeth-icon.png',
+    tags: ['WRAPPED', 'LIQUID_STAKING']
+  },
+  {
+    address: '0xa2e3356610840701bdf5611a53974510ae27e2e1',
+    chainId: 'bnb',
+    name: 'Wrapped Beacon ETH',
+    symbol: 'WBETH',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/30061/small/wbeth-icon.png',
+    tags: ['WRAPPED', 'LIQUID_STAKING']
+  },
+  {
+    address: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
+    chainId: 'ethereum',
+    name: 'Ethena USDe',
+    symbol: 'USDE',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/33613/small/usde.png',
+    tags: ['STABLECOIN']
+  },
+  {
+    address: '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d',
+    chainId: 'ethereum',
+    name: 'World Liberty Financial USD',
+    symbol: 'USD1',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/54977/small/USD1_1000x1000_transparent.png',
+    tags: ['STABLECOIN']
+  },
+  {
+    address: '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d',
+    chainId: 'bnb',
+    name: 'World Liberty Financial USD',
+    symbol: 'USD1',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/54977/small/USD1_1000x1000_transparent.png',
+    tags: ['STABLECOIN']
+  },
+  {
+    address: '0x68749665ff8d2d112fa859aa293f07a622782f38',
+    chainId: 'ethereum',
+    name: 'Tether Gold',
+    symbol: 'XAUT',
+    decimals: 6,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/10481/small/tether-gold.png',
+    tags: ['RWA', 'GOLD_BACKED']
+  },
+  {
+    address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed',
+    chainId: 'ethereum',
+    name: 'Ripple USD',
+    symbol: 'RLUSD',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/38877/small/rlusd.png',
+    tags: ['STABLECOIN']
+  },
+  {
+    address: '0x000ae314e2a2172a039b26378814c252734f556a',
+    chainId: 'bnb',
+    name: 'Aster',
+    symbol: 'ASTER',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/69040/small/_ASTER.png'
+  },
+  {
+    address: '0x45804880de22913dafe09f4980848ece6ecbaf78',
+    chainId: 'ethereum',
+    name: 'PAX Gold',
+    symbol: 'PAXG',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/9519/small/asset-paxg.png',
+    tags: ['RWA', 'GOLD_BACKED']
+  },
+  {
+    address: '0xda5e1988097297dcdc1f90d4dfe7909e847cbef6',
+    chainId: 'ethereum',
+    name: 'World Liberty Financial',
+    symbol: 'WLFI',
+    decimals: 18,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/50767/small/wlfi.png'
+  },
+  {
+    address: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+    chainId: 'ton',
+    name: 'Gram',
+    symbol: 'GRAM',
+    decimals: 9,
+    verificationTier: 'VERIFIED_CANONICAL',
+    logoURI: 'https://coin-images.coingecko.com/coins/images/17980/small/Gram_Circular_Badge.png',
+    tags: ['NATIVE_REBRAND']
+  }
+];
+
 const WRAPPED_SYMBOLS = new Set(['WETH', 'WPOL', 'WMATIC', 'WBNB', 'WAVAX', 'WCELO', 'WMNT']);
 
 const NORMALIZED_TOKENS: Token[] = TOKEN_CONFIG.map((token) => {
@@ -2393,4 +2559,4 @@ const EVM_NATIVE_TOKENS: Token[] = Object.values(ZENITH_SUPPORTED_CHAINS)
     logoURI: chain.nativeCurrency.logoURI || chain.iconURI
   }));
 
-export const DEFAULT_TOKENS: Token[] = [...NORMALIZED_TOKENS, ...EVM_NATIVE_TOKENS];
+export const DEFAULT_TOKENS: Token[] = [...NORMALIZED_TOKENS, ...EVM_NATIVE_TOKENS, ...VERIFIED_ADDITIONAL_TOKENS];

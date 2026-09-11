@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { defaultChainRegistry } from '../packages/chains/src/registry';
-import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService } from '../packages/tokens/src';
+import { DEFAULT_TOKENS, UNSUPPORTED_TOKEN_METADATA, defaultTokenService, defaultMarketDataService } from '../packages/tokens/src';
 import { defaultTokenRiskEngine, defaultCircuitBreaker } from '../packages/security/src';
 import {
   defaultZenithRouter,
@@ -91,6 +91,29 @@ test('3. Token Service & Multi-Chain Discovery', () => {
   });
   assert.equal(custom.symbol, 'CTA');
   assert.equal(custom.verificationTier, 'UNVERIFIED');
+});
+
+test('3a. Additional token metadata, search, deployments, and unsupported handling', () => {
+  const requested = ['ZEC', 'WBETH', 'BCH', 'USDE', 'USD1', 'LTC', 'GRAM', 'TAO', 'XAUT', 'RLUSD', 'PUMP', 'ASTER', 'PAXG', 'WLFI', 'BFUSD'];
+  const registeredSymbols = new Set(DEFAULT_TOKENS.map((token) => token.symbol));
+  const unsupportedSymbols = new Set(UNSUPPORTED_TOKEN_METADATA.map((token) => token.symbol));
+
+  for (const symbol of requested) {
+    assert.ok(registeredSymbols.has(symbol) || unsupportedSymbols.has(symbol), `${symbol} has registry metadata`);
+  }
+
+  assert.equal(defaultTokenService.searchTokens('Wrapped Beacon ETH', 'ethereum')[0]?.symbol, 'WBETH');
+  assert.equal(defaultTokenService.searchTokens('USDe', 'ethereum')[0]?.symbol, 'USDE');
+  assert.equal(defaultTokenService.searchTokens('PAX Gold', 'ethereum')[0]?.symbol, 'PAXG');
+  assert.equal(defaultTokenService.searchUnsupportedTokenMetadata('Bitcoin Cash')[0]?.symbol, 'BCH');
+  assert.equal(defaultTokenService.searchUnsupportedTokenMetadata('ZEC')[0]?.name, 'Zcash');
+  assert.equal(defaultTokenService.getTokensForChain('ethereum').some((token) => token.symbol === 'USD1'), true);
+  assert.equal(defaultTokenService.getTokensForChain('bnb').some((token) => token.symbol === 'USD1'), true);
+  assert.equal(defaultTokenService.getTokensForChain('ethereum').some((token) => token.symbol === 'ASTER'), false);
+
+  const keys = DEFAULT_TOKENS.map((token) => `${token.chainId}:${token.address.toLowerCase()}`);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.ok(UNSUPPORTED_TOKEN_METADATA.every((token) => token.supportedNetworks.length === 0));
 });
 
 test('4. Token Risk Engine & Security Profiling', () => {

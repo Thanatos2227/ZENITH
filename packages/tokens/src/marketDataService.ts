@@ -105,6 +105,18 @@ export const TOKEN_COINGECKO_MAP: Record<string, string> = {
   PYUSD: 'paypal-usd',
   USDS: 'usds',
   USDE: 'ethena-usde',
+  WBETH: 'wrapped-beacon-eth',
+  USD1: 'usd1-wlfi',
+  XAUT: 'tether-gold',
+  RLUSD: 'ripple-usd',
+  ASTER: 'aster-2',
+  PAXG: 'pax-gold',
+  WLFI: 'world-liberty-financial',
+  ZEC: 'zcash',
+  BCH: 'bitcoin-cash',
+  LTC: 'litecoin',
+  TAO: 'bittensor',
+  GRAM: 'the-open-network',
   FDUSD: 'first-digital-usd',
   UNI: 'uniswap',
   LINK: 'chainlink',
@@ -244,7 +256,15 @@ const BINANCE_SYMBOL_MAP: Record<string, string> = {
   USDC: 'USDC',
   DAI: 'DAI',
   FDUSD: 'FDUSD',
-  USDE: 'USDE'
+  USDE: 'USDE',
+  WBETH: 'ETH',
+  USD1: 'USD1',
+  XAUT: 'PAXG',
+  RLUSD: 'USDC',
+  ASTER: 'ASTER',
+  PAXG: 'PAXG',
+  WLFI: 'WLFI',
+  GRAM: 'TON'
 };
 
 const STABLECOINS = new Set(['USDC', 'USDT', 'DAI', 'FDUSD', 'USDE', 'BUSD']);

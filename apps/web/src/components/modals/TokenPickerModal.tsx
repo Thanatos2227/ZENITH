@@ -44,6 +44,9 @@ export const TokenPickerModal: React.FC = () => {
   const tokens = searchQuery.trim()
     ? defaultTokenService.searchTokens(searchQuery, targetChain.id)
     : defaultTokenService.getTokensForChain(targetChain.id);
+  const unsupportedMatches = searchQuery.trim()
+    ? defaultTokenService.searchUnsupportedTokenMetadata(searchQuery)
+    : [];
 
   const handleSelectChain = (chain: ChainConfig) => {
     if (tokenPickerTarget === 'IN') {
@@ -177,7 +180,7 @@ export const TokenPickerModal: React.FC = () => {
         </div>
 
         <div className="p-2 overflow-y-auto divide-y divide-slate-800/40 flex-1">
-          {tokens.length === 0 ? (
+          {tokens.length === 0 && unsupportedMatches.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-slate-400 text-sm mb-3">No tokens found for "{searchQuery}"</p>
               <button
@@ -189,7 +192,8 @@ export const TokenPickerModal: React.FC = () => {
               </button>
             </div>
           ) : (
-            tokens.map((t) => {
+            <>
+            {tokens.map((t) => {
               const isSelected = activeSelected.address.toLowerCase() === t.address.toLowerCase() && activeSelected.chainId === t.chainId;
               const riskScore = t.securityProfile?.riskScore ?? 0;
               const isPositive = (t.change24hUSD || 0) >= 0;
@@ -268,7 +272,33 @@ export const TokenPickerModal: React.FC = () => {
                   </div>
                 </div>
               );
-            })
+            })}
+            {unsupportedMatches.map((metadata) => (
+              <div
+                key={`unsupported-${metadata.symbol}`}
+                className="flex items-center justify-between p-3 rounded-xl opacity-60"
+                title={metadata.reason}
+              >
+                <div className="flex items-center gap-3">
+                  <TokenLogo
+                    symbol={metadata.symbol}
+                    name={metadata.name}
+                    logoURI={metadata.logoURI}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-sm text-white">{metadata.symbol}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">
+                        Unavailable
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">{metadata.name}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            </>
           )}
         </div>
 

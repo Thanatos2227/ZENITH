@@ -1,5 +1,5 @@
-import { Token, TokenSecurityProfile } from '@zenith/types';
-import { DEFAULT_TOKENS } from './defaultTokens';
+import { Token, TokenSecurityProfile, UnsupportedTokenMetadata } from '@zenith/types';
+import { DEFAULT_TOKENS, UNSUPPORTED_TOKEN_METADATA } from './defaultTokens';
 
 export class TokenService {
   private tokens: Map<string, Token> = new Map();
@@ -67,6 +67,14 @@ export class TokenService {
         t.symbol.toLowerCase().includes(q) ||
         t.name.toLowerCase().includes(q) ||
         t.address.toLowerCase().includes(q)
+    );
+  }
+
+  public searchUnsupportedTokenMetadata(query: string): UnsupportedTokenMetadata[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return UNSUPPORTED_TOKEN_METADATA.filter(
+      (token) => token.symbol.toLowerCase().includes(q) || token.name.toLowerCase().includes(q)
     );
   }
 
