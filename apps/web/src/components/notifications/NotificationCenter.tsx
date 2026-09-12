@@ -1,5 +1,6 @@
 import React from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
+import { defaultChainRegistry } from '@zenith/chains';
 import {
   X,
   Bell,
@@ -71,7 +72,17 @@ export const NotificationCenter: React.FC = () => {
 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-white text-xs">{n.title}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-white text-xs">{n.title}</span>
+                      {n.chainId && defaultChainRegistry.getChain(n.chainId) && (
+                        <img
+                          src={defaultChainRegistry.getChain(n.chainId)?.iconURI}
+                          alt={n.chainId}
+                          className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                    </div>
                     <span className="text-[10px] text-slate-500 font-mono">
                       {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>

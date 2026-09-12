@@ -2482,7 +2482,7 @@ const VERIFIED_ADDITIONAL_TOKENS: Token[] = [
     symbol: 'RLUSD',
     decimals: 18,
     verificationTier: 'VERIFIED_CANONICAL',
-    logoURI: 'https://coin-images.coingecko.com/coins/images/38877/small/rlusd.png',
+    logoURI: '/tokens/rlusd.png',
     tags: ['STABLECOIN']
   },
   {
@@ -2560,3 +2560,45 @@ const EVM_NATIVE_TOKENS: Token[] = Object.values(ZENITH_SUPPORTED_CHAINS)
   }));
 
 export const DEFAULT_TOKENS: Token[] = [...NORMALIZED_TOKENS, ...EVM_NATIVE_TOKENS, ...VERIFIED_ADDITIONAL_TOKENS];
+
+export const MARKET_EXCLUDED_TOKEN_KEYS = new Set([
+  'tempo:0x0000000000000000000000000000000000000014',
+  'bitcoin:rune:pups_world_peace',
+  'tempo:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  'monad:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  'monad:0x0000000000000000000000000000000000000021',
+  'monad:0x0000000000000000000000000000000000000026',
+  'xlayer:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  'optimism:0x9560e827af36c94d2ac33a39bce1fe78631088db',
+  'bnb:0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c',
+  'avalanche:0x152b9d0fdc40c096757F570A51E494ba4b945398',
+  'bnb:0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82',
+  'bnb:0xfb5b838b6cfeedc2873ab27866079ac55363d37e',
+  'avalanche:0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd',
+  'zksync:0xed4040fd47629e7c8fba7da76bb50d3e7695f0f2',
+  'linea:0x5fbdf89403270a1846f5ae7d113a989f850d1566',
+  'robinhood:0x1111111111111111111111111111111111111111',
+  'robinhood:0x2222222222222222222222222222222222222222',
+  'robinhood:0x3333333333333333333333333333333333333333',
+  'robinhood:0x4444444444444444444444444444444444444444',
+  'robinhood:0x7777777777777777777777777777777777777777',
+  'robinhood:0x9999999999999999999999999999999999999999',
+  'celo:0x765de816845861e75a25fca122bb6898b8b1282a',
+  'celo:0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
+  'zora:0x0000000000000000000000000000000000000091',
+  'zora:0xa6b280b42cb0b7c4a4f789ec2ecdf7e2cd0da650',
+  'soneium:0x0000000000000000000000000000000000000083',
+  'soneium:0x0000000000000000000000000000000000000082',
+  'megaeth:0x0000000000000000000000000000000000000073',
+  'blast:0x4300000000000000000000000000000000000003',
+  'blast:0x00000000000000000000000000000000000000a1',
+  'gnosis:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  'gnosis:0x9c58bacc331c9aa871afd802db6379a98e80cedb',
+  'berachain:0x0e4aaf1351de4c0264c5c7056ef3777b41bd8e03',
+  'rootstock:0x0000000000000000000000000000000000000000'
+]);
+
+export const MARKET_TOKENS: Token[] = DEFAULT_TOKENS.filter(
+  (t) => !MARKET_EXCLUDED_TOKEN_KEYS.has(`${t.chainId.toLowerCase()}:${t.address.toLowerCase()}`)
+);
+

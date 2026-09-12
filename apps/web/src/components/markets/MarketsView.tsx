@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useZenithStore } from '../../stores/useZenithStore';
-import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, VERIFIED_CIRCULATING_SUPPLY } from '@zenith/tokens';
+import { MARKET_TOKENS, defaultTokenService, defaultMarketDataService, VERIFIED_CIRCULATING_SUPPLY } from '@zenith/tokens';
 import { defaultChainRegistry } from '@zenith/chains';
 import { Token } from '@zenith/types';
 import { TokenLogo } from '../common/TokenLogo';
@@ -40,7 +40,7 @@ export const MarketsView: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
-  const filteredTokens = DEFAULT_TOKENS.filter((t) => {
+  const filteredTokens = MARKET_TOKENS.filter((t) => {
     const chain = defaultChainRegistry.getChain(t.chainId);
     const matchesSearch =
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

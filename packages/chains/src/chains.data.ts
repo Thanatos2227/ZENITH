@@ -281,7 +281,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'DEEP',
     productionStatus: 'ACTIVE',
     color: '#0052FF',
-    iconURI: 'https://assets.coingecko.com/coins/images/31388/small/base.png',
+    iconURI: '/networks/base.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1222,7 +1222,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#121212',
-    iconURI: 'https://assets.coingecko.com/coins/images/31294/small/linea.png',
+    iconURI: '/networks/linea.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1297,7 +1297,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#8C8DFC',
-    iconURI: 'https://assets.coingecko.com/coins/images/27897/small/zksync.jpeg',
+    iconURI: '/networks/zksync.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1429,7 +1429,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#FCFC03',
-    iconURI: 'https://assets.coingecko.com/coins/images/35515/small/blast.png',
+    iconURI: '/networks/blast.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1503,7 +1503,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#000000',
-    iconURI: 'https://assets.coingecko.com/coins/images/30894/small/zora.png',
+    iconURI: '/networks/zora.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1569,7 +1569,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#1E1E1E',
-    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x16373015E5939361A290ee0640666531de00B4F3/logo.png',
+    iconURI: '/networks/worldcoin.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1683,7 +1683,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#35D07F',
-    iconURI: 'https://assets.coingecko.com/coins/images/11090/small/celo.png',
+    iconURI: '/networks/celo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1758,7 +1758,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#133629',
-    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x6810e776880C02933D47DB1b9fc05908e5386b96/logo.png',
+    iconURI: '/networks/gnosis.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1854,7 +1854,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#002B49',
-    iconURI: 'https://assets.coingecko.com/coins/images/39906/small/soneium.png',
+    iconURI: '/networks/soneium.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -1929,7 +1929,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#8B4513',
-    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/berachain/info/logo.png',
+    iconURI: '/networks/berachain.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -2325,7 +2325,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'GROWING',
     productionStatus: 'ACTIVE',
     color: '#00F2FE',
-    iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/injective/info/logo.png',
+    iconURI: '/networks/injective.png',
     defaultTokens: [
       {
         address: 'inj',
@@ -2442,7 +2442,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EMERGING',
     productionStatus: 'ACTIVE',
     color: '#DFFE00',
-    iconURI: 'https://assets.coingecko.com/coins/images/34346/small/mode.png',
+    iconURI: '/networks/mode.png',
     defaultTokens: [
       {
         address: '0x0000000000000000000000000000000000000000',
@@ -2481,7 +2481,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EMERGING',
     productionStatus: 'ACTIVE',
     color: '#E81899',
-    iconURI: 'https://assets.coingecko.com/coins/images/35887/small/taiko.png',
+    iconURI: '/networks/taiko.png',
     defaultTokens: [
       {
         address: '0x0000000000000000000000000000000000000000',
@@ -3198,7 +3198,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EXPERIMENTAL',
     productionStatus: 'BETA',
     color: '#836EF9',
-    iconURI: 'https://assets.coingecko.com/coins/images/34407/small/monad.png',
+    iconURI: '/networks/monad.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -3271,7 +3271,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EXPERIMENTAL',
     productionStatus: 'BETA',
     color: '#00C805',
-    iconURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
+    iconURI: '/networks/robinhood.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -3359,7 +3359,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EXPERIMENTAL',
     productionStatus: 'BETA',
     color: '#6366F1',
-    iconURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
+    iconURI: '/networks/tempo.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -3424,7 +3424,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     liquidityMaturity: 'EXPERIMENTAL',
     productionStatus: 'BETA',
     color: '#A855F7',
-    iconURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
+    iconURI: '/networks/megaeth.png',
     defaultTokens: [
       {
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',

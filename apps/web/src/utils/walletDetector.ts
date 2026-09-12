@@ -179,7 +179,7 @@ export const detectInstalledWallets = (): WalletOption[] => {
     {
       id: 'METAMASK',
       name: 'MetaMask',
-      icon: 'https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg',
+      icon: '/wallets/metamask.png',
       isDetected: isMetaMask,
       environment: 'EVM',
       downloadUrl: 'https://metamask.io/download/'
@@ -187,7 +187,7 @@ export const detectInstalledWallets = (): WalletOption[] => {
     {
       id: 'PHANTOM',
       name: 'Phantom',
-      icon: 'https://phantom.app/img/phantom-logo.svg',
+      icon: '/wallets/phantom.png',
       isDetected: isPhantom,
       environment: 'SOLANA',
       downloadUrl: 'https://phantom.app/download'
@@ -195,7 +195,7 @@ export const detectInstalledWallets = (): WalletOption[] => {
     {
       id: 'COINBASE',
       name: 'Coinbase Wallet',
-      icon: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
+      icon: '/wallets/coinbase.png',
       isDetected: isCoinbase,
       environment: 'EVM',
       downloadUrl: 'https://www.coinbase.com/wallet'
@@ -203,7 +203,7 @@ export const detectInstalledWallets = (): WalletOption[] => {
     {
       id: 'RABBY',
       name: 'Rabby Wallet',
-      icon: 'https://rabby.io/assets/images/logo.svg',
+      icon: '/wallets/rabby.png',
       isDetected: isRabby,
       environment: 'EVM',
       downloadUrl: 'https://rabby.io'
@@ -211,7 +211,7 @@ export const detectInstalledWallets = (): WalletOption[] => {
     {
       id: 'OKX',
       name: 'OKX Wallet',
-      icon: 'https://www.okx.com/favicon.ico',
+      icon: '/wallets/okx.png',
       isDetected: isOKX,
       environment: 'MULTI',
       downloadUrl: 'https://www.okx.com/web3'
