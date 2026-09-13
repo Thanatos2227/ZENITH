@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=@zenith/web",
     "build": "npm run build --workspaces --if-present",
-    "test": "npx tsx --test tests/zenith.test.ts",
+    "test": "npx tsx --test tests/zenith.test.ts tests/zenith_master_matrix.test.ts tests/zenith_24_disciplines.test.ts",
     "type-check": "npm run type-check --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   },
