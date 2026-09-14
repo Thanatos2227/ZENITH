@@ -1,6 +1,7 @@
 import {
   CrossChainProvider,
   CrossChainQuote,
+  CrossChainExecution,
   QuoteRequest,
   SwapRoute,
   RouteHop
@@ -70,6 +71,18 @@ export class CrossChainAggregator {
   public async getBestQuote(request: QuoteRequest): Promise<CrossChainQuote | null> {
     const quotes = await this.getQuotes(request);
     return quotes.length > 0 ? quotes[0] : null;
+  }
+
+  public async buildExecution(
+    quote: CrossChainQuote,
+    userAddress: string,
+    recipientAddress?: string
+  ): Promise<CrossChainExecution> {
+    const provider = this.getProvider(quote.provider);
+    if (!provider) {
+      throw new Error(`[CrossChainAggregator] Bridge provider ${quote.provider} not found`);
+    }
+    return provider.buildExecution(quote, userAddress, recipientAddress);
   }
 
   public async findCrossChainRoutes(params: {

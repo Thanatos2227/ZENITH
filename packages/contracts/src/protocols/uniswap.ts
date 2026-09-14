@@ -39,6 +39,21 @@ export const UNISWAP_V3_FACTORY: Record<number, string> = {
   43114: '0x740b1c1de25031C31FF4fC9A62f554A55cdC1baD'
 };
 
+export const UNISWAP_V3_SWAP_ROUTER_ABI = [
+  'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)',
+  'function exactInput((bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum)) external payable returns (uint256 amountOut)',
+  'function exactOutputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountIn)',
+  'function exactOutput((bytes path, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum)) external payable returns (uint256 amountIn)',
+  'function multicall(bytes[] calldata data) external payable returns (bytes[] memory results)',
+  'function unwrapWETH9(uint256 amountMinimum, address recipient) external payable',
+  'function refundETH() external payable'
+];
+
+export const UNISWAP_V3_QUOTER_V2_ABI = [
+  'function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96)) external returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
+  'function quoteExactInput(bytes path, uint256 amountIn) external returns (uint256 amountOut, uint160[] sqrtPriceX96AfterList, uint32[] initializedTicksCrossedList, uint256 gasEstimate)'
+];
+
 export function getUniswapV3Router(chainId: number): string {
   const router = UNISWAP_V3_SWAP_ROUTERS[chainId];
   if (!router) {

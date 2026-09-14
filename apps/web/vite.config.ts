@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '@zenith/types': path.resolve(__dirname, '../../packages/types/src'),
       '@zenith/chains': path.resolve(__dirname, '../../packages/chains/src'),
+      '@zenith/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
       '@zenith/tokens': path.resolve(__dirname, '../../packages/tokens/src'),
       '@zenith/security': path.resolve(__dirname, '../../packages/security/src'),
       '@zenith/routing': path.resolve(__dirname, '../../packages/routing/src'),

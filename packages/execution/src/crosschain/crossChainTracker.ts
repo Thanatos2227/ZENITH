@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from 'ethers';
+import { JsonRpcProvider, Network } from 'ethers';
 import {
   CrossChainQuote,
   SettlementState
@@ -159,7 +159,9 @@ export class CrossChainTracker {
     if (destChain.executionEnvironment === 'EVM') {
       try {
         const rpcUrl = defaultChainRegistry.getHealthyRPC(destChain.id);
-        const provider = new JsonRpcProvider(rpcUrl);
+        const chainNumeric = Number(destChain.chainId || 1);
+        const network = Network.from(chainNumeric);
+        const provider = new JsonRpcProvider(rpcUrl, network, { staticNetwork: network });
         const receipt = await provider.getTransactionReceipt(params.destinationTxHash);
 
         if (receipt && receipt.status === 1) {

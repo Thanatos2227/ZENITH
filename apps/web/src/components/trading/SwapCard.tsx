@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useZenithStore, resolveTokenLivePrice } from '../../stores/useZenithStore';
-import { defaultMarketDataService } from '../../services/marketDataService';
 import { TokenLogo } from '../common/TokenLogo';
 import {
   ArrowDownUp,
@@ -62,21 +61,8 @@ export const SwapCard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    const cleanup = defaultMarketDataService.subscribeLiveStream(
-      tokenIn.symbol,
-      tokenOut.symbol,
-      '1m',
-      () => {
-        if (!isMounted) return;
-        fetchQuote();
-      }
-    );
-    return () => {
-      isMounted = false;
-      cleanup();
-    };
-  }, [tokenIn.symbol, tokenIn.chainId, tokenOut.symbol, tokenOut.chainId, fetchQuote]);
+    setRefreshTimer(10);
+  }, [tokenIn.address, tokenIn.chainId, tokenOut.address, tokenOut.chainId, sourceChain.id, destChain.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -239,7 +225,10 @@ export const SwapCard: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => fetchQuote()}
+              onClick={() => {
+                fetchQuote();
+                setRefreshTimer(10);
+              }}
               disabled={isQuoteLoading || !isSwapSupported}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium text-slate-400 hover:text-cyan-400 bg-slate-900/60 border border-slate-800/80 transition-colors disabled:opacity-40"
               title="Click to refresh quote"
@@ -579,13 +568,21 @@ export const SwapCard: React.FC = () => {
             <RefreshCw className="w-5 h-5 animate-spin text-cyan-400" />
             Fetching Best Route...
           </button>
-        ) : quote && isAmountValid ? (
+        ) : quote && isAmountValid && quote.validation?.isValid !== false ? (
           <button
             onClick={openConfirmSheet}
             className="w-full py-4 rounded-xl gradient-brand text-slate-950 font-display font-extrabold text-base tracking-wide shadow-glow-cyan hover:opacity-95 transition-all flex items-center justify-center gap-2"
           >
             <Sparkles className="w-5 h-5 fill-slate-950" />
             Review & Swap
+          </button>
+        ) : quote && isAmountValid && quote.validation?.isValid === false ? (
+          <button
+            disabled
+            className="w-full py-4 rounded-xl bg-slate-900/80 border border-amber-500/40 text-amber-400 font-display font-bold text-base cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <ShieldAlert className="w-5 h-5 text-amber-400" />
+            {quote.validation?.errors?.[0] || 'Execution Validation Failed'}
           </button>
         ) : (
           <button

@@ -9,6 +9,12 @@ export const TRADER_JOE_LB_ROUTERS: Record<number, string> = {
   42161: '0xb4310e7De3e0f14172488457B1A97140eCC94b77'  // Arbitrum LBRouter v2.1
 };
 
+export const TRADER_JOE_ROUTER_ABI = [
+  'function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, (uint256[] pairBinSteps, uint8[] versions, address[] tokenPath) calldata path, address to, uint256 deadline) external returns (uint256 amountOut)',
+  'function swapExactNATIVEForTokens(uint256 amountOutMin, (uint256[] pairBinSteps, uint8[] versions, address[] tokenPath) calldata path, address to, uint256 deadline) external payable returns (uint256 amountOut)',
+  'function swapExactTokensForNATIVE(uint256 amountIn, uint256 amountOutMinNATIVE, (uint256[] pairBinSteps, uint8[] versions, address[] tokenPath) calldata path, address payable to, uint256 deadline) external returns (uint256 amountOut)'
+];
+
 export function getTraderJoeRouter(chainId: number): string {
   const router = TRADER_JOE_LB_ROUTERS[chainId];
   if (!router) {
@@ -16,3 +22,4 @@ export function getTraderJoeRouter(chainId: number): string {
   }
   return router;
 }
+

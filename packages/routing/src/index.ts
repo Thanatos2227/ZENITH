@@ -1,6 +1,6 @@
 export * from './math/ammMath';
 export * from './scoring';
-export * from './dexAggregator';
+export * from './dex';
 export * from './bridgeAggregator';
 export * from './crosschain/types';
 export * from './crosschain/providers/acrossProvider';

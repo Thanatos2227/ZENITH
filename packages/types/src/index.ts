@@ -247,6 +247,67 @@ export interface CrossChainQuote {
   securityRating: 'A+' | 'A' | 'B' | 'EXPERIMENTAL';
 }
 
+export interface DEXExecution {
+  to: string;
+  data: string;
+  value: string;
+  chainId: number;
+  approvalTarget: string;
+  requiredAllowanceRaw?: string;
+  approvalAmount?: string;
+  gasLimit?: string;
+  gasEstimateUnits?: bigint;
+}
+
+export interface DEXQuote {
+  provider: DEXProtocol;
+  providerName: string;
+  chainId: number | string;
+  tokenIn: Token;
+  tokenOut: Token;
+  amountIn: bigint;
+  amountOut: bigint;
+  minimumAmountOut: bigint;
+  amountInRaw?: string;
+  amountOutRaw?: string;
+  minimumOutRaw?: string;
+  feeAmount: bigint;
+  feeAmountRaw?: string;
+  feeTierBps: number;
+  priceImpactPercent: number;
+  gasEstimate: bigint;
+  gasEstimateUnits?: bigint;
+  gasCostUSD: number;
+  executionTarget: string;
+  approvalTarget: string;
+  calldata?: string;
+  value?: string;
+  quoteTimestamp: number;
+  expiration: number;
+  routePath?: string[];
+  execution?: DEXExecution;
+}
+
+export interface DEXQuoteParams {
+  chainId: number;
+  tokenIn: Token;
+  tokenOut: Token;
+  amountIn: bigint;
+  slippageToleranceBps: number;
+  recipient?: string;
+}
+
+export interface DEXProvider {
+  readonly id?: DEXProtocol;
+  readonly name?: string;
+  readonly protocol: DEXProtocol;
+  readonly supportedChainIds: number[];
+  isAvailable?(chainId: number | string, tokenIn: Token, tokenOut: Token): boolean | Promise<boolean>;
+  getQuote(params: DEXQuoteParams): Promise<DEXQuote | null>;
+  buildExecution(quote: DEXQuote, userAddress: string, recipientAddress?: string, deadline?: number): Promise<DEXExecution>;
+  simulateExecution?(execution: DEXExecution, userAddress: string): Promise<SimulationResult>;
+}
+
 export interface CrossChainExecution {
   to: string;
   data: string;
@@ -254,6 +315,8 @@ export interface CrossChainExecution {
   chainId: number;
   approvalTarget?: string;
   requiredAllowanceRaw?: string;
+  approvalAmount?: string;
+  gasLimit?: string;
 }
 
 export interface CrossChainStatus {
@@ -282,7 +345,8 @@ export interface SwapRoute {
   hops: RouteHop[];
   bridgeStep?: BridgeStep;
   crossChainQuote?: CrossChainQuote;
-  execution?: CrossChainExecution;
+  dexQuote?: DEXQuote;
+  execution?: DEXExecution | CrossChainExecution;
   gasCostUSD: number;
   estimatedGasUnits: bigint | number;
   dexKey?: string;
@@ -408,6 +472,29 @@ export interface QuoteRequest {
   deadlineSeconds?: number;
 }
 
+export interface ExecutableTransaction {
+  chainId: number;
+  from?: string;
+  to: string;
+  data: string;
+  value: string;
+  gasLimit?: string;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
+  approvalTarget?: string;
+  amountInRaw: string;
+  minimumOutRaw?: string;
+  deadline?: number;
+}
+
+export interface QuoteValidationResult {
+  isValid: boolean;
+  isExecutable: boolean;
+  errors: string[];
+  warnings: string[];
+  validatedAt: number;
+}
+
 export interface QuoteResponse {
   requestId: string;
   request: QuoteRequest;
@@ -434,6 +521,11 @@ export interface QuoteResponse {
   freshnessSeconds: number;
   simulationPreview?: SimulationResult;
   intent?: CrossChainIntent;
+  dexQuote?: DEXQuote;
+  crossChainQuote?: CrossChainQuote;
+  isExecutable?: boolean;
+  executableTransaction?: ExecutableTransaction;
+  validation?: QuoteValidationResult;
 }
 
 export interface TokenBalanceDelta {
@@ -679,4 +771,3 @@ export interface ProtocolAnalytics {
   topTokens: Token[];
   historicalVolume: Array<{ timestamp: number; volumeUSD: number; tvlUSD: number }>;
 }
-

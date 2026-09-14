@@ -1284,10 +1284,6 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         lastMarketUpdate: Date.now(),
         marketDataStatus: data.isLive ? 'LIVE' : defaultMarketDataService.getOverallStatus()
       }));
-
-      if (priceChanged && get().amountIn && parseFloat(get().amountIn) > 0) {
-        get().fetchQuote();
-      }
     },
 
     fetchMarketData: async () => {

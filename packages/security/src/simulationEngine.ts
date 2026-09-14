@@ -1,4 +1,4 @@
-import { JsonRpcProvider, Contract, Interface } from 'ethers';
+import { JsonRpcProvider, Contract, Interface, Network } from 'ethers';
 import { SimulationRequest, SimulationResult, Token, TokenBalanceDelta } from '@zenith/types';
 import { defaultChainRegistry } from '@zenith/chains';
 
@@ -41,7 +41,9 @@ export class SimulationEngine {
     if (chain && chain.executionEnvironment === 'EVM' && params.userAddress && params.routerAddress) {
       try {
         const rpcUrl = defaultChainRegistry.getHealthyRPC(chain.id);
-        const provider = new JsonRpcProvider(rpcUrl);
+        const chainNumeric = Number(chain.chainId || 1);
+        const network = Network.from(chainNumeric);
+        const provider = new JsonRpcProvider(rpcUrl, network, { staticNetwork: network });
 
         if (!params.tokenIn.isNative) {
           const tokenContract = new Contract(params.tokenIn.address, ERC20_SIM_ABI, provider);
@@ -152,7 +154,9 @@ export class SimulationEngine {
 
     try {
       const rpcUrl = defaultChainRegistry.getHealthyRPC(chain.id);
-      const provider = new JsonRpcProvider(rpcUrl);
+      const chainNumeric = Number(chain.chainId || 1);
+      const network = Network.from(chainNumeric);
+      const provider = new JsonRpcProvider(rpcUrl, network, { staticNetwork: network });
 
       await provider.call({
         from: request.fromAddress,
@@ -185,19 +189,20 @@ export class SimulationEngine {
 
   private decodeRevertReason(err: any): string | undefined {
     if (!err) return undefined;
-    if (typeof err === 'string') return err;
     if (err.reason) return err.reason;
-    if (err.data && typeof err.data === 'string' && err.data.startsWith('0x08c379a0')) {
-      try {
-        const iface = new Interface(['function Error(string)']);
-        const decoded = iface.decodeFunctionData('Error', err.data);
-        return decoded[0];
-      } catch {
-        // failed decoding custom error
+    if (err.data && typeof err.data === 'string') {
+      if (err.data.startsWith('0x08c379a0')) {
+        try {
+          const iface = new Interface(['function Error(string)']);
+          const decoded = iface.decodeFunctionData('Error', err.data);
+          return decoded[0];
+        } catch {
+          // failed decoding custom error
+        }
       }
+      return `Execution reverted with data ${err.data.slice(0, 10)}...`;
     }
-    if (err.shortMessage) return err.shortMessage;
-    if (err.message && (err.message.includes('revert') || err.message.includes('execution reverted'))) {
+    if (err.message && (err.message.includes('execution reverted') || err.message.includes('revert:'))) {
       return err.message;
     }
     return undefined;
