@@ -520,7 +520,7 @@ export interface ReceiptView {
   protocolFeePaidUSD: number;
   effectiveExecutionScore: number;
   timestamp: number;
-  status: 'COMPLETED' | 'REVERTED' | 'FAILED';
+  status: 'COMPLETED' | 'REVERTED' | 'FAILED' | 'PENDING';
   revertReason?: string;
   explorerUrl: string;
   routeSummary: string;

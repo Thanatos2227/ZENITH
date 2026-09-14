@@ -1,9 +1,40 @@
 import { PriceImpact, ProtocolFee, Token } from '@zenith/types';
 import { MAX_SWAP_AMOUNT_NUM } from './amountValidation';
+import { isZenithTreasuryConfigured, getZenithTreasury } from '@zenith/contracts';
+
+export interface ZenithFeePolicy {
+  sameChainProtocolFeeBps: number;
+  crossChainProtocolFeeBps: number;
+  stableSwapFeeBps: number;
+  largeTradeDiscountBps?: number;
+  volumeDiscountBps?: number;
+}
+
+export const DEFAULT_FEE_POLICY: ZenithFeePolicy = {
+  sameChainProtocolFeeBps: 5,
+  crossChainProtocolFeeBps: 10,
+  stableSwapFeeBps: 2,
+  largeTradeDiscountBps: 2,
+  volumeDiscountBps: 1
+};
 
 export class ScoringService {
-  private static PROTOCOL_FEE_BPS = 5;
-  private static TREASURY_ADDRESS = '0x739B5579C5d617534803d5129F9563B30E42e3a8';
+  private feePolicy: ZenithFeePolicy;
+
+  constructor(feePolicy: ZenithFeePolicy = DEFAULT_FEE_POLICY) {
+    this.feePolicy = feePolicy;
+  }
+
+  /**
+   * Sets or updates the active fee policy.
+   */
+  public setFeePolicy(policy: ZenithFeePolicy): void {
+    this.feePolicy = { ...policy };
+  }
+
+  public getFeePolicy(): ZenithFeePolicy {
+    return { ...this.feePolicy };
+  }
 
   /**
    * Calculates realized price impact percentage from execution price deviation relative to reference market price.
@@ -14,18 +45,6 @@ export class ScoringService {
    * - DEX/LP swap fees
    * - Network gas costs
    * - Cross-chain bridge fees
-   *
-   * Preferred formula:
-   * netAmountInSwapped = amountInNum * (1 - feeBpsTotal / 10000)
-   * poolExecutionPrice = amountOutExpectedNum / netAmountInSwapped
-   * referencePrice = pre-trade reference market price (tokenOut per tokenIn)
-   * priceImpact = max(0, (1 - poolExecutionPrice / referencePrice) * 100)
-   *
-   * Edge cases handled safely:
-   * - If an authoritative directPriceImpact is provided by the DEX/aggregator, use it directly.
-   * - If referencePrice or token prices are unavailable, safely return 0% (NEGLIGIBLE) without inventing prices.
-   * - If amounts are 0 or negative, return 0% (NEGLIGIBLE).
-   * - Guard against NaN and Infinity.
    */
   public calculatePriceImpact(params: {
     tokenIn: Token;
@@ -36,17 +55,14 @@ export class ScoringService {
     feeBpsTotal?: number;
     directPriceImpact?: number;
   }): PriceImpact {
-
     if (params.directPriceImpact !== undefined && !isNaN(params.directPriceImpact) && isFinite(params.directPriceImpact)) {
       const percentage = Number(Math.min(100, Math.max(0, params.directPriceImpact)).toFixed(3));
       return this.formatPriceImpactResponse(percentage);
     }
 
-
     if (params.amountInNum <= 0 || params.amountOutExpectedNum <= 0) {
       return { percentage: 0, level: 'NEGLIGIBLE' };
     }
-
 
     let refPrice = params.referencePrice;
     if (!refPrice || refPrice <= 0) {
@@ -55,11 +71,9 @@ export class ScoringService {
       }
     }
 
-
     if (!refPrice || refPrice <= 0 || isNaN(refPrice) || !isFinite(refPrice)) {
       return { percentage: 0, level: 'NEGLIGIBLE' };
     }
-
 
     const feeBps = Math.max(0, params.feeBpsTotal ?? 0);
     const netAmountInSwapped = params.amountInNum * (1 - feeBps / 10000);
@@ -68,13 +82,11 @@ export class ScoringService {
       return { percentage: 0, level: 'NEGLIGIBLE' };
     }
 
-
     const executionPrice = params.amountOutExpectedNum / netAmountInSwapped;
 
     if (executionPrice <= 0 || isNaN(executionPrice) || !isFinite(executionPrice)) {
       return { percentage: 0, level: 'NEGLIGIBLE' };
     }
-
 
     const rawImpact = Math.max(0, (1 - (executionPrice / refPrice)) * 100);
     const percentage = Number(Math.min(100, isNaN(rawImpact) || !isFinite(rawImpact) ? 0 : rawImpact).toFixed(3));
@@ -102,26 +114,55 @@ export class ScoringService {
     return { percentage, level, warningMessage };
   }
 
+  /**
+   * Calculates ZENITH Protocol Fee separately from DEX LP fees and Bridge fees.
+   * Hard requirement: If Treasury address is undefined/unconfigured, treasuryRecipient is undefined.
+   */
   public calculateProtocolFee(params: {
     tokenIn: Token;
     amountInRaw: string;
     amountInNum: number;
+    chainId?: string | number;
+    isCrossChain?: boolean;
+    isStableSwap?: boolean;
+    feePolicy?: ZenithFeePolicy;
   }): ProtocolFee {
     if (params.amountInNum > MAX_SWAP_AMOUNT_NUM) {
       throw new Error(`Amount (${params.amountInNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
     }
-    const feeBps = ScoringService.PROTOCOL_FEE_BPS;
+
+    const policy = params.feePolicy || this.feePolicy;
+    let feeBps = params.isCrossChain
+      ? policy.crossChainProtocolFeeBps
+      : (params.isStableSwap ? policy.stableSwapFeeBps : policy.sameChainProtocolFeeBps);
+
+    // Apply volume discount if trade value is large (> $100k)
+    const tradeValueUSD = params.tokenIn.priceUSD ? params.amountInNum * params.tokenIn.priceUSD : 0;
+    if (tradeValueUSD > 100000 && policy.largeTradeDiscountBps) {
+      feeBps = Math.max(1, feeBps - policy.largeTradeDiscountBps);
+    }
+
     const rawBigInt = BigInt(params.amountInRaw);
     const feeAmountRaw = ((rawBigInt * BigInt(feeBps)) / 10000n).toString();
     const feeAmountNum = (params.amountInNum * feeBps) / 10000;
     const feeUSD = params.tokenIn.priceUSD ? feeAmountNum * params.tokenIn.priceUSD : 0;
+
+    const chainKey = params.chainId || params.tokenIn.chainId;
+    let treasuryRecipient: string | undefined = undefined;
+    if (chainKey && isZenithTreasuryConfigured(chainKey)) {
+      try {
+        treasuryRecipient = getZenithTreasury(chainKey);
+      } catch {
+        treasuryRecipient = undefined;
+      }
+    }
 
     return {
       feeBps,
       feeAmountRaw,
       feeAmountFormatted: feeAmountNum.toLocaleString(undefined, { maximumFractionDigits: 6 }),
       feeUSD: Number(feeUSD.toFixed(4)),
-      treasuryRecipient: ScoringService.TREASURY_ADDRESS
+      treasuryRecipient
     };
   }
 

@@ -15,7 +15,7 @@ import {
 } from '@zenith/types';
 import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData, MarketStatus } from '@zenith/tokens';
-import { defaultZenithRouter, validateAndSanitizeAmount } from '@zenith/routing';
+import { defaultZenithRouter, validateAndSanitizeAmount, parseTokenUnits } from '@zenith/routing';
 import { defaultExecutionCoordinator, ExecutionStateMachine, defaultCrossChainTracker, ActiveCrossChainOrder } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
 import {
@@ -1068,11 +1068,8 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           set({ tokenIn: effectiveTokenIn, tokenOut: effectiveTokenOut });
         }
 
-        const decimals = effectiveTokenIn.decimals || 18;
-        const [wholePart = '0', fracPart = ''] = cleanAmount.split('.');
-        const truncatedFrac = fracPart.slice(0, 3);
-        const paddedFrac = truncatedFrac.padEnd(decimals, '0').slice(0, decimals);
-        const rawAmountIn = (wholePart + paddedFrac).replace(/^0+/, '') || '0';
+        const decimals = effectiveTokenIn.decimals !== undefined ? effectiveTokenIn.decimals : 18;
+        const rawAmountIn = parseTokenUnits(cleanAmount, decimals);
 
         const quote = await defaultZenithRouter.getQuote({
           sourceChainId: sourceChain.id,

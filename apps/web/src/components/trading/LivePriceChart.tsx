@@ -45,9 +45,9 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const baseRate = useMemo(() => {
-    const pIn = storePrice || tokenIn.priceUSD || (tokenIn.symbol === 'ETH' ? 2465.87 : tokenIn.symbol === 'SOL' ? 101.68 : tokenIn.symbol === 'WBTC' || tokenIn.symbol === 'BTC' ? 78247.22 : 1);
-    const pOut = tokenOut.priceUSD || (tokenOut.symbol === 'USDC' || tokenOut.symbol === 'USDT' ? 1 : tokenOut.symbol === 'ETH' ? 2465.87 : 1);
-    return pIn / pOut;
+    const pIn = storePrice || tokenIn.priceUSD || 0;
+    const pOut = tokenOut.priceUSD || 1;
+    return pOut > 0 ? pIn / pOut : pIn;
   }, [tokenIn, tokenOut, storePrice]);
 
   const latestPriceRef = useRef<number>(baseRate);

@@ -1,4 +1,5 @@
 export * from './errors';
+export * from './addressValidator';
 export * from './protocols/permit2';
 export * from './protocols/uniswap';
 export * from './protocols/across';

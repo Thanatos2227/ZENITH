@@ -34,7 +34,7 @@ const FORBIDDEN_PATTERNS: Array<{
     regex: /0x0000000000000000000000000000000000000000/i,
     category: 'Zero Address Spender/Recipient',
     description: 'Zero address must not be used as default spender or recipient (use ERC-7528 0xEeee... or fail closed)',
-    allowInFiles: [/permit2\.ts/, /acrossProvider\.ts/, /errors\.ts/, /solana\.ts/]
+    allowInFiles: [/permit2\.ts/, /acrossProvider\.ts/, /errors\.ts/, /solana\.ts/, /addressValidator\.ts/]
   },
   {
     regex: /Math\.random\(\)/,

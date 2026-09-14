@@ -4,7 +4,10 @@ import { defaultChainRegistry } from '@zenith/chains';
 import {
   EVMContractRegistry,
   EVM_WRAPPED_NATIVE_TOKENS,
-  SignerRequiredError
+  SignerRequiredError,
+  validateEvmAddress,
+  validateExecutionTarget,
+  validateTokenAddress
 } from '@zenith/contracts';
 
 export interface EVMExecutionParams {
@@ -50,8 +53,7 @@ export class EVMExecutionAdapter {
     signer?: JsonRpcSigner | null;
   }): Promise<bigint> {
     if (
-      params.tokenAddress.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
-      params.tokenAddress.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'.toLowerCase()
+      params.tokenAddress.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
     ) {
       return BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
     }
@@ -75,6 +77,7 @@ export class EVMExecutionAdapter {
       throw new SignerRequiredError('Wallet signer is required to sign and broadcast transaction on-chain.');
     }
 
+    const validatedUser = validateEvmAddress(userAddress, 'User Address');
     const isCrossChain = quote.request.sourceChainId !== quote.request.destinationChainId;
     const sourceChain = defaultChainRegistry.getChain(quote.request.sourceChainId);
     const chainIdNum = sourceChain?.chainId ?? 1;
@@ -82,24 +85,36 @@ export class EVMExecutionAdapter {
     // Cross-Chain execution path
     if (isCrossChain && quote.bestRoute.crossChainQuote) {
       const ccQuote = quote.bestRoute.crossChainQuote;
-      const targetSpender = ccQuote.approvalTarget || ccQuote.executionTarget;
+      const targetSpender = validateExecutionTarget(ccQuote.approvalTarget || ccQuote.executionTarget, quote.request.sourceChainId);
       const amountInRaw = BigInt(quote.amountInRaw || ccQuote.sourceAmountRaw);
 
       if (!quote.request.tokenIn.isNative) {
+        const validatedTokenIn = validateTokenAddress(quote.request.tokenIn.address, quote.request.sourceChainId);
         const currentAllowance = await this.checkAllowance({
-          tokenAddress: quote.request.tokenIn.address,
-          ownerAddress: userAddress,
+          tokenAddress: validatedTokenIn,
+          ownerAddress: validatedUser,
           spenderAddress: targetSpender,
           signer
         });
 
         if (currentAllowance < amountInRaw) {
           params.onStatusChange?.('APPROVING');
-          const tokenContract = new Contract(quote.request.tokenIn.address, ERC20_ABI, signer);
+          const tokenContract = new Contract(validatedTokenIn, ERC20_ABI, signer);
           const approveTx = await tokenContract.approve(targetSpender, amountInRaw);
           await approveTx.wait(1);
           params.onStatusChange?.('APPROVED');
         }
+      }
+
+      // Pre-flight transaction simulation dry-run
+      try {
+        await signer.estimateGas({
+          to: ccQuote.executionTarget,
+          data: ccQuote.calldata && ccQuote.calldata !== '0x' ? ccQuote.calldata : undefined,
+          value: quote.request.tokenIn.isNative ? amountInRaw : 0n
+        });
+      } catch (simErr: any) {
+        console.warn('[EVMAdapter] Bridge pre-flight simulation warning:', simErr?.message || simErr);
       }
 
       params.onStatusChange?.('SIGNING');
@@ -121,7 +136,8 @@ export class EVMExecutionAdapter {
         throw new Error(`Cross-chain source transaction reverted on-chain: ${txHash}`);
       }
 
-      params.onStatusChange?.('COMPLETED', txHash);
+      // Notice: For cross-chain trades, source confirmation signals BRIDGE_IN_FLIGHT, not ultimate completion
+      params.onStatusChange?.('BRIDGE_IN_FLIGHT', txHash);
 
       return {
         isSuccess: true,
@@ -133,8 +149,11 @@ export class EVMExecutionAdapter {
     }
 
     // Same-Chain DEX execution path
-    const routerAddress = EVMContractRegistry.getPrimaryRouter(chainIdNum);
-    const wrappedNative = EVM_WRAPPED_NATIVE_TOKENS[chainIdNum] || '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+    const routerAddress = validateExecutionTarget(EVMContractRegistry.getPrimaryRouter(chainIdNum), quote.request.sourceChainId);
+    const wrappedNative = validateTokenAddress(
+      EVM_WRAPPED_NATIVE_TOKENS[chainIdNum] || '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      quote.request.sourceChainId
+    );
 
     const tokenIn = quote.request.tokenIn;
     const tokenOut = quote.request.tokenOut;
@@ -143,82 +162,86 @@ export class EVMExecutionAdapter {
     const deadline = Math.floor((quote.deadline || (Date.now() + 1200000)) / 1000);
 
     if (!tokenIn.isNative) {
+      const validatedTokenIn = validateTokenAddress(tokenIn.address, quote.request.sourceChainId);
       const currentAllowance = await this.checkAllowance({
-        tokenAddress: tokenIn.address,
-        ownerAddress: userAddress,
+        tokenAddress: validatedTokenIn,
+        ownerAddress: validatedUser,
         spenderAddress: routerAddress,
         signer
       });
 
       if (currentAllowance < amountInRaw) {
         params.onStatusChange?.('APPROVING');
-        const tokenContract = new Contract(tokenIn.address, ERC20_ABI, signer);
+        const tokenContract = new Contract(validatedTokenIn, ERC20_ABI, signer);
         const approveTx = await tokenContract.approve(routerAddress, amountInRaw);
         await approveTx.wait(1);
         params.onStatusChange?.('APPROVED');
       }
     }
 
-    params.onStatusChange?.('SIGNING');
-
     const routerContract = new Contract(routerAddress, SWAP_ROUTER_ABI, signer);
-    const actualTokenOut = tokenOut.isNative ? wrappedNative : tokenOut.address;
+    const actualTokenOut = tokenOut.isNative ? wrappedNative : validateTokenAddress(tokenOut.address, quote.request.sourceChainId);
     const feeTierBps = quote.bestRoute.hops[0]?.feeTierBps || 30;
     const feeTier = feeTierBps <= 1 ? 100 : (feeTierBps <= 5 ? 500 : (feeTierBps <= 30 ? 3000 : 10000));
 
+    // Pre-flight simulation & parameter preparation
     let tx: any;
 
     if (quote.tradeType === 'EXACT_OUTPUT') {
       const maxAmountInRaw = BigInt(quote.maximumInputRaw || quote.amountInRaw);
+      const exactOutputParams = {
+        tokenIn: tokenIn.isNative ? wrappedNative : validateTokenAddress(tokenIn.address, quote.request.sourceChainId),
+        tokenOut: actualTokenOut,
+        fee: feeTier,
+        recipient: validatedUser,
+        deadline,
+        amountOut: BigInt(quote.amountOutRaw),
+        amountInMaximum: maxAmountInRaw,
+        sqrtPriceLimitX96: 0n
+      };
+
+      try {
+        if (tokenIn.isNative) {
+          await routerContract.exactOutputSingle.staticCall(exactOutputParams, { value: maxAmountInRaw });
+        } else {
+          await routerContract.exactOutputSingle.staticCall(exactOutputParams);
+        }
+      } catch (simErr: any) {
+        console.warn('[EVMAdapter] Simulation staticCall warning:', simErr?.message || simErr);
+      }
+
+      params.onStatusChange?.('SIGNING');
       if (tokenIn.isNative) {
-        const exactOutputParams = {
-          tokenIn: wrappedNative,
-          tokenOut: actualTokenOut,
-          fee: feeTier,
-          recipient: userAddress,
-          deadline,
-          amountOut: BigInt(quote.amountOutRaw),
-          amountInMaximum: maxAmountInRaw,
-          sqrtPriceLimitX96: 0n
-        };
         tx = await routerContract.exactOutputSingle(exactOutputParams, { value: maxAmountInRaw });
       } else {
-        const exactOutputParams = {
-          tokenIn: tokenIn.address,
-          tokenOut: actualTokenOut,
-          fee: feeTier,
-          recipient: userAddress,
-          deadline,
-          amountOut: BigInt(quote.amountOutRaw),
-          amountInMaximum: maxAmountInRaw,
-          sqrtPriceLimitX96: 0n
-        };
         tx = await routerContract.exactOutputSingle(exactOutputParams);
       }
     } else {
+      const exactInputParams = {
+        tokenIn: tokenIn.isNative ? wrappedNative : validateTokenAddress(tokenIn.address, quote.request.sourceChainId),
+        tokenOut: actualTokenOut,
+        fee: feeTier,
+        recipient: validatedUser,
+        deadline,
+        amountIn: amountInRaw,
+        amountOutMinimum: minAmountOutRaw,
+        sqrtPriceLimitX96: 0n
+      };
+
+      try {
+        if (tokenIn.isNative) {
+          await routerContract.exactInputSingle.staticCall(exactInputParams, { value: amountInRaw });
+        } else {
+          await routerContract.exactInputSingle.staticCall(exactInputParams);
+        }
+      } catch (simErr: any) {
+        console.warn('[EVMAdapter] Simulation staticCall warning:', simErr?.message || simErr);
+      }
+
+      params.onStatusChange?.('SIGNING');
       if (tokenIn.isNative) {
-        const exactInputParams = {
-          tokenIn: wrappedNative,
-          tokenOut: actualTokenOut,
-          fee: feeTier,
-          recipient: userAddress,
-          deadline,
-          amountIn: amountInRaw,
-          amountOutMinimum: minAmountOutRaw,
-          sqrtPriceLimitX96: 0n
-        };
         tx = await routerContract.exactInputSingle(exactInputParams, { value: amountInRaw });
       } else {
-        const exactInputParams = {
-          tokenIn: tokenIn.address,
-          tokenOut: actualTokenOut,
-          fee: feeTier,
-          recipient: userAddress,
-          deadline,
-          amountIn: amountInRaw,
-          amountOutMinimum: minAmountOutRaw,
-          sqrtPriceLimitX96: 0n
-        };
         tx = await routerContract.exactInputSingle(exactInputParams);
       }
     }

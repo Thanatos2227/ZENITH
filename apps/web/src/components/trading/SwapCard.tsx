@@ -37,6 +37,7 @@ export const SwapCard: React.FC = () => {
     openTokenPicker,
     openChainPicker,
     quote,
+    quoteError,
     isQuoteLoading,
     fetchQuote,
     openConfirmSheet,
@@ -486,6 +487,20 @@ export const SwapCard: React.FC = () => {
           </div>
         )}
 
+        {quote && isAmountValid && tradeValueUSD > 0 && quote.bestRoute.gasCostUSD > tradeValueUSD && (
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-3 font-mono">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>High Gas: Network fee (~${quote.bestRoute.gasCostUSD < 0.01 ? quote.bestRoute.gasCostUSD.toFixed(4) : quote.bestRoute.gasCostUSD.toFixed(2)}) exceeds swap value (~${tradeValueUSD.toFixed(2)}).</span>
+          </div>
+        )}
+
+        {quoteError && isAmountValid && !isQuoteLoading && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs mb-4 font-mono">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
+            <span>{quoteError}</span>
+          </div>
+        )}
+
         {tokenOut.securityProfile && tokenOut.securityProfile.riskScore > 20 && (
           <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-4">
             <ShieldAlert className="w-4 h-4 shrink-0 text-amber-400" />
@@ -577,7 +592,7 @@ export const SwapCard: React.FC = () => {
             disabled
             className="w-full py-4 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-500 font-display font-bold text-base cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Route Unavailable for Pair
+            {quoteError || 'Route Unavailable for Pair'}
           </button>
         )}
       </div>

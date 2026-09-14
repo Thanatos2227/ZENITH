@@ -12,8 +12,13 @@ import { defaultChainRegistry } from '@zenith/chains';
 import {
   getDeBridgeSourceContract,
   isDeBridgeSupported,
-  DEBRIDGE_DLN_SOURCE_ABI
+  DEBRIDGE_DLN_SOURCE_ABI,
+  validateEvmAddress,
+  validateTokenAddress,
+  validateRecipientAddress,
+  validateExecutionTarget
 } from '@zenith/contracts';
+import { parseTokenUnits, formatTokenUnits } from '../../tokenDecimals';
 
 const dlnInterface = new Interface(DEBRIDGE_DLN_SOURCE_ABI);
 
@@ -49,25 +54,33 @@ export class DeBridgeProvider implements CrossChainProvider {
     const srcChain = defaultChainRegistry.getChain(sourceChainId)!;
     const dstChain = defaultChainRegistry.getChain(destinationChainId)!;
 
-    const sourceContract = getDeBridgeSourceContract(srcChain.chainId!);
+    const sourceContract = validateExecutionTarget(getDeBridgeSourceContract(srcChain.chainId!), srcChain.id);
     const amountInBig = BigInt(request.amountInRaw || '0');
     if (amountInBig <= 0n) return null;
 
     const quoteTimestamp = Math.floor(Date.now() / 1000);
-    const tokenInDecimals = request.tokenIn.decimals || 18;
+    const tokenInDecimals = request.tokenIn.decimals !== undefined ? request.tokenIn.decimals : 18;
+    const tokenOutDecimals = request.tokenOut.decimals !== undefined ? request.tokenOut.decimals : 18;
+    const priceInUSD = request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 ? request.tokenIn.priceUSD : 1;
+    const priceOutUSD = request.tokenOut.priceUSD && request.tokenOut.priceUSD > 0 ? request.tokenOut.priceUSD : 1;
 
-    let destinationAmountBig = amountInBig;
+    const validatedInputToken = validateTokenAddress(request.tokenIn.address, srcChain.id, request.tokenIn.isNative);
+    const validatedOutputToken = validateTokenAddress(request.tokenOut.address, dstChain.id, request.tokenOut.isNative);
+
+    let destinationAmountBig = 0n;
     let bridgeFeeUSD = 0.50;
     let estTransferTimeSec = 15;
 
     // Try fetching live deBridge DLN API quote
+    let apiQuoteSucceeded = false;
     try {
-      const url = `https://api.dln.debridge.finance/v1.0/dln/order/quote?srcChainId=${srcChain.chainId}&srcChainTokenIn=${request.tokenIn.address}&srcChainTokenInAmount=${amountInBig.toString()}&dstChainId=${dstChain.chainId}&dstChainTokenOut=${request.tokenOut.address}&prependOperatingExpense=true`;
+      const url = `https://api.dln.debridge.finance/v1.0/dln/order/quote?srcChainId=${srcChain.chainId}&srcChainTokenIn=${validatedInputToken}&srcChainTokenInAmount=${amountInBig.toString()}&dstChainId=${dstChain.chainId}&dstChainTokenOut=${validatedOutputToken}&prependOperatingExpense=true`;
       const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
       if (res.ok) {
         const data = await res.json();
         if (data.estimation?.dstChainTokenOut?.amount) {
           destinationAmountBig = BigInt(data.estimation.dstChainTokenOut.amount);
+          apiQuoteSucceeded = true;
         }
         if (data.estimation?.costsDetails?.find((c: any) => c.name === 'OperatingExpense')?.amount) {
           bridgeFeeUSD = Number(data.estimation.costsDetails[0].amount) || 0.50;
@@ -77,19 +90,23 @@ export class DeBridgeProvider implements CrossChainProvider {
         }
       }
     } catch {
-      // Fallback: DLN solver competitive spread (~4 bps)
-      const feeBps = 4n;
-      const feeAmount = (amountInBig * feeBps) / 10000n;
-      destinationAmountBig = amountInBig - feeAmount;
-      const amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
-      bridgeFeeUSD = Number((amountInNum * (request.tokenIn.priceUSD || 1) * 0.0004).toFixed(4));
+      // API timeout/offline: fallback to solver protocol competitive spread
+    }
+
+    const amountInNum = Number(formatTokenUnits(amountInBig, tokenInDecimals));
+    if (!apiQuoteSucceeded || destinationAmountBig <= 0n) {
+      const feeAmountNum = amountInNum * 0.0004; // 4 bps spread
+      const netAmountOutNum = (amountInNum - feeAmountNum) * (priceInUSD / priceOutUSD);
+      const rawOutStr = parseTokenUnits(netAmountOutNum.toFixed(Math.min(tokenOutDecimals, 18)), tokenOutDecimals);
+      destinationAmountBig = BigInt(rawOutStr === '0' ? '1' : rawOutStr);
+      bridgeFeeUSD = Number((amountInNum * priceInUSD * 0.0004).toFixed(4));
     }
 
     const slippageMultiplier = 10000n - BigInt(Math.floor(request.slippageTolerancePercent * 100));
     const minDestinationAmountBig = (destinationAmountBig * slippageMultiplier) / 10000n;
 
     const gasEstimateUSD = defaultChainRegistry.getEstimatedGasCostUSD(srcChain.id, 'BRIDGE', request.gasPreset);
-    const targetRecipient = recipient || request.userWalletAddress || '';
+    const targetRecipient = recipient || request.userWalletAddress;
 
     return {
       provider: 'DEBRIDGE_DLN',
@@ -124,21 +141,24 @@ export class DeBridgeProvider implements CrossChainProvider {
   ): Promise<CrossChainExecution> {
     const srcChain = defaultChainRegistry.getChain(quote.sourceChainId)!;
     const dstChain = defaultChainRegistry.getChain(quote.destinationChainId)!;
-    const sourceContract = getDeBridgeSourceContract(srcChain.chainId!);
+    const sourceContract = validateExecutionTarget(getDeBridgeSourceContract(srcChain.chainId!), srcChain.id);
 
-    const recipient = recipientAddress || userAddress;
+    const safeUser = validateEvmAddress(userAddress, 'User Address');
+    const safeRecipient = validateRecipientAddress(recipientAddress || userAddress, srcChain.id);
+    const safeInputToken = validateTokenAddress(quote.sourceToken.address, srcChain.id, quote.sourceToken.isNative);
+    const safeOutputToken = validateTokenAddress(quote.destinationToken.address, dstChain.id, quote.destinationToken.isNative);
 
     let calldata = '0x';
     try {
       const orderCreation = {
-        giveTokenAddress: quote.sourceToken.address,
+        giveTokenAddress: safeInputToken.toLowerCase(),
         giveAmount: BigInt(quote.sourceAmountRaw),
-        takeTokenAddress: quote.destinationToken.address,
+        takeTokenAddress: safeOutputToken.toLowerCase(),
         takeAmount: BigInt(quote.minDestinationAmountRaw),
         takeChainId: dstChain.chainId!,
-        receiverAddress: recipient,
+        receiverAddress: safeRecipient.toLowerCase(),
         allowedTaker: '0x',
-        allowedCancelBeneficiary: userAddress,
+        allowedCancelBeneficiary: safeUser.toLowerCase(),
         externalCall: '0x'
       };
 

@@ -12,8 +12,13 @@ import { defaultChainRegistry } from '@zenith/chains';
 import {
   getStargateRouter,
   isStargateSupported,
-  STARGATE_ROUTER_ABI
+  STARGATE_ROUTER_ABI,
+  validateEvmAddress,
+  validateTokenAddress,
+  validateRecipientAddress,
+  validateExecutionTarget
 } from '@zenith/contracts';
+import { parseTokenUnits, formatTokenUnits } from '../../tokenDecimals';
 
 const stargateInterface = new Interface(STARGATE_ROUTER_ABI);
 
@@ -49,46 +54,55 @@ export class StargateProvider implements CrossChainProvider {
     const srcChain = defaultChainRegistry.getChain(sourceChainId)!;
     const dstChain = defaultChainRegistry.getChain(destinationChainId)!;
 
-    const routerAddress = getStargateRouter(srcChain.chainId!);
+    const routerAddress = validateExecutionTarget(getStargateRouter(srcChain.chainId!), srcChain.id);
     const amountInBig = BigInt(request.amountInRaw || '0');
     if (amountInBig <= 0n) return null;
 
     const quoteTimestamp = Math.floor(Date.now() / 1000);
-    const tokenInDecimals = request.tokenIn.decimals || 18;
+    const tokenInDecimals = request.tokenIn.decimals !== undefined ? request.tokenIn.decimals : 18;
+    const tokenOutDecimals = request.tokenOut.decimals !== undefined ? request.tokenOut.decimals : 18;
+    const priceInUSD = request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 ? request.tokenIn.priceUSD : 1;
+    const priceOutUSD = request.tokenOut.priceUSD && request.tokenOut.priceUSD > 0 ? request.tokenOut.priceUSD : 1;
+
+    // Validate tokens
+    validateTokenAddress(request.tokenIn.address, srcChain.id, request.tokenIn.isNative);
+    validateTokenAddress(request.tokenOut.address, dstChain.id, request.tokenOut.isNative);
 
     // Stargate base protocol fee is typically 6 bps (0.06%)
     const protocolFeePct = 0.0006;
-    const bridgeFeeAmountBig = (amountInBig * BigInt(Math.floor(protocolFeePct * 10000))) / 10000n;
-    const destinationAmountBig = amountInBig - bridgeFeeAmountBig;
+    const amountInNum = Number(formatTokenUnits(amountInBig, tokenInDecimals));
+    const bridgeFeeAmountNum = amountInNum * protocolFeePct;
+    const netAmountOutNum = (amountInNum - bridgeFeeAmountNum) * (priceInUSD / priceOutUSD);
+    const rawOutStr = parseTokenUnits(netAmountOutNum.toFixed(Math.min(tokenOutDecimals, 18)), tokenOutDecimals);
+    const destinationAmountBig = BigInt(rawOutStr === '0' ? '1' : rawOutStr);
 
     const slippageMultiplier = 10000n - BigInt(Math.floor(request.slippageTolerancePercent * 100));
     const minDestinationAmountBig = (destinationAmountBig * slippageMultiplier) / 10000n;
 
-    const amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
-    const bridgeFeeUSD = Number((amountInNum * (request.tokenIn.priceUSD || 1) * protocolFeePct).toFixed(4));
+    const bridgeFeeUSD = Number((amountInNum * priceInUSD * protocolFeePct).toFixed(4));
     const gasEstimateUSD = defaultChainRegistry.getEstimatedGasCostUSD(srcChain.id, 'BRIDGE', request.gasPreset);
 
-    const targetRecipient = recipient || request.userWalletAddress || '';
-    const safeRecipient = targetRecipient && targetRecipient.startsWith('0x') && targetRecipient.length === 42
-      ? targetRecipient.toLowerCase()
-      : '0x1111111111111111111111111111111111111111';
-    const recipientBytes = AbiCoder.defaultAbiCoder().encode(['address'], [safeRecipient]);
+    const targetRecipient = recipient || request.userWalletAddress;
 
     let calldata = '0x';
-    try {
-      calldata = stargateInterface.encodeFunctionData('swap', [
-        dstChain.chainId!,
-        1, // srcPoolId (e.g. USDC pool)
-        1, // dstPoolId
-        safeRecipient,
-        amountInBig,
-        minDestinationAmountBig,
-        [200000, 0, '0x'], // LZ tx params
-        recipientBytes,
-        '0x'
-      ]);
-    } catch (err) {
-      console.warn('[StargateProvider] Error encoding calldata preview:', err);
+    if (targetRecipient) {
+      try {
+        const safeRecipient = validateRecipientAddress(targetRecipient, srcChain.id);
+        const recipientBytes = AbiCoder.defaultAbiCoder().encode(['address'], [safeRecipient.toLowerCase()]);
+        calldata = stargateInterface.encodeFunctionData('swap', [
+          dstChain.chainId!,
+          1, // srcPoolId (e.g. USDC pool)
+          1, // dstPoolId
+          safeRecipient.toLowerCase(),
+          amountInBig,
+          minDestinationAmountBig,
+          [200000, 0, '0x'], // LZ tx params
+          recipientBytes,
+          '0x'
+        ]);
+      } catch (err) {
+        console.warn('[StargateProvider] Error encoding calldata preview:', err);
+      }
     }
 
     return {
@@ -124,16 +138,17 @@ export class StargateProvider implements CrossChainProvider {
   ): Promise<CrossChainExecution> {
     const srcChain = defaultChainRegistry.getChain(quote.sourceChainId)!;
     const dstChain = defaultChainRegistry.getChain(quote.destinationChainId)!;
-    const routerAddress = getStargateRouter(srcChain.chainId!);
+    const routerAddress = validateExecutionTarget(getStargateRouter(srcChain.chainId!), srcChain.id);
 
-    const recipient = recipientAddress || userAddress;
-    const recipientBytes = AbiCoder.defaultAbiCoder().encode(['address'], [recipient]);
+    const safeUser = validateEvmAddress(userAddress, 'User Address');
+    const safeRecipient = validateRecipientAddress(recipientAddress || userAddress, srcChain.id);
+    const recipientBytes = AbiCoder.defaultAbiCoder().encode(['address'], [safeRecipient.toLowerCase()]);
 
     const data = stargateInterface.encodeFunctionData('swap', [
       dstChain.chainId!,
       1,
       1,
-      userAddress,
+      safeUser.toLowerCase(),
       BigInt(quote.sourceAmountRaw),
       BigInt(quote.minDestinationAmountRaw),
       [200000, 0, '0x'],

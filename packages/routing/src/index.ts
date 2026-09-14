@@ -9,3 +9,4 @@ export * from './crosschain/providers/debridgeProvider';
 export * from './crosschain/crossChainAggregator';
 export * from './router';
 export * from './amountValidation';
+export * from './tokenDecimals';

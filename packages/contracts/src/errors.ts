@@ -59,3 +59,179 @@ export class SignerRequiredError extends Error {
     Object.setPrototypeOf(this, SignerRequiredError.prototype);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Production Address Validation & Execution Errors (Section 9, 10, 28)
+// ---------------------------------------------------------------------------
+
+export class InvalidAddressError extends ConfigurationError {
+  constructor(message: string, code = 'INVALID_ADDRESS') {
+    super(message, code);
+    this.name = 'InvalidAddressError';
+    Object.setPrototypeOf(this, InvalidAddressError.prototype);
+  }
+}
+
+export class InvalidTokenAddressError extends InvalidAddressError {
+  constructor(address: string, chainId: string | number, reason?: string) {
+    super(
+      `Invalid or unrecognized token address: "${address}" on chain ${chainId}${reason ? ` (${reason})` : ''}. Cannot construct executable transaction.`,
+      'INVALID_TOKEN_ADDRESS'
+    );
+    this.name = 'InvalidTokenAddressError';
+    Object.setPrototypeOf(this, InvalidTokenAddressError.prototype);
+  }
+}
+
+export class InvalidRecipientAddressError extends InvalidAddressError {
+  constructor(address: string, chainId: string | number, reason?: string) {
+    super(
+      `Invalid recipient address: "${address}" for chain ${chainId}${reason ? ` (${reason})` : ''}. Swaps cannot execute to malformed or placeholder addresses.`,
+      'INVALID_RECIPIENT_ADDRESS'
+    );
+    this.name = 'InvalidRecipientAddressError';
+    Object.setPrototypeOf(this, InvalidRecipientAddressError.prototype);
+  }
+}
+
+export class InvalidExecutionTargetError extends InvalidAddressError {
+  constructor(target: string, chainId: string | number, reason?: string) {
+    super(
+      `Invalid execution/router target contract: "${target}" on chain ${chainId}${reason ? ` (${reason})` : ''}.`,
+      'INVALID_EXECUTION_TARGET'
+    );
+    this.name = 'InvalidExecutionTargetError';
+    Object.setPrototypeOf(this, InvalidExecutionTargetError.prototype);
+  }
+}
+
+export class QuoteUnavailableError extends Error {
+  public readonly code = 'QUOTE_UNAVAILABLE';
+  constructor(message = 'Live executable quote is currently unavailable. No synthetic quotes permitted in production.') {
+    super(message);
+    this.name = 'QuoteUnavailableError';
+    Object.setPrototypeOf(this, QuoteUnavailableError.prototype);
+  }
+}
+
+export class InsufficientLiquidityError extends Error {
+  public readonly code = 'INSUFFICIENT_LIQUIDITY';
+  constructor(pair: string, chainId: string | number) {
+    super(`Insufficient liquidity on-chain for pair ${pair} on chain ${chainId}.`);
+    this.name = 'InsufficientLiquidityError';
+    Object.setPrototypeOf(this, InsufficientLiquidityError.prototype);
+  }
+}
+
+export class InsufficientBalanceError extends Error {
+  public readonly code = 'INSUFFICIENT_BALANCE';
+  constructor(token: string, required: string, available: string) {
+    super(`Insufficient balance for ${token}. Required: ${required}, Available: ${available}.`);
+    this.name = 'InsufficientBalanceError';
+    Object.setPrototypeOf(this, InsufficientBalanceError.prototype);
+  }
+}
+
+export class InsufficientAllowanceError extends Error {
+  public readonly code = 'INSUFFICIENT_ALLOWANCE';
+  constructor(token: string, spender: string) {
+    super(`Token allowance for ${token} to spender ${spender} is insufficient.`);
+    this.name = 'InsufficientAllowanceError';
+    Object.setPrototypeOf(this, InsufficientAllowanceError.prototype);
+  }
+}
+
+export class GasEstimationFailedError extends Error {
+  public readonly code = 'GAS_ESTIMATION_FAILED';
+  public readonly underlyingError?: any;
+  constructor(message: string, underlyingError?: any) {
+    super(message);
+    this.name = 'GasEstimationFailedError';
+    this.underlyingError = underlyingError;
+    Object.setPrototypeOf(this, GasEstimationFailedError.prototype);
+  }
+}
+
+export class SimulationFailedError extends Error {
+  public readonly code = 'SIMULATION_FAILED';
+  public readonly revertReason?: string;
+  constructor(message: string, revertReason?: string) {
+    super(message);
+    this.name = 'SimulationFailedError';
+    this.revertReason = revertReason;
+    Object.setPrototypeOf(this, SimulationFailedError.prototype);
+  }
+}
+
+export class TransactionRejectedError extends Error {
+  public readonly code = 'TRANSACTION_REJECTED';
+  constructor(message = 'Transaction was rejected by user wallet.') {
+    super(message);
+    this.name = 'TransactionRejectedError';
+    Object.setPrototypeOf(this, TransactionRejectedError.prototype);
+  }
+}
+
+export class TransactionRevertedError extends Error {
+  public readonly code = 'TRANSACTION_REVERTED';
+  public readonly txHash?: string;
+  constructor(message: string, txHash?: string) {
+    super(message);
+    this.name = 'TransactionRevertedError';
+    this.txHash = txHash;
+    Object.setPrototypeOf(this, TransactionRevertedError.prototype);
+  }
+}
+
+export class BridgeQuoteExpiredError extends Error {
+  public readonly code = 'BRIDGE_QUOTE_EXPIRED';
+  constructor(message = 'Cross-chain bridge quote has expired. Please fetch a fresh quote before signing.') {
+    super(message);
+    this.name = 'BridgeQuoteExpiredError';
+    Object.setPrototypeOf(this, BridgeQuoteExpiredError.prototype);
+  }
+}
+
+export class BridgeExecutionFailedError extends Error {
+  public readonly code = 'BRIDGE_EXECUTION_FAILED';
+  public readonly sourceTxHash?: string;
+  constructor(message: string, sourceTxHash?: string) {
+    super(message);
+    this.name = 'BridgeExecutionFailedError';
+    this.sourceTxHash = sourceTxHash;
+    Object.setPrototypeOf(this, BridgeExecutionFailedError.prototype);
+  }
+}
+
+export class DestinationVerificationFailedError extends Error {
+  public readonly code = 'DESTINATION_VERIFICATION_FAILED';
+  public readonly destinationTxHash?: string;
+  constructor(message: string, destinationTxHash?: string) {
+    super(message);
+    this.name = 'DestinationVerificationFailedError';
+    this.destinationTxHash = destinationTxHash;
+    Object.setPrototypeOf(this, DestinationVerificationFailedError.prototype);
+  }
+}
+
+export class TreasuryNotConfiguredError extends ConfigurationError {
+  constructor(chainId: string | number) {
+    super(
+      `ZENITH Treasury address is intentionally undefined and unconfigured on chain ${chainId}. Protocol fee transfer cannot proceed.`,
+      'ZENITH_TREASURY_NOT_CONFIGURED'
+    );
+    this.name = 'TreasuryNotConfiguredError';
+    Object.setPrototypeOf(this, TreasuryNotConfiguredError.prototype);
+  }
+}
+
+export class ProtocolFeeRecipientNotConfiguredError extends ConfigurationError {
+  constructor(chainId: string | number) {
+    super(
+      `ZENITH Protocol Fee Recipient address is intentionally undefined and unconfigured on chain ${chainId}.`,
+      'ZENITH_FEE_RECIPIENT_NOT_CONFIGURED'
+    );
+    this.name = 'ProtocolFeeRecipientNotConfiguredError';
+    Object.setPrototypeOf(this, ProtocolFeeRecipientNotConfiguredError.prototype);
+  }
+}

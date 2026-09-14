@@ -6,6 +6,7 @@ import { defaultScoringService, ScoringService } from './scoring';
 import { defaultSimulationEngine, SimulationEngine } from '@zenith/security';
 import { MAX_SWAP_AMOUNT_NUM } from './amountValidation';
 import { EVMContractRegistry, ConfigurationError } from '@zenith/contracts';
+import { parseTokenUnits, formatTokenUnits } from './tokenDecimals';
 
 export class ZenithRouter {
   private dexAggregator: DEXAggregator;
@@ -53,8 +54,8 @@ export class ZenithRouter {
 
     const isCrossChain = request.sourceChainId !== request.destinationChainId;
     const tradeType: TradeType = request.tradeType || 'EXACT_INPUT';
-    const tokenInDecimals = request.tokenIn.decimals || 18;
-    const tokenOutDecimals = request.tokenOut.decimals || 18;
+    const tokenInDecimals = request.tokenIn.decimals !== undefined ? request.tokenIn.decimals : 18;
+    const tokenOutDecimals = request.tokenOut.decimals !== undefined ? request.tokenOut.decimals : 18;
 
     const hasValidPrices = Boolean(
       request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 &&
@@ -97,46 +98,51 @@ export class ZenithRouter {
       amountOutBig = BigInt(ccQuote.destinationAmountRaw);
       minimumReceivedRaw = ccQuote.minDestinationAmountRaw;
 
-      amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
-      amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
-      minimumReceivedNum = Number(BigInt(minimumReceivedRaw)) / 10 ** tokenOutDecimals;
+      amountInNum = Number(formatTokenUnits(amountInBig, tokenInDecimals));
+      amountOutNum = Number(formatTokenUnits(amountOutBig, tokenOutDecimals));
+      minimumReceivedNum = Number(formatTokenUnits(minimumReceivedRaw, tokenOutDecimals));
     } else {
       if (tradeType === 'EXACT_INPUT') {
         amountInBig = BigInt(request.amountInRaw || '0');
-        amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
+        amountInNum = Number(formatTokenUnits(amountInBig, tokenInDecimals));
         if (amountInNum > MAX_SWAP_AMOUNT_NUM) {
           throw new Error(`Swap amount (${amountInNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
         }
 
         const poolFeeBps = 30n;
         const netAmountInBig = amountInBig - (amountInBig * poolFeeBps / 10000n);
+        const netAmountInNum = Number(formatTokenUnits(netAmountInBig, tokenInDecimals));
         
         // Exact price calculation based on verified spot ratio
-        const expectedOutNum = (Number(netAmountInBig) / 10 ** tokenInDecimals) * (priceInUSD / priceOutUSD);
-        amountOutBig = BigInt(Math.max(1, Math.floor(expectedOutNum * 10 ** tokenOutDecimals)));
-        amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
+        const spotRatio = priceInUSD / priceOutUSD;
+        const expectedOutNum = netAmountInNum * spotRatio;
+        const rawOutStr = parseTokenUnits(expectedOutNum.toFixed(Math.min(tokenOutDecimals, 18)), tokenOutDecimals);
+        amountOutBig = BigInt(rawOutStr === '0' ? '1' : rawOutStr);
+        amountOutNum = Number(formatTokenUnits(amountOutBig, tokenOutDecimals));
 
         minimumReceivedRaw = this.scoringService.calculateMinimumReceived(
           amountOutBig.toString(),
           request.slippageTolerancePercent
         );
-        minimumReceivedNum = Number(BigInt(minimumReceivedRaw)) / 10 ** tokenOutDecimals;
+        minimumReceivedNum = Number(formatTokenUnits(minimumReceivedRaw, tokenOutDecimals));
       } else {
         amountOutBig = BigInt(request.amountOutRaw || '0');
-        amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
+        amountOutNum = Number(formatTokenUnits(amountOutBig, tokenOutDecimals));
         if (amountOutNum > MAX_SWAP_AMOUNT_NUM) {
           throw new Error(`Swap amount (${amountOutNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
         }
 
-        const expectedInNum = amountOutNum * (priceOutUSD / priceInUSD);
-        amountInBig = BigInt(Math.max(1, Math.floor(expectedInNum * 10 ** tokenInDecimals * 1.003)));
-        amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
+        const spotRatio = priceOutUSD / priceInUSD;
+        const expectedInNum = amountOutNum * spotRatio * (10000 / 9970);
+        const rawInStr = parseTokenUnits(expectedInNum.toFixed(Math.min(tokenInDecimals, 18)), tokenInDecimals);
+        amountInBig = BigInt(rawInStr === '0' ? '1' : rawInStr);
+        amountInNum = Number(formatTokenUnits(amountInBig, tokenInDecimals));
 
         maximumInputRaw = this.scoringService.calculateMaximumInput(
           amountInBig.toString(),
           request.slippageTolerancePercent
         );
-        maximumInputFormatted = (Number(BigInt(maximumInputRaw)) / 10 ** tokenInDecimals).toLocaleString(undefined, { maximumFractionDigits: 6 });
+        maximumInputFormatted = Number(formatTokenUnits(maximumInputRaw, tokenInDecimals)).toLocaleString(undefined, { maximumFractionDigits: 6 });
 
         minimumReceivedRaw = amountOutBig.toString();
         minimumReceivedNum = amountOutNum;
@@ -162,7 +168,32 @@ export class ZenithRouter {
 
     const tradeValueUSD = amountInNum * priceInUSD;
     const spotPrice = (priceInUSD / priceOutUSD);
-    const executionPrice = amountInNum > 0 && amountOutNum > 0 ? (amountOutNum / amountInNum) : spotPrice;
+    const isMicroDust = amountInNum < 1e-8;
+    const executionPrice = isMicroDust ? spotPrice : (amountInNum > 0 && amountOutNum > 0 ? (amountOutNum / amountInNum) : spotPrice);
+
+    // QUOTE SANITY INVARIANT CHECK:
+    // Reject quotes with impossible rates, zero outputs, or extreme deviations
+    if (amountInBig <= 0n || amountOutBig <= 0n || amountInNum <= 0 || amountOutNum <= 0) {
+      throw new ConfigurationError('QUOTE_INVALID: Quoted amount is zero or negative', 'QUOTE_INVALID');
+    }
+
+    if (referencePrice !== undefined && referencePrice > 0 && !isMicroDust) {
+      const priceRatio = executionPrice / referencePrice;
+      // Reject quotes outside sanity boundary (deviating more than 2x or losing 99%)
+      if (priceRatio > 2.0 || priceRatio < 0.01) {
+        throw new ConfigurationError(
+          `QUOTE_INVALID: Executable rate (${executionPrice.toFixed(6)}) deviates abnormally from market reference rate (${referencePrice.toFixed(6)})`,
+          'QUOTE_INVALID'
+        );
+      }
+    }
+
+    if (BigInt(minimumReceivedRaw) > amountOutBig) {
+      throw new ConfigurationError(
+        'QUOTE_INVALID: Minimum received raw amount exceeds quoted output amount',
+        'QUOTE_INVALID'
+      );
+    }
 
     const poolFeeBps = 30;
     const swapFeeRaw = ((amountInBig * BigInt(poolFeeBps)) / 10000n).toString();
@@ -257,9 +288,9 @@ export class ZenithRouter {
       amountInRaw: amountInBig.toString(),
       amountInFormatted: amountInNum.toLocaleString(undefined, { maximumFractionDigits: 6 }),
       amountOutRaw: amountOutBig.toString(),
-      amountOutFormatted: amountOutNum.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+      amountOutFormatted: amountOutNum < 0.0001 ? amountOutNum.toFixed(6) : amountOutNum.toLocaleString(undefined, { maximumFractionDigits: 6 }),
       minimumReceivedRaw,
-      minimumReceivedFormatted: minimumReceivedNum.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+      minimumReceivedFormatted: minimumReceivedNum < 0.0001 ? minimumReceivedNum.toFixed(6) : minimumReceivedNum.toLocaleString(undefined, { maximumFractionDigits: 6 }),
       maximumInputRaw,
       maximumInputFormatted,
       executionPrice,

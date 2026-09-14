@@ -57,7 +57,7 @@ export class CrossChainAggregator {
     const results = await Promise.all(quotePromises);
     const validQuotes = results.filter((q): q is CrossChainQuote => q !== null);
 
-    // Rank quotes: Highest net destination amount, then lowest gas, then lowest latency
+    // Rank quotes by net destination amount, considering total gas cost and bridge fees
     return validQuotes.sort((a, b) => {
       const diff = BigInt(b.destinationAmountRaw) - BigInt(a.destinationAmountRaw);
       if (diff !== 0n) {
@@ -71,7 +71,6 @@ export class CrossChainAggregator {
     const quotes = await this.getQuotes(request);
     return quotes.length > 0 ? quotes[0] : null;
   }
-
 
   public async findCrossChainRoutes(params: {
     request: QuoteRequest;
@@ -89,20 +88,31 @@ export class CrossChainAggregator {
     for (const quote of quotes) {
       const srcChain = defaultChainRegistry.getChain(quote.sourceChainId);
       const chainIdNum = srcChain?.chainId || 1;
-      const primaryDEX = srcChain?.executionEnvironment === 'EVM'
-        ? EVMContractRegistry.getPrimaryRouter(chainIdNum)
-        : quote.executionTarget;
 
-      const sourceHops: RouteHop[] = [
-        {
+      // Model pipeline hops accurately:
+      // If direct bridge (sourceToken matches request.tokenIn), no source swap hop is fabricated
+      const hops: RouteHop[] = [];
+
+      const isSameInputToken = quote.sourceToken.address.toLowerCase() === request.tokenIn.address.toLowerCase();
+      if (!isSameInputToken) {
+        let routerAddress = quote.executionTarget;
+        if (srcChain?.executionEnvironment === 'EVM') {
+          try {
+            routerAddress = EVMContractRegistry.getPrimaryRouter(chainIdNum);
+          } catch {
+            routerAddress = quote.executionTarget;
+          }
+        }
+
+        hops.push({
           dexProtocol: 'UNISWAP_V3',
-          poolAddress: primaryDEX,
-          tokenIn: quote.sourceToken,
+          poolAddress: routerAddress,
+          tokenIn: request.tokenIn,
           tokenOut: quote.sourceToken,
           proportionPercent: 100,
           estimatedGas: 150000n
-        }
-      ];
+        });
+      }
 
       let execution = undefined;
       const provider = this.getProvider(quote.provider);
@@ -110,14 +120,14 @@ export class CrossChainAggregator {
         try {
           execution = await provider.buildExecution(quote, userAddress, request.recipientAddress);
         } catch {
-          // Execution will be constructed upon user connection
+          // Execution will be constructed upon wallet connection
         }
       }
 
       routes.push({
         id: `route-bridge-${quote.provider.toLowerCase()}-${quote.sourceChainId}-${quote.destinationChainId}`,
         routeType: 'CROSS_CHAIN',
-        hops: sourceHops,
+        hops,
         bridgeStep: {
           bridgeProtocol: quote.provider,
           sourceChainId: quote.sourceChainId,

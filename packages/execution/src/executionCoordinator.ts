@@ -102,6 +102,8 @@ export class ExecutionCoordinator {
     stateMachine.initializeSteps(steps);
 
     let txHash = '';
+    let gasUsedWei: bigint = 0n;
+    let gasPriceWei: bigint = 0n;
 
     if (isCrossChain && params.quote.intent) {
       this.intentEngine.registerIntent(params.quote.intent);
@@ -139,12 +141,16 @@ export class ExecutionCoordinator {
             stateMachine.transitionTo(status, { id: 'step-execute', status: 'ACTIVE', txHash: hash });
           } else if (status === 'CONFIRMING') {
             stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'ACTIVE', txHash: hash });
+          } else if (status === 'BRIDGE_IN_FLIGHT') {
+            stateMachine.transitionTo('BRIDGE_IN_FLIGHT', { id: 'step-execute', status: 'SUCCESS', txHash: hash });
           } else if (status === 'COMPLETED') {
             stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'SUCCESS', txHash: hash });
           }
         }
       });
       txHash = result.txHash;
+      gasUsedWei = result.gasUsed;
+      gasPriceWei = result.effectiveGasPriceWei;
     }
 
     stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'SUCCESS', txHash });
@@ -177,7 +183,7 @@ export class ExecutionCoordinator {
         const trackingResult = await this.tracker.trackUntilSettled({
           order: activeOrder,
           stateMachine: stateMachine,
-          maxPollDurationMs: 8000, // short synchronous poll for coordinator response
+          maxPollDurationMs: 8000,
           pollIntervalMs: 1500,
           onStateChange: (state, meta) => {
             if (params.quote.intent) {
@@ -204,6 +210,16 @@ export class ExecutionCoordinator {
       ? amountOutNum * params.quote.request.tokenOut.priceUSD
       : undefined;
 
+    // Calculate actual gas paid USD dynamically if available
+    let gasPaidUSD = params.quote.bestRoute.gasCostUSD;
+    if (gasUsedWei > 0n && gasPriceWei > 0n && sourceChain.nativeCurrency?.symbol) {
+      const nativePrice = sourceChain.id === 'base' || sourceChain.id === 'arbitrum' || sourceChain.id === 'optimism' || sourceChain.id === 'ethereum'
+        ? (params.quote.request.tokenIn.symbol === 'ETH' ? params.quote.request.tokenIn.priceUSD || 2500 : 2500)
+        : 1;
+      const gasCostEth = Number(gasUsedWei * gasPriceWei) / 1e18;
+      gasPaidUSD = Number((gasCostEth * nativePrice).toFixed(4));
+    }
+
     const receipt: ReceiptView = {
       txHash,
       sourceChain,
@@ -215,8 +231,8 @@ export class ExecutionCoordinator {
       amountOutFormatted: params.quote.amountOutFormatted,
       amountOutUSD,
       realizedPriceImpactPercent: params.quote.priceImpact.percentage,
-      realizedSlippagePercent: 0.04,
-      gasPaidUSD: params.quote.bestRoute.gasCostUSD,
+      realizedSlippagePercent: 0.0,
+      gasPaidUSD,
       protocolFeePaidUSD: params.quote.protocolFee.feeUSD,
       effectiveExecutionScore: params.quote.effectiveExecutionScore,
       timestamp: Date.now(),

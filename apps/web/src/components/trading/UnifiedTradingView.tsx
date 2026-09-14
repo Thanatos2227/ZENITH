@@ -37,7 +37,7 @@ export const UnifiedTradingView: React.FC = () => {
     defaultMarketDataService.getCachedMarketData(tokenIn.chainId, tokenIn.address)?.priceUSD ||
     tokenIn.priceUSD;
 
-  const basePrice = storePrice || (tokenIn.symbol === 'ETH' ? 2465.87 : tokenIn.symbol === 'SOL' ? 101.68 : tokenIn.symbol === 'WBTC' || tokenIn.symbol === 'BTC' ? 78247.22 : 1);
+  const basePrice = storePrice || tokenIn.priceUSD || 0;
 
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true

@@ -1340,7 +1340,7 @@ export class MarketDataService {
       },
       {
         id: 'pool-base-aero-usdc-30',
-        poolAddress: '0x2222222222222222222222222222222222222222',
+        poolAddress: '0x6cDcb1C4A4D1C3C6d054b27AC5B77e89eAFb971d',
         chainId: 'base',
         token0: aeroBase,
         token1: usdcBase,

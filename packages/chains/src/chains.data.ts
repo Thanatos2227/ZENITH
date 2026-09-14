@@ -3282,55 +3282,6 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         verificationTier: 'VERIFIED_CANONICAL',
         isNative: true,
         logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
-      },
-      {
-        address: '0x1111111111111111111111111111111111111111',
-        chainId: 'robinhood',
-        name: 'Tokenized US Treasury Fund',
-        symbol: 'rUSTB',
-        decimals: 6,
-        verificationTier: 'VERIFIED_CANONICAL',
-        logoURI: 'undefined'
-      },
-      {
-        address: '0x2222222222222222222222222222222222222222',
-        chainId: 'robinhood',
-        name: 'Tokenized Apple Inc.',
-        symbol: 'rAAPL',
-        decimals: 18,
-        verificationTier: 'VERIFIED_CANONICAL'
-      },
-      {
-        address: '0x3333333333333333333333333333333333333333',
-        chainId: 'robinhood',
-        name: 'Tokenized Nvidia Corp.',
-        symbol: 'rNVDA',
-        decimals: 18,
-        verificationTier: 'VERIFIED_CANONICAL'
-      },
-      {
-        address: '0x4444444444444444444444444444444444444444',
-        chainId: 'robinhood',
-        name: 'Tokenized Microsoft Corp.',
-        symbol: 'rMSFT',
-        decimals: 18,
-        verificationTier: 'VERIFIED_CANONICAL'
-      },
-      {
-        address: '0x7777777777777777777777777777777777777777',
-        chainId: 'robinhood',
-        name: 'Tokenized S&P 500 ETF',
-        symbol: 'rSPY',
-        decimals: 18,
-        verificationTier: 'VERIFIED_CANONICAL'
-      },
-      {
-        address: '0x9999999999999999999999999999999999999999',
-        chainId: 'robinhood',
-        name: 'Tokenized Gold Bullion',
-        symbol: 'rGOLD',
-        decimals: 18,
-        verificationTier: 'VERIFIED_CANONICAL'
       }
     ]
   },

@@ -14,13 +14,18 @@ export class CrossChainIntentEngine {
   private aggregator: CrossChainAggregator;
   private intentStore: Map<string, CrossChainIntent> = new Map();
   private processedNonces: Set<string> = new Set();
+  private processedOrderIds: Set<string> = new Set();
 
   constructor(aggregator = defaultCrossChainAggregator) {
     this.aggregator = aggregator;
   }
 
+  /**
+   * Fetches real competitive solver quotes from verified cross-chain aggregators.
+   * Mandate: If no live solver quotes exist, return an empty array [].
+   * Never synthesize or fabricate fallback solver quotes.
+   */
   public async getCompetitiveQuotes(intent: CrossChainIntent): Promise<SolverFillQuote[]> {
-    const rawDestAmount = BigInt(intent.minDestinationAmountRaw);
     const tokenOutDecimals = intent.destinationToken.decimals || 18;
 
     const quotes = await this.aggregator.getQuotes({
@@ -50,25 +55,25 @@ export class CrossChainIntentEngine {
       });
     }
 
-    const fallbackFormatted = (Number(rawDestAmount) / 10 ** tokenOutDecimals).toLocaleString(undefined, { maximumFractionDigits: 6 });
-    return [
-      {
-        solverId: 'ACROSS',
-        solverName: 'Across Intent MM',
-        destinationAmountRaw: intent.minDestinationAmountRaw,
-        destinationAmountFormatted: fallbackFormatted,
-        estimatedTimeSec: 25,
-        executionCostUSD: 0.50,
-        solverReputationScore: 98,
-        isGuaranteed: true
-      }
-    ];
+    // Fail closed: Return empty quote list rather than fabricating synthetic solver quotes
+    return [];
   }
 
+  /**
+   * Registers a cross-chain intent with multi-parameter replay protection.
+   */
   public registerIntent(intent: CrossChainIntent): void {
-    const nonceKey = `${intent.recipient.toLowerCase()}:${intent.nonce}`;
+    if (!intent.orderId) {
+      throw new Error('[CrossChainIntentEngine] Order ID is required');
+    }
+
+    const nonceKey = `${intent.recipient.toLowerCase()}:${intent.sourceChainId}:${intent.destinationChainId}:${intent.sourceToken.address.toLowerCase()}:${intent.destinationToken.address.toLowerCase()}:${intent.sourceAmountRaw}:${intent.nonce}`;
     if (this.processedNonces.has(nonceKey)) {
       throw new Error(`[CrossChainIntentEngine] Nonce replay detected for ${intent.recipient} (nonce: ${intent.nonce})`);
+    }
+
+    if (this.processedOrderIds.has(intent.orderId)) {
+      throw new Error(`[CrossChainIntentEngine] Duplicate order ID detected: ${intent.orderId}`);
     }
 
     const deadlineMs = intent.deadline < 1e11 ? intent.deadline * 1000 : intent.deadline;
@@ -77,6 +82,7 @@ export class CrossChainIntentEngine {
     }
 
     this.processedNonces.add(nonceKey);
+    this.processedOrderIds.add(intent.orderId);
     this.intentStore.set(intent.orderId, { ...intent, status: 'CREATED' });
   }
 

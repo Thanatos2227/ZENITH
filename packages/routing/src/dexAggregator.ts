@@ -1,6 +1,11 @@
 import { DEXProtocol, GasPreset, RouteHop, SwapRoute, Token } from '@zenith/types';
 import { defaultChainRegistry } from '@zenith/chains';
-import { EVMContractRegistry, SolanaProgramRegistry } from '@zenith/contracts';
+import {
+  EVMContractRegistry,
+  SolanaProgramRegistry,
+  validateTokenAddress,
+  validateExecutionTarget
+} from '@zenith/contracts';
 
 export class DEXAggregator {
   public findRoutes(params: {
@@ -28,7 +33,7 @@ export class DEXAggregator {
       routerAddress = SolanaProgramRegistry.getProgramId('RAYDIUM');
     } else {
       try {
-        routerAddress = EVMContractRegistry.getPrimaryRouter(chainIdNum);
+        routerAddress = validateExecutionTarget(EVMContractRegistry.getPrimaryRouter(chainIdNum), chainId);
       } catch {
         routerAddress = params.tokenIn.address;
       }
@@ -63,7 +68,7 @@ export class DEXAggregator {
     if (!isDirectStablePair && params.tokenIn.symbol !== params.tokenOut.symbol && chain?.executionEnvironment === 'EVM') {
       let wrappedNativeAddress: string;
       try {
-        wrappedNativeAddress = EVMContractRegistry.getWrappedNative(chainIdNum);
+        wrappedNativeAddress = validateTokenAddress(EVMContractRegistry.getWrappedNative(chainIdNum), chainId);
       } catch {
         wrappedNativeAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
       }
@@ -75,7 +80,7 @@ export class DEXAggregator {
         symbol: chain.nativeCurrency?.symbol ? `W${chain.nativeCurrency.symbol}` : 'WETH',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
-        priceUSD: 2465.87
+        priceUSD: params.tokenIn.priceUSD
       };
 
       const multiHopGasUnits = (directGasUnits * 14n) / 10n;

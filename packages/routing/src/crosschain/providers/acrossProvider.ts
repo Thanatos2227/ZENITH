@@ -12,8 +12,13 @@ import { defaultChainRegistry } from '@zenith/chains';
 import {
   getAcrossSpokePool,
   isAcrossSupported,
-  ACROSS_SPOKE_POOL_ABI
+  ACROSS_SPOKE_POOL_ABI,
+  validateEvmAddress,
+  validateTokenAddress,
+  validateRecipientAddress,
+  validateExecutionTarget
 } from '@zenith/contracts';
+import { parseTokenUnits, formatTokenUnits } from '../../tokenDecimals';
 
 const spokePoolInterface = new Interface(ACROSS_SPOKE_POOL_ABI);
 
@@ -49,19 +54,26 @@ export class AcrossProvider implements CrossChainProvider {
     const srcChain = defaultChainRegistry.getChain(sourceChainId)!;
     const dstChain = defaultChainRegistry.getChain(destinationChainId)!;
 
-    const spokePool = getAcrossSpokePool(srcChain.chainId!);
+    const spokePool = validateExecutionTarget(getAcrossSpokePool(srcChain.chainId!), srcChain.id);
     const amountInBig = BigInt(request.amountInRaw || '0');
     if (amountInBig <= 0n) return null;
 
     const quoteTimestamp = Math.floor(Date.now() / 1000);
-    const tokenInDecimals = request.tokenIn.decimals || 18;
+    const tokenInDecimals = request.tokenIn.decimals !== undefined ? request.tokenIn.decimals : 18;
+    const tokenOutDecimals = request.tokenOut.decimals !== undefined ? request.tokenOut.decimals : 18;
+    const priceInUSD = request.tokenIn.priceUSD && request.tokenIn.priceUSD > 0 ? request.tokenIn.priceUSD : 1;
+    const priceOutUSD = request.tokenOut.priceUSD && request.tokenOut.priceUSD > 0 ? request.tokenOut.priceUSD : 1;
+
+    // Validate token addresses
+    const validatedInputToken = validateTokenAddress(request.tokenIn.address, srcChain.id, request.tokenIn.isNative);
+    const validatedOutputToken = validateTokenAddress(request.tokenOut.address, dstChain.id, request.tokenOut.isNative);
 
     // Fetch live Across fee from suggested-fees API or fallback to verified fee tiers
     let relayerFeePct = 0.0006; // 6 bps typical Across relayer fee
     let estTransferTimeSec = 25;
 
     try {
-      const url = `https://app.across.to/api/suggested-fees?inputToken=${request.tokenIn.address}&outputToken=${request.tokenOut.address}&originChainId=${srcChain.chainId}&destinationChainId=${dstChain.chainId}&amount=${amountInBig.toString()}`;
+      const url = `https://app.across.to/api/suggested-fees?inputToken=${validatedInputToken}&outputToken=${validatedOutputToken}&originChainId=${srcChain.chainId}&destinationChainId=${dstChain.chainId}&amount=${amountInBig.toString()}`;
       const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
       if (resp.ok) {
         const data = await resp.json();
@@ -76,54 +88,46 @@ export class AcrossProvider implements CrossChainProvider {
       // API timeout/offline: use verified protocol default fee tier
     }
 
-    const relayerFeeAmountBig = (amountInBig * BigInt(Math.floor(relayerFeePct * 10000))) / 10000n;
-    const destinationAmountBig = amountInBig - relayerFeeAmountBig;
+    const amountInNum = Number(formatTokenUnits(amountInBig, tokenInDecimals));
+    const relayerFeeAmountNum = amountInNum * relayerFeePct;
+    const netAmountOutNum = (amountInNum - relayerFeeAmountNum) * (priceInUSD / priceOutUSD);
+    const rawOutStr = parseTokenUnits(netAmountOutNum.toFixed(Math.min(tokenOutDecimals, 18)), tokenOutDecimals);
+    const destinationAmountBig = BigInt(rawOutStr === '0' ? '1' : rawOutStr);
 
     const slippageMultiplier = 10000n - BigInt(Math.floor(request.slippageTolerancePercent * 100));
     const minDestinationAmountBig = (destinationAmountBig * slippageMultiplier) / 10000n;
 
-    const amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
-    const bridgeFeeUSD = Number((amountInNum * (request.tokenIn.priceUSD || 1) * relayerFeePct).toFixed(4));
+    const bridgeFeeUSD = Number((amountInNum * priceInUSD * relayerFeePct).toFixed(4));
     const gasEstimateUSD = defaultChainRegistry.getEstimatedGasCostUSD(srcChain.id, 'BRIDGE', request.gasPreset);
 
-    const targetRecipient = recipient || request.userWalletAddress || '';
+    const targetRecipient = recipient || request.userWalletAddress;
     const fillDeadline = quoteTimestamp + (request.deadlineSeconds || 1800);
 
     const executionTarget = spokePool;
     const value = request.tokenIn.isNative ? amountInBig.toString() : '0';
 
-    // Normalize address for safe ABI encoding
-    const safeRecipient = targetRecipient && targetRecipient.startsWith('0x') && targetRecipient.length === 42
-      ? targetRecipient.toLowerCase()
-      : '0x1111111111111111111111111111111111111111';
-
-    const safeInputToken = request.tokenIn.address.startsWith('0x') && request.tokenIn.address.length === 42
-      ? request.tokenIn.address.toLowerCase()
-      : '0x1111111111111111111111111111111111111111';
-
-    const safeOutputToken = request.tokenOut.address.startsWith('0x') && request.tokenOut.address.length === 42
-      ? request.tokenOut.address.toLowerCase()
-      : '0x1111111111111111111111111111111111111111';
-
-    // Encode SpokePool depositV3 calldata
+    // Encode SpokePool depositV3 calldata only if a valid wallet address is supplied
     let calldata = '0x';
-    try {
-      calldata = spokePoolInterface.encodeFunctionData('depositV3', [
-        safeRecipient,
-        safeRecipient,
-        safeInputToken,
-        safeOutputToken,
-        amountInBig,
-        minDestinationAmountBig,
-        dstChain.chainId!,
-        '0x0000000000000000000000000000000000000000', // exclusiveRelayer = 0 for public relayer network
-        quoteTimestamp,
-        fillDeadline,
-        0, // exclusivityDeadline = 0
-        '0x' // message
-      ]);
-    } catch (encErr) {
-      console.warn('[AcrossProvider] Error encoding calldata preview:', encErr);
+    if (targetRecipient) {
+      try {
+        const safeRecipient = validateRecipientAddress(targetRecipient, srcChain.id);
+        calldata = spokePoolInterface.encodeFunctionData('depositV3', [
+          safeRecipient.toLowerCase(),
+          safeRecipient.toLowerCase(),
+          validatedInputToken.toLowerCase(),
+          validatedOutputToken.toLowerCase(),
+          amountInBig,
+          minDestinationAmountBig,
+          dstChain.chainId!,
+          '0x0000000000000000000000000000000000000000', // exclusiveRelayer = 0 for public relayer network
+          quoteTimestamp,
+          fillDeadline,
+          0, // exclusivityDeadline = 0
+          '0x' // message
+        ]);
+      } catch (encErr) {
+        console.warn('[AcrossProvider] Error encoding calldata preview:', encErr);
+      }
     }
 
     return {
@@ -159,17 +163,21 @@ export class AcrossProvider implements CrossChainProvider {
   ): Promise<CrossChainExecution> {
     const srcChain = defaultChainRegistry.getChain(quote.sourceChainId)!;
     const dstChain = defaultChainRegistry.getChain(quote.destinationChainId)!;
-    const spokePool = getAcrossSpokePool(srcChain.chainId!);
+    const spokePool = validateExecutionTarget(getAcrossSpokePool(srcChain.chainId!), srcChain.id);
 
-    const recipient = recipientAddress || userAddress;
+    const safeUser = validateEvmAddress(userAddress, 'User Address');
+    const safeRecipient = validateRecipientAddress(recipientAddress || userAddress, srcChain.id);
+    const safeInputToken = validateTokenAddress(quote.sourceToken.address, srcChain.id, quote.sourceToken.isNative);
+    const safeOutputToken = validateTokenAddress(quote.destinationToken.address, dstChain.id, quote.destinationToken.isNative);
+
     const quoteTimestampSec = Math.floor(quote.quoteTimestamp / 1000);
     const fillDeadlineSec = quoteTimestampSec + 1800;
 
     const data = spokePoolInterface.encodeFunctionData('depositV3', [
-      userAddress,
-      recipient,
-      quote.sourceToken.address,
-      quote.destinationToken.address,
+      safeUser.toLowerCase(),
+      safeRecipient.toLowerCase(),
+      safeInputToken.toLowerCase(),
+      safeOutputToken.toLowerCase(),
       BigInt(quote.sourceAmountRaw),
       BigInt(quote.minDestinationAmountRaw),
       dstChain.chainId!,

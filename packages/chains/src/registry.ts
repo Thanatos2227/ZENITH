@@ -196,7 +196,8 @@ export class ChainRegistry {
   public getEstimatedGasCostUSD(
     chainId: string,
     txType: 'SWAP' | 'SPLIT_SWAP' | 'BRIDGE' = 'SWAP',
-    priorityPreset: GasPreset = 'STANDARD'
+    priorityPreset: GasPreset = 'STANDARD',
+    nativePriceUSD?: number
   ): number {
     const profile = NETWORK_GAS_PROFILES[chainId.toLowerCase()] || {
       swapGasUnits: 120000,
@@ -205,6 +206,18 @@ export class ChainRegistry {
       typicalSplitSwapUSD: 0.035,
       bridgeRelayUSD: 0.50
     };
+
+    const priorityMultiplier = priorityPreset === 'INSTANT' ? 1.4 : priorityPreset === 'FAST' ? 1.2 : 1.0;
+
+    if (nativePriceUSD !== undefined && nativePriceUSD > 0) {
+      let units = profile.swapGasUnits;
+      if (txType === 'SPLIT_SWAP') units = Math.round(profile.swapGasUnits * 1.6);
+      else if (txType === 'BRIDGE') units = 180000;
+
+      const effectiveGwei = profile.avgGasPriceGwei * priorityMultiplier;
+      const gasCostUSD = (units * effectiveGwei * 1e-9) * nativePriceUSD;
+      return Number(gasCostUSD < 0.0001 ? gasCostUSD.toFixed(6) : (gasCostUSD < 0.01 ? gasCostUSD.toFixed(4) : gasCostUSD.toFixed(2)));
+    }
 
     let baseCost = profile.typicalSwapUSD;
     if (txType === 'SPLIT_SWAP') {
@@ -215,8 +228,6 @@ export class ChainRegistry {
 
     const timeSeed = Date.now() / 15000;
     const dynamicJitter = 1 + Math.sin(timeSeed + chainId.length) * 0.04;
-
-    const priorityMultiplier = priorityPreset === 'INSTANT' ? 1.4 : priorityPreset === 'FAST' ? 1.2 : 1.0;
 
     const dynamicUSD = baseCost * dynamicJitter * priorityMultiplier;
     return Number(dynamicUSD < 0.01 ? dynamicUSD.toFixed(4) : dynamicUSD.toFixed(2));

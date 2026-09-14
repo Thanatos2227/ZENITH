@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=@zenith/web",
     "build": "npm run build --workspaces --if-present",
-    "test": "npx tsx --test tests/anti_mock_audit.test.ts tests/zenith_crosschain_production.test.ts tests/zenith_crosschain_router.test.ts tests/zenith.test.ts tests/zenith_master_matrix.test.ts tests/zenith_24_disciplines.test.ts",
+    "test": "npx tsx --test tests/anti_mock_audit.test.ts tests/zenith_decimal_regression.test.ts tests/zenith_crosschain_production.test.ts tests/zenith_crosschain_router.test.ts tests/zenith.test.ts tests/zenith_master_matrix.test.ts tests/zenith_24_disciplines.test.ts",
     "audit:anti-mock": "npx tsx scripts/audit-anti-mock.ts",
     "type-check": "npm run type-check --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
