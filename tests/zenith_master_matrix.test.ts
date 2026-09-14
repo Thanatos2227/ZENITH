@@ -2,27 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 // Packages imports
-import { defaultChainRegistry, ChainRegistry, NETWORK_GAS_PROFILES, ZENITH_SUPPORTED_CHAINS } from '../packages/chains/src';
+import { defaultChainRegistry, NETWORK_GAS_PROFILES } from '../packages/chains/src';
 import {
   DEFAULT_TOKENS,
-  UNSUPPORTED_TOKEN_METADATA,
   defaultTokenService,
-  defaultMarketDataService,
-  VERIFIED_CIRCULATING_SUPPLY,
-  TokenService,
-  MarketDataService
+  defaultMarketDataService
 } from '../packages/tokens/src';
 import {
   defaultZenithRouter,
   ConstantProductMath,
   ConcentratedLiquidityMath,
   validateAndSanitizeAmount,
-  truncateToThreeDecimals,
-  MAX_SWAP_AMOUNT_NUM,
-  MAX_SWAP_AMOUNT_STR,
-  calculateEffectiveExecutionScore,
-  DynamicDEXSplitter,
-  defaultBridgeAggregator
+  truncateToThreeDecimals
 } from '../packages/routing/src';
 import {
   defaultTokenRiskEngine,
@@ -34,19 +25,12 @@ import {
   ExecutionStateMachine,
   defaultIntentEngine,
   defaultEVMAdapter,
-  defaultSolanaAdapter,
   defaultExecutionCoordinator
 } from '../packages/execution/src';
 import {
-  ChainConfig,
   CrossChainIntent,
   ExecutionStatus,
-  GasPreset,
-  MEVProtectionLevel,
-  QuoteResponse,
-  SlippagePreset,
   Token,
-  WalletType,
   ZenithNotification
 } from '../packages/types/src';
 import { defaultThemeManager, ZENITH_TOKENS } from '../packages/ui/src';
@@ -256,7 +240,7 @@ test('SUITE 3: Responsive & Viewport Layout Tests', async (t) => {
 test('SUITE 4: Browser Compatibility & Standard Runtime Support', async (t) => {
   await t.test('4.1 Web3 Provider EIP-1193 Standard Interface', () => {
     const mockEIP1193Provider = {
-      request: async ({ method, params }: { method: string; params?: any[] }) => {
+      request: async ({ method, params: _params }: { method: string; params?: any[] }) => {
         if (method === 'eth_accounts') return ['0x1111111111111111111111111111111111111111'];
         if (method === 'eth_chainId') return '0x1';
         return null;
@@ -646,9 +630,39 @@ test('SUITE 14: Complete End-to-End User Journeys', async (t) => {
     const history: ExecutionStatus[] = [];
     stateMachine.subscribe((status) => history.push(status));
 
+    const user = '0x1234567890abcdef1234567890abcdef12345678';
+    const mockSigner = {
+      getAddress: async () => user,
+      sendTransaction: async (_tx: any) => ({
+        hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        wait: async () => ({
+          status: 1,
+          hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+          blockNumber: 12345678,
+          gasUsed: BigInt(150000),
+          gasPrice: BigInt(30000000000),
+          logs: []
+        })
+      }),
+      provider: {
+        call: async () => '0x',
+        estimateGas: async () => BigInt(150000),
+        getFeeData: async () => ({ gasPrice: BigInt(30000000000) }),
+        getTransactionReceipt: async (hash: string) => ({
+          status: 1,
+          hash,
+          blockNumber: 12345678,
+          gasUsed: BigInt(150000),
+          gasPrice: BigInt(30000000000),
+          logs: []
+        })
+      }
+    } as any;
+
     const receipt = await defaultExecutionCoordinator.executeTrade({
       quote,
-      userAddress: '0x1234567890abcdef1234567890abcdef12345678',
+      userAddress: user,
+      signer: mockSigner,
       stateMachine
     });
 

@@ -10,7 +10,9 @@
     "@zenith/types": "*",
     "@zenith/chains": "*",
     "@zenith/tokens": "*",
-    "@zenith/security": "*"
+    "@zenith/contracts": "*",
+    "@zenith/security": "*",
+    "ethers": "^6.12.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

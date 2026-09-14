@@ -1,6 +1,11 @@
 import { Contract, JsonRpcSigner, BrowserProvider } from 'ethers';
 import { QuoteResponse, TransactionStatus } from '@zenith/types';
 import { defaultChainRegistry } from '@zenith/chains';
+import {
+  EVMContractRegistry,
+  EVM_WRAPPED_NATIVE_TOKENS,
+  SignerRequiredError
+} from '@zenith/contracts';
 
 export interface EVMExecutionParams {
   quote: QuoteResponse;
@@ -18,26 +23,6 @@ export interface EVMExecutionResult {
   effectiveGasPriceWei: bigint;
   revertReason?: string;
 }
-
-export const CANONICAL_ROUTERS: Record<number, string> = {
-  1: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
-  137: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
-  8453: '0x2626664c2603336E57B271c5C0b26F421741e481',
-  42161: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
-  10: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
-  56: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4',
-  43114: '0x60aE616a2155Ee3d9A68541Ba4544862310933d4'
-};
-
-export const WRAPPED_NATIVE_TOKENS: Record<number, string> = {
-  1: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-  137: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
-  8453: '0x4200000000000000000000000000000000000006',
-  42161: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-  10: '0x4200000000000000000000000000000000000006',
-  56: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-  43114: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7'
-};
 
 const SWAP_ROUTER_ABI = [
   'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)',
@@ -66,7 +51,7 @@ export class EVMExecutionAdapter {
   }): Promise<bigint> {
     if (
       params.tokenAddress.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
-      params.tokenAddress === '0x0000000000000000000000000000000000000000'
+      params.tokenAddress.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'.toLowerCase()
     ) {
       return BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
     }
@@ -87,51 +72,31 @@ export class EVMExecutionAdapter {
     const { quote, userAddress, signer } = params;
 
     if (!signer) {
-      params.onStatusChange?.('SIGNING');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      params.onStatusChange?.('SUBMITTING');
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const mockTxHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-      params.onStatusChange?.('BROADCASTED', mockTxHash);
-      params.onStatusChange?.('CONFIRMING', mockTxHash);
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      params.onStatusChange?.('COMPLETED', mockTxHash);
-
-      return {
-        isSuccess: true,
-        txHash: mockTxHash,
-        blockNumber: 19842100,
-        gasUsed: 142000n,
-        effectiveGasPriceWei: 18000000000n
-      };
+      throw new SignerRequiredError('Wallet signer is required to sign and broadcast transaction on-chain.');
     }
 
+    const isCrossChain = quote.request.sourceChainId !== quote.request.destinationChainId;
     const sourceChain = defaultChainRegistry.getChain(quote.request.sourceChainId);
     const chainIdNum = sourceChain?.chainId ?? 1;
 
-    const routerAddress = CANONICAL_ROUTERS[chainIdNum] || '0xE592427A0AEce92De3Edee1F18E0157C05861564';
-    const wrappedNative = WRAPPED_NATIVE_TOKENS[chainIdNum] || '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+    // Cross-Chain execution path
+    if (isCrossChain && quote.bestRoute.crossChainQuote) {
+      const ccQuote = quote.bestRoute.crossChainQuote;
+      const targetSpender = ccQuote.approvalTarget || ccQuote.executionTarget;
+      const amountInRaw = BigInt(quote.amountInRaw || ccQuote.sourceAmountRaw);
 
-    const tokenIn = quote.request.tokenIn;
-    const tokenOut = quote.request.tokenOut;
-    const amountInRaw = BigInt(quote.amountInRaw || '0');
-    const minAmountOutRaw = BigInt(quote.minimumReceivedRaw || '0');
-    const deadline = Math.floor((quote.deadline || (Date.now() + 1200000)) / 1000);
-
-    try {
-      if (!tokenIn.isNative) {
+      if (!quote.request.tokenIn.isNative) {
         const currentAllowance = await this.checkAllowance({
-          tokenAddress: tokenIn.address,
+          tokenAddress: quote.request.tokenIn.address,
           ownerAddress: userAddress,
-          spenderAddress: routerAddress,
+          spenderAddress: targetSpender,
           signer
         });
 
         if (currentAllowance < amountInRaw) {
           params.onStatusChange?.('APPROVING');
-          const tokenContract = new Contract(tokenIn.address, ERC20_ABI, signer);
-          const approveTx = await tokenContract.approve(routerAddress, amountInRaw);
+          const tokenContract = new Contract(quote.request.tokenIn.address, ERC20_ABI, signer);
+          const approveTx = await tokenContract.approve(targetSpender, amountInRaw);
           await approveTx.wait(1);
           params.onStatusChange?.('APPROVED');
         }
@@ -139,104 +104,22 @@ export class EVMExecutionAdapter {
 
       params.onStatusChange?.('SIGNING');
 
-      const routerContract = new Contract(routerAddress, SWAP_ROUTER_ABI, signer);
-
-      const actualTokenOut = tokenOut.isNative ? wrappedNative : tokenOut.address;
-
-      const feeTierBps = quote.bestRoute.hops[0]?.feeTierBps || 30;
-      const feeTier = feeTierBps <= 1 ? 100 : (feeTierBps <= 5 ? 500 : (feeTierBps <= 30 ? 3000 : 10000));
-
-      let tx: any;
-
-      if (quote.tradeType === 'EXACT_OUTPUT') {
-        const maxAmountInRaw = BigInt(quote.maximumInputRaw || quote.amountInRaw);
-        if (tokenIn.isNative) {
-          const exactOutputParams = {
-            tokenIn: wrappedNative,
-            tokenOut: actualTokenOut,
-            fee: feeTier,
-            recipient: userAddress,
-            deadline,
-            amountOut: BigInt(quote.amountOutRaw),
-            amountInMaximum: maxAmountInRaw,
-            sqrtPriceLimitX96: 0n
-          };
-          tx = await routerContract.exactOutputSingle(exactOutputParams, { value: maxAmountInRaw });
-        } else if (tokenOut.isNative) {
-          const exactOutputParams = {
-            tokenIn: tokenIn.address,
-            tokenOut: wrappedNative,
-            fee: feeTier,
-            recipient: '0x0000000000000000000000000000000000000000',
-            deadline,
-            amountOut: BigInt(quote.amountOutRaw),
-            amountInMaximum: maxAmountInRaw,
-            sqrtPriceLimitX96: 0n
-          };
-          const swapCall = routerContract.interface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
-          const unwrapCall = routerContract.interface.encodeFunctionData('unwrapWETH9', [BigInt(quote.amountOutRaw), userAddress]);
-          tx = await routerContract.multicall([swapCall, unwrapCall]);
-        } else {
-          const exactOutputParams = {
-            tokenIn: tokenIn.address,
-            tokenOut: tokenOut.address,
-            fee: feeTier,
-            recipient: userAddress,
-            deadline,
-            amountOut: BigInt(quote.amountOutRaw),
-            amountInMaximum: maxAmountInRaw,
-            sqrtPriceLimitX96: 0n
-          };
-          tx = await routerContract.exactOutputSingle(exactOutputParams);
-        }
-      } else {
-        if (tokenIn.isNative) {
-          const exactInputParams = {
-            tokenIn: wrappedNative,
-            tokenOut: actualTokenOut,
-            fee: feeTier,
-            recipient: userAddress,
-            deadline,
-            amountIn: amountInRaw,
-            amountOutMinimum: minAmountOutRaw,
-            sqrtPriceLimitX96: 0n
-          };
-          tx = await routerContract.exactInputSingle(exactInputParams, { value: amountInRaw });
-        } else if (tokenOut.isNative) {
-          const exactInputParams = {
-            tokenIn: tokenIn.address,
-            tokenOut: wrappedNative,
-            fee: feeTier,
-            recipient: '0x0000000000000000000000000000000000000000',
-            deadline,
-            amountIn: amountInRaw,
-            amountOutMinimum: minAmountOutRaw,
-            sqrtPriceLimitX96: 0n
-          };
-          const swapCall = routerContract.interface.encodeFunctionData('exactInputSingle', [exactInputParams]);
-          const unwrapCall = routerContract.interface.encodeFunctionData('unwrapWETH9', [minAmountOutRaw, userAddress]);
-          tx = await routerContract.multicall([swapCall, unwrapCall]);
-        } else {
-          const exactInputParams = {
-            tokenIn: tokenIn.address,
-            tokenOut: tokenOut.address,
-            fee: feeTier,
-            recipient: userAddress,
-            deadline,
-            amountIn: amountInRaw,
-            amountOutMinimum: minAmountOutRaw,
-            sqrtPriceLimitX96: 0n
-          };
-          tx = await routerContract.exactInputSingle(exactInputParams);
-        }
-      }
+      // Send the cross-chain execution transaction constructed by the verified bridge provider
+      const tx = await signer.sendTransaction({
+        to: ccQuote.executionTarget,
+        data: ccQuote.calldata && ccQuote.calldata !== '0x' ? ccQuote.calldata : undefined,
+        value: quote.request.tokenIn.isNative ? amountInRaw : 0n
+      });
 
       const txHash = tx.hash;
       params.onStatusChange?.('SUBMITTING', txHash);
       params.onStatusChange?.('BROADCASTED', txHash);
-
       params.onStatusChange?.('CONFIRMING', txHash);
+
       const receipt = await tx.wait(1);
+      if (!receipt || receipt.status === 0) {
+        throw new Error(`Cross-chain source transaction reverted on-chain: ${txHash}`);
+      }
 
       params.onStatusChange?.('COMPLETED', txHash);
 
@@ -247,9 +130,118 @@ export class EVMExecutionAdapter {
         gasUsed: receipt.gasUsed,
         effectiveGasPriceWei: receipt.gasPrice || 0n
       };
-    } catch (err: any) {
-      throw err;
     }
+
+    // Same-Chain DEX execution path
+    const routerAddress = EVMContractRegistry.getPrimaryRouter(chainIdNum);
+    const wrappedNative = EVM_WRAPPED_NATIVE_TOKENS[chainIdNum] || '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+
+    const tokenIn = quote.request.tokenIn;
+    const tokenOut = quote.request.tokenOut;
+    const amountInRaw = BigInt(quote.amountInRaw || '0');
+    const minAmountOutRaw = BigInt(quote.minimumReceivedRaw || '0');
+    const deadline = Math.floor((quote.deadline || (Date.now() + 1200000)) / 1000);
+
+    if (!tokenIn.isNative) {
+      const currentAllowance = await this.checkAllowance({
+        tokenAddress: tokenIn.address,
+        ownerAddress: userAddress,
+        spenderAddress: routerAddress,
+        signer
+      });
+
+      if (currentAllowance < amountInRaw) {
+        params.onStatusChange?.('APPROVING');
+        const tokenContract = new Contract(tokenIn.address, ERC20_ABI, signer);
+        const approveTx = await tokenContract.approve(routerAddress, amountInRaw);
+        await approveTx.wait(1);
+        params.onStatusChange?.('APPROVED');
+      }
+    }
+
+    params.onStatusChange?.('SIGNING');
+
+    const routerContract = new Contract(routerAddress, SWAP_ROUTER_ABI, signer);
+    const actualTokenOut = tokenOut.isNative ? wrappedNative : tokenOut.address;
+    const feeTierBps = quote.bestRoute.hops[0]?.feeTierBps || 30;
+    const feeTier = feeTierBps <= 1 ? 100 : (feeTierBps <= 5 ? 500 : (feeTierBps <= 30 ? 3000 : 10000));
+
+    let tx: any;
+
+    if (quote.tradeType === 'EXACT_OUTPUT') {
+      const maxAmountInRaw = BigInt(quote.maximumInputRaw || quote.amountInRaw);
+      if (tokenIn.isNative) {
+        const exactOutputParams = {
+          tokenIn: wrappedNative,
+          tokenOut: actualTokenOut,
+          fee: feeTier,
+          recipient: userAddress,
+          deadline,
+          amountOut: BigInt(quote.amountOutRaw),
+          amountInMaximum: maxAmountInRaw,
+          sqrtPriceLimitX96: 0n
+        };
+        tx = await routerContract.exactOutputSingle(exactOutputParams, { value: maxAmountInRaw });
+      } else {
+        const exactOutputParams = {
+          tokenIn: tokenIn.address,
+          tokenOut: actualTokenOut,
+          fee: feeTier,
+          recipient: userAddress,
+          deadline,
+          amountOut: BigInt(quote.amountOutRaw),
+          amountInMaximum: maxAmountInRaw,
+          sqrtPriceLimitX96: 0n
+        };
+        tx = await routerContract.exactOutputSingle(exactOutputParams);
+      }
+    } else {
+      if (tokenIn.isNative) {
+        const exactInputParams = {
+          tokenIn: wrappedNative,
+          tokenOut: actualTokenOut,
+          fee: feeTier,
+          recipient: userAddress,
+          deadline,
+          amountIn: amountInRaw,
+          amountOutMinimum: minAmountOutRaw,
+          sqrtPriceLimitX96: 0n
+        };
+        tx = await routerContract.exactInputSingle(exactInputParams, { value: amountInRaw });
+      } else {
+        const exactInputParams = {
+          tokenIn: tokenIn.address,
+          tokenOut: actualTokenOut,
+          fee: feeTier,
+          recipient: userAddress,
+          deadline,
+          amountIn: amountInRaw,
+          amountOutMinimum: minAmountOutRaw,
+          sqrtPriceLimitX96: 0n
+        };
+        tx = await routerContract.exactInputSingle(exactInputParams);
+      }
+    }
+
+    const txHash = tx.hash;
+    params.onStatusChange?.('SUBMITTING', txHash);
+    params.onStatusChange?.('BROADCASTED', txHash);
+    params.onStatusChange?.('CONFIRMING', txHash);
+
+    const receipt = await tx.wait(1);
+    if (!receipt || receipt.status === 0) {
+      throw new Error(`Transaction reverted on-chain: ${txHash}`);
+    }
+
+    params.onStatusChange?.('COMPLETED', txHash);
+
+    return {
+      isSuccess: true,
+      txHash,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed,
+      effectiveGasPriceWei: receipt.gasPrice || 0n
+    };
   }
 }
 

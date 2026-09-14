@@ -4,6 +4,7 @@ import { DEFAULT_TOKENS, UNSUPPORTED_TOKEN_METADATA } from './defaultTokens';
 export class TokenService {
   private tokens: Map<string, Token> = new Map();
   private chainTokenIndex: Map<string, Token[]> = new Map();
+  private allTokensList: Token[] = [];
 
   constructor(customTokens?: Token[]) {
     const list = [...DEFAULT_TOKENS, ...(customTokens || [])];
@@ -38,6 +39,7 @@ export class TokenService {
       chainList.push(normalizedToken);
     }
     this.chainTokenIndex.set(normalizedToken.chainId, chainList);
+    this.allTokensList = Array.from(this.tokens.values()).filter((t) => t.enabled !== false);
   }
 
   public getToken(chainId: string, address: string): Token | undefined {
@@ -56,12 +58,12 @@ export class TokenService {
   public searchTokens(query: string, chainId?: string): Token[] {
     const q = query.trim().toLowerCase();
     if (!q) {
-      return chainId ? this.getTokensForChain(chainId) : Array.from(this.tokens.values());
+      return chainId ? this.getTokensForChain(chainId) : this.allTokensList;
     }
 
     const searchPool = chainId
       ? this.getTokensForChain(chainId)
-      : Array.from(this.tokens.values()).filter((token) => token.enabled !== false);
+      : this.allTokensList;
     return searchPool.filter(
       (t) =>
         t.symbol.toLowerCase().includes(q) ||

@@ -5,7 +5,7 @@ export class CircuitBreakerMonitor {
     isEmergencyPaused: false,
     pausedChains: [],
     priceDeviationCapPercent: 15.0,
-    authorizedPauseSigner: '0x0000000000000000000000000000000000000000'
+    authorizedPauseSigner: ''
   };
 
   public getState(): CircuitBreakerState {

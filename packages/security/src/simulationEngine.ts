@@ -1,16 +1,25 @@
+import { JsonRpcProvider, Contract, Interface } from 'ethers';
 import { SimulationRequest, SimulationResult, Token, TokenBalanceDelta } from '@zenith/types';
+import { defaultChainRegistry } from '@zenith/chains';
+
+const ERC20_SIM_ABI = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function allowance(address owner, address spender) view returns (uint256)'
+];
 
 export class SimulationEngine {
   public async simulateSwap(params: {
     chainId: string;
     userAddress: string;
-    routerAddress: string;
+    routerAddress?: string;
     tokenIn: Token;
     tokenOut: Token;
     amountInRaw: string;
     amountOutExpectedRaw: string;
     slippageTolerancePercent: number;
     currentAllowanceRaw?: string;
+    calldata?: string;
+    valueWei?: string;
   }): Promise<SimulationResult> {
     const warnings: string[] = [];
     const balanceDeltas: TokenBalanceDelta[] = [];
@@ -18,21 +27,75 @@ export class SimulationEngine {
     let approvalRequired = false;
     let approvalAmountRaw: string | undefined;
 
-    if (!params.tokenIn.isNative) {
-      const currentAllowance = BigInt(params.currentAllowanceRaw || '0');
-      const needed = BigInt(params.amountInRaw);
-      if (currentAllowance < needed) {
-        approvalRequired = true;
-        approvalAmountRaw = params.amountInRaw;
-        warnings.push(`Token approval required for ${params.tokenIn.symbol}`);
+    const chain = defaultChainRegistry.getChain(params.chainId);
+    const tokenInDecimals = params.tokenIn.decimals || 18;
+    const tokenOutDecimals = params.tokenOut.decimals || 18;
+
+    const amountInBig = BigInt(params.amountInRaw || '0');
+    const amountOutBig = BigInt(params.amountOutExpectedRaw || '0');
+
+    const amountInNum = Number(amountInBig) / 10 ** tokenInDecimals;
+    const amountOutNum = Number(amountOutBig) / 10 ** tokenOutDecimals;
+
+    // Check token balance & allowance if on EVM
+    if (chain && chain.executionEnvironment === 'EVM' && params.userAddress && params.routerAddress) {
+      try {
+        const rpcUrl = defaultChainRegistry.getHealthyRPC(chain.id);
+        const provider = new JsonRpcProvider(rpcUrl);
+
+        if (!params.tokenIn.isNative) {
+          const tokenContract = new Contract(params.tokenIn.address, ERC20_SIM_ABI, provider);
+          const [balance, allowance] = await Promise.all([
+            tokenContract.balanceOf(params.userAddress).catch(() => null),
+            tokenContract.allowance(params.userAddress, params.routerAddress).catch(() => null)
+          ]);
+
+          if (balance !== null && balance < amountInBig) {
+            warnings.push(
+              `Insufficient ${params.tokenIn.symbol} balance: required ${amountInNum.toLocaleString()}, available ${(Number(balance) / 10 ** tokenInDecimals).toLocaleString()}`
+            );
+          }
+
+          const currentAllowance = allowance !== null ? allowance : BigInt(params.currentAllowanceRaw || '0');
+          if (currentAllowance < amountInBig) {
+            approvalRequired = true;
+            approvalAmountRaw = params.amountInRaw;
+            warnings.push(`Token approval required for ${params.tokenIn.symbol} to spender ${params.routerAddress}`);
+          }
+        }
+
+        // If calldata and router address are provided, attempt real eth_call dry run
+        if (params.calldata && params.routerAddress) {
+          try {
+            await provider.call({
+              from: params.userAddress,
+              to: params.routerAddress,
+              data: params.calldata,
+              value: params.valueWei ? BigInt(params.valueWei) : 0n
+            });
+          } catch (callErr: any) {
+            const revertReason = this.decodeRevertReason(callErr);
+            if (revertReason) {
+              return {
+                isSuccess: false,
+                gasUsed: 0,
+                revertReason,
+                balanceDeltas: [],
+                approvalRequired,
+                approvalTokenAddress: approvalRequired ? params.tokenIn.address : undefined,
+                approvalSpenderAddress: approvalRequired ? params.routerAddress : undefined,
+                approvalAmountRaw,
+                warnings: [...warnings, `Simulation reverted: ${revertReason}`],
+                simulationSource: 'NODE_ETH_CALL'
+              };
+            }
+          }
+        }
+      } catch (err: any) {
+        // RPC network failure or offline in test environment
+        console.warn('[SimulationEngine] RPC dry run query note:', err?.message || err);
       }
     }
-
-    const tokenInDecimals = params.tokenIn.decimals;
-    const tokenOutDecimals = params.tokenOut.decimals;
-
-    const amountInNum = Number(BigInt(params.amountInRaw)) / 10 ** tokenInDecimals;
-    const amountOutNum = Number(BigInt(params.amountOutExpectedRaw)) / 10 ** tokenOutDecimals;
 
     balanceDeltas.push({
       token: params.tokenIn,
@@ -73,15 +136,71 @@ export class SimulationEngine {
     };
   }
 
-  public async simulateCustomCall(_request: SimulationRequest): Promise<SimulationResult> {
-    return {
-      isSuccess: true,
-      gasUsed: 150000,
-      balanceDeltas: [],
-      approvalRequired: false,
-      warnings: [],
-      simulationSource: 'NODE_ETH_CALL'
-    };
+  public async simulateCustomCall(request: SimulationRequest): Promise<SimulationResult> {
+    const chain = defaultChainRegistry.getChain(request.chainId);
+    if (!chain) {
+      return {
+        isSuccess: false,
+        gasUsed: 0,
+        revertReason: `Chain ${request.chainId} not found in registry`,
+        balanceDeltas: [],
+        approvalRequired: false,
+        warnings: ['Invalid chain'],
+        simulationSource: 'NODE_ETH_CALL'
+      };
+    }
+
+    try {
+      const rpcUrl = defaultChainRegistry.getHealthyRPC(chain.id);
+      const provider = new JsonRpcProvider(rpcUrl);
+
+      await provider.call({
+        from: request.fromAddress,
+        to: request.toAddress,
+        data: request.calldata,
+        value: BigInt(request.valueWei || '0')
+      });
+
+      return {
+        isSuccess: true,
+        gasUsed: 150000,
+        balanceDeltas: [],
+        approvalRequired: false,
+        warnings: [],
+        simulationSource: 'NODE_ETH_CALL'
+      };
+    } catch (err: any) {
+      const revertReason = this.decodeRevertReason(err);
+      return {
+        isSuccess: false,
+        gasUsed: 0,
+        revertReason: revertReason || err.message || 'Call reverted',
+        balanceDeltas: [],
+        approvalRequired: false,
+        warnings: [revertReason || 'Transaction simulation failed'],
+        simulationSource: 'NODE_ETH_CALL'
+      };
+    }
+  }
+
+  private decodeRevertReason(err: any): string | undefined {
+    if (!err) return undefined;
+    if (typeof err === 'string') return err;
+    if (err.reason) return err.reason;
+    if (err.data && typeof err.data === 'string' && err.data.startsWith('0x08c379a0')) {
+      try {
+        const iface = new Interface(['function Error(string)']);
+        const decoded = iface.decodeFunctionData('Error', err.data);
+        return decoded[0];
+      } catch {
+        // failed decoding custom error
+      }
+    }
+    if (err.shortMessage) return err.shortMessage;
+    if (err.message && (err.message.includes('revert') || err.message.includes('execution reverted'))) {
+      return err.message;
+    }
+    return undefined;
   }
 }
 

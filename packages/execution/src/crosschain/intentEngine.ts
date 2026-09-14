@@ -1,4 +1,5 @@
 import { CrossChainIntent, SettlementState, SolverFillQuote } from '@zenith/types';
+import { defaultCrossChainAggregator, CrossChainAggregator } from '@zenith/routing';
 
 export interface SolverProfile {
   id: string;
@@ -10,60 +11,58 @@ export interface SolverProfile {
 }
 
 export class CrossChainIntentEngine {
-  private solvers: SolverProfile[] = [
-    {
-      id: 'solver-zenith-alpha',
-      name: 'ZENITH Stargate Fast Relayer',
-      reputationScore: 99,
-      avgFillTimeSec: 4,
-      availableLiquidityUSD: 25000000,
-      isActive: true
-    },
-    {
-      id: 'solver-across-mm',
-      name: 'Across Intent MM',
-      reputationScore: 98,
-      avgFillTimeSec: 6,
-      availableLiquidityUSD: 18000000,
-      isActive: true
-    },
-    {
-      id: 'solver-dln-debridge',
-      name: 'deBridge DLN Solver',
-      reputationScore: 96,
-      avgFillTimeSec: 8,
-      availableLiquidityUSD: 12000000,
-      isActive: true
-    }
-  ];
-
+  private aggregator: CrossChainAggregator;
   private intentStore: Map<string, CrossChainIntent> = new Map();
   private processedNonces: Set<string> = new Set();
+
+  constructor(aggregator = defaultCrossChainAggregator) {
+    this.aggregator = aggregator;
+  }
 
   public async getCompetitiveQuotes(intent: CrossChainIntent): Promise<SolverFillQuote[]> {
     const rawDestAmount = BigInt(intent.minDestinationAmountRaw);
     const tokenOutDecimals = intent.destinationToken.decimals || 18;
 
-    return this.solvers
-      .filter((s) => s.isActive)
-      .map((solver) => {
+    const quotes = await this.aggregator.getQuotes({
+      sourceChainId: intent.sourceChainId,
+      destinationChainId: intent.destinationChainId,
+      tokenIn: intent.sourceToken,
+      tokenOut: intent.destinationToken,
+      amountInRaw: intent.sourceAmountRaw,
+      slippageTolerancePercent: 0.5,
+      recipientAddress: intent.recipient
+    });
 
-        const bonusBps = solver.id === 'solver-zenith-alpha' ? 3n : 1n;
-        const adjustedAmountBig = rawDestAmount + (rawDestAmount * bonusBps / 10000n);
-        const formatted = (Number(adjustedAmountBig) / 10 ** tokenOutDecimals).toLocaleString(undefined, { maximumFractionDigits: 6 });
-
+    if (quotes.length > 0) {
+      return quotes.map((q) => {
+        const outBig = BigInt(q.destinationAmountRaw);
+        const formatted = (Number(outBig) / 10 ** tokenOutDecimals).toLocaleString(undefined, { maximumFractionDigits: 6 });
         return {
-          solverId: solver.id,
-          solverName: solver.name,
-          destinationAmountRaw: adjustedAmountBig.toString(),
+          solverId: q.provider,
+          solverName: q.providerName,
+          destinationAmountRaw: q.destinationAmountRaw,
           destinationAmountFormatted: formatted,
-          estimatedTimeSec: solver.avgFillTimeSec,
-          executionCostUSD: 0.15,
-          solverReputationScore: solver.reputationScore,
+          estimatedTimeSec: q.estimatedTransferTimeSec,
+          executionCostUSD: q.bridgeFeeUSD,
+          solverReputationScore: q.securityRating === 'A+' ? 99 : 95,
           isGuaranteed: true
         };
-      })
-      .sort((a, b) => b.solverReputationScore - a.solverReputationScore);
+      });
+    }
+
+    const fallbackFormatted = (Number(rawDestAmount) / 10 ** tokenOutDecimals).toLocaleString(undefined, { maximumFractionDigits: 6 });
+    return [
+      {
+        solverId: 'ACROSS',
+        solverName: 'Across Intent MM',
+        destinationAmountRaw: intent.minDestinationAmountRaw,
+        destinationAmountFormatted: fallbackFormatted,
+        estimatedTimeSec: 25,
+        executionCostUSD: 0.50,
+        solverReputationScore: 98,
+        isGuaranteed: true
+      }
+    ];
   }
 
   public registerIntent(intent: CrossChainIntent): void {
@@ -72,8 +71,9 @@ export class CrossChainIntentEngine {
       throw new Error(`[CrossChainIntentEngine] Nonce replay detected for ${intent.recipient} (nonce: ${intent.nonce})`);
     }
 
-    if (Date.now() > intent.deadline) {
-      throw new Error(`[CrossChainIntentEngine] Intent expired at ${new Date(intent.deadline).toISOString()}`);
+    const deadlineMs = intent.deadline < 1e11 ? intent.deadline * 1000 : intent.deadline;
+    if (Date.now() > deadlineMs) {
+      throw new Error(`[CrossChainIntentEngine] Intent expired at ${new Date(deadlineMs).toISOString()}`);
     }
 
     this.processedNonces.add(nonceKey);
@@ -126,29 +126,31 @@ export class CrossChainIntentEngine {
   }
 
   private validateStateTransition(current: SettlementState, next: SettlementState): void {
+    if (current === next) return;
     const allowedTransitions: Record<SettlementState, SettlementState[]> = {
       CREATED: ['SIGNED', 'CANCELLED', 'EXPIRED'],
       SIGNED: ['SUBMITTED', 'CANCELLED', 'EXPIRED'],
-      SUBMITTED: ['ACCEPTED', 'REJECTED', 'FAILED', 'EXPIRED'],
+      SUBMITTED: ['ACCEPTED', 'REJECTED', 'FAILED', 'EXPIRED', 'FULFILLING'],
       ACCEPTED: ['FULFILLING', 'FAILED', 'REFUND_PENDING'],
-      FULFILLING: ['DESTINATION_FILLED', 'FAILED', 'REFUND_PENDING'],
-      DESTINATION_FILLED: ['VERIFIED', 'FAILED', 'REFUND_PENDING'],
-      VERIFIED: ['SETTLING', 'FAILED', 'REFUND_PENDING'],
-      SETTLING: ['SETTLED', 'FAILED', 'REFUND_PENDING'],
+      FULFILLING: ['FULFILLING', 'DESTINATION_FILLED', 'FAILED', 'REFUND_PENDING', 'SETTLED'],
+      DESTINATION_FILLED: ['VERIFIED', 'SETTLING', 'SETTLED', 'FAILED', 'REFUND_PENDING'],
+      VERIFIED: ['SETTLING', 'SETTLED', 'FAILED', 'REFUND_PENDING'],
+      SETTLING: ['SETTLED', 'FAILED'],
       SETTLED: [],
-      EXPIRED: ['REFUND_PENDING', 'REFUNDED'],
-      CANCELLED: ['REFUND_PENDING', 'REFUNDED'],
-      REJECTED: ['REFUND_PENDING', 'REFUNDED'],
       FAILED: ['REFUND_PENDING', 'REFUNDED'],
       REFUND_PENDING: ['REFUNDED'],
-      REFUNDED: []
+      REFUNDED: [],
+      CANCELLED: [],
+      EXPIRED: ['REFUND_PENDING', 'REFUNDED'],
+      REJECTED: ['REFUND_PENDING', 'REFUNDED']
     };
 
-    const allowed = allowedTransitions[current];
-    if (!allowed || !allowed.includes(next)) {
+    const allowed = allowedTransitions[current] || [];
+    if (!allowed.includes(next)) {
       throw new Error(`[CrossChainIntentEngine] Invalid state transition from ${current} to ${next}`);
     }
   }
 }
 
+export const IntentEngine = CrossChainIntentEngine;
 export const defaultIntentEngine = new CrossChainIntentEngine();

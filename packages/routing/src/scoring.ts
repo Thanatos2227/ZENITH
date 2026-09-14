@@ -175,3 +175,13 @@ export class ScoringService {
 }
 
 export const defaultScoringService = new ScoringService();
+
+export function calculateEffectiveExecutionScore(params: {
+  priceImpactPercent: number;
+  gasCostUSD: number;
+  tradeValueUSD: number;
+  slippagePercent: number;
+  hasBridgeStep: boolean;
+}): number {
+  return defaultScoringService.calculateEffectiveExecutionScore(params);
+}

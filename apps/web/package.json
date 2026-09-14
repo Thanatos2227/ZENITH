@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@zenith/chains": "*",
+    "@zenith/contracts": "*",
     "@zenith/execution": "*",
     "@zenith/routing": "*",
     "@zenith/security": "*",

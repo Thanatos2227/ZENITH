@@ -4,7 +4,7 @@ import { ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 const TOKEN_CONFIG: Token[] = [
 
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'bitcoin',
     name: 'Bitcoin',
     symbol: 'BTC',
@@ -80,7 +80,7 @@ const TOKEN_CONFIG: Token[] = [
   },
 
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'tron',
     name: 'Tron',
     symbol: 'TRX',
@@ -2116,7 +2116,7 @@ const TOKEN_CONFIG: Token[] = [
   },
 
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'ton',
     name: 'Toncoin',
     symbol: 'TON',
@@ -2142,7 +2142,7 @@ const TOKEN_CONFIG: Token[] = [
   },
 
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'hedera',
     name: 'Hedera',
     symbol: 'HBAR',
@@ -2240,7 +2240,7 @@ const TOKEN_CONFIG: Token[] = [
   },
 
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'dogecoin',
     name: 'Dogecoin',
     symbol: 'DOGE',
@@ -2254,7 +2254,7 @@ const TOKEN_CONFIG: Token[] = [
   },
 
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'arbitrumnova',
     name: 'Ether',
     symbol: 'ETH',
@@ -2267,7 +2267,7 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
   },
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'polygonzkevm',
     name: 'Ether',
     symbol: 'ETH',
@@ -2280,7 +2280,7 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
   },
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'mode',
     name: 'Ether',
     symbol: 'ETH',
@@ -2293,7 +2293,7 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
   },
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'taiko',
     name: 'Ether',
     symbol: 'ETH',
@@ -2306,7 +2306,7 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
   },
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'metis',
     name: 'Metis',
     symbol: 'METIS',
@@ -2319,7 +2319,7 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/metis/info/logo.png'
   },
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'moonbeam',
     name: 'Glimmer',
     symbol: 'GLMR',
@@ -2332,7 +2332,7 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: '/tokens/glmr.png'
   },
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'moonriver',
     name: 'Moonriver',
     symbol: 'MOVR',
@@ -2345,7 +2345,7 @@ const TOKEN_CONFIG: Token[] = [
     logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/moonriver/info/logo.png'
   },
   {
-    address: '0x0000000000000000000000000000000000000000',
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     chainId: 'rootstock',
     name: 'Smart Bitcoin',
     symbol: 'RBTC',
@@ -2595,7 +2595,7 @@ export const MARKET_EXCLUDED_TOKEN_KEYS = new Set([
   'gnosis:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
   'gnosis:0x9c58bacc331c9aa871afd802db6379a98e80cedb',
   'berachain:0x0e4aaf1351de4c0264c5c7056ef3777b41bd8e03',
-  'rootstock:0x0000000000000000000000000000000000000000'
+  'rootstock:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
 ]);
 
 export const MARKET_TOKENS: Token[] = DEFAULT_TOKENS.filter(

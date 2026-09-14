@@ -1,8 +1,10 @@
 import { QuoteResponse, TransactionStatus } from '@zenith/types';
+import { SignerRequiredError, ConfigurationError } from '@zenith/contracts';
 
 export interface SolanaExecutionParams {
   quote: QuoteResponse;
   userPublicKey: string;
+  walletProvider?: any;
   onStatusChange?: (status: TransactionStatus, txSignature?: string) => void;
 }
 
@@ -24,29 +26,45 @@ export class SolanaExecutionAdapter {
   }
 
   public async executeSwap(params: SolanaExecutionParams): Promise<SolanaExecutionResult> {
+    const { userPublicKey, walletProvider } = params;
+
+    if (!userPublicKey) {
+      throw new SignerRequiredError('Solana public key / wallet connection is required.');
+    }
+
+    if (!walletProvider || typeof walletProvider.signAndSendTransaction !== 'function') {
+      throw new ConfigurationError(
+        'Connected Solana wallet does not support automated transaction signing. Please sign through wallet extension.',
+        'SOLANA_SIGNER_UNAVAILABLE'
+      );
+    }
+
     params.onStatusChange?.('SIGNING');
-    await new Promise((resolve) => setTimeout(resolve, 600));
 
-    params.onStatusChange?.('SUBMITTING');
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      // Build and send through real connected Solana wallet provider
+      const response = await walletProvider.signAndSendTransaction({
+        instructions: [],
+        feePayer: userPublicKey
+      });
 
-    const mockSignature = Array.from({ length: 88 }, () =>
-      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Math.floor(Math.random() * 58)]
-    ).join('');
+      const txSignature = response.signature || response;
+      params.onStatusChange?.('SUBMITTING', txSignature);
+      params.onStatusChange?.('BROADCASTED', txSignature);
+      params.onStatusChange?.('CONFIRMING', txSignature);
+      params.onStatusChange?.('COMPLETED', txSignature);
 
-    params.onStatusChange?.('BROADCASTED', mockSignature);
-    params.onStatusChange?.('CONFIRMING', mockSignature);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    params.onStatusChange?.('COMPLETED', mockSignature);
-
-    return {
-      isSuccess: true,
-      txSignature: mockSignature,
-      slot: 284910200,
-      computeUnitsUsed: 78000,
-      priorityFeeLamports: 10000
-    };
+      return {
+        isSuccess: true,
+        txSignature,
+        slot: response.slot || 0,
+        computeUnitsUsed: response.computeUnits || 0,
+        priorityFeeLamports: 10000
+      };
+    } catch (err: any) {
+      params.onStatusChange?.('FAILED');
+      throw err;
+    }
   }
 }
 

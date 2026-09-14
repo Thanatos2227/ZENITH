@@ -2367,7 +2367,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'arbitrumnova',
         name: 'Ether',
         symbol: 'ETH',
@@ -2406,7 +2406,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/4713/small/polygon.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'polygonzkevm',
         name: 'Ether',
         symbol: 'ETH',
@@ -2445,7 +2445,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: '/networks/mode.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'mode',
         name: 'Ether',
         symbol: 'ETH',
@@ -2484,7 +2484,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: '/networks/taiko.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'taiko',
         name: 'Ether',
         symbol: 'ETH',
@@ -2523,7 +2523,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/metis/info/logo.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'metis',
         name: 'Metis',
         symbol: 'METIS',
@@ -2562,7 +2562,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/22459/small/glmr.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'moonbeam',
         name: 'Glimmer',
         symbol: 'GLMR',
@@ -2601,7 +2601,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/moonriver/info/logo.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'moonriver',
         name: 'Moonriver',
         symbol: 'MOVR',
@@ -2640,7 +2640,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/rootstock/info/logo.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'rootstock',
         name: 'Smart Bitcoin',
         symbol: 'RBTC',
@@ -2679,7 +2679,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/1094/small/tron-logo.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'tron',
         name: 'Tron',
         symbol: 'TRX',
@@ -2763,7 +2763,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'ton',
         name: 'Toncoin',
         symbol: 'TON',
@@ -2811,7 +2811,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/3688/small/hbar.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'hedera',
         name: 'Hedera',
         symbol: 'HBAR',
@@ -3084,7 +3084,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'dogecoin',
         name: 'Dogecoin',
         symbol: 'DOGE',
@@ -3126,7 +3126,7 @@ export const ZENITH_SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     iconURI: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
     defaultTokens: [
       {
-        address: '0x0000000000000000000000000000000000000000',
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         chainId: 'bitcoin',
         name: 'Bitcoin',
         symbol: 'BTC',

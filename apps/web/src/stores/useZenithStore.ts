@@ -16,7 +16,7 @@ import {
 import { defaultChainRegistry, ZENITH_SUPPORTED_CHAINS } from '@zenith/chains';
 import { DEFAULT_TOKENS, defaultTokenService, defaultMarketDataService, LiveMarketData, MarketStatus } from '@zenith/tokens';
 import { defaultZenithRouter, validateAndSanitizeAmount } from '@zenith/routing';
-import { defaultExecutionCoordinator, ExecutionStateMachine } from '@zenith/execution';
+import { defaultExecutionCoordinator, ExecutionStateMachine, defaultCrossChainTracker, ActiveCrossChainOrder } from '@zenith/execution';
 import { defaultThemeManager } from '@zenith/ui';
 import {
   connectToWalletProvider,
@@ -32,6 +32,9 @@ import {
 } from '../utils/walletDetector';
 
 const THEME_STORAGE_KEY = 'zenith-theme';
+const CROSS_CHAIN_ORDERS_KEY = 'zenith_active_cross_chain_orders';
+
+let notifIdCounter = 1;
 
 export const getStoredTheme = (): 'dark' | 'light' => {
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -1147,6 +1150,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       }
 
       try {
+        const isCrossChain = quote.request.sourceChainId !== quote.request.destinationChainId;
         const receipt = await defaultExecutionCoordinator.executeTrade({
           quote,
           userAddress: walletAddress,
@@ -1154,6 +1158,28 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           signer,
           provider
         });
+
+        // If cross-chain, persist order to localStorage
+        if (isCrossChain && quote.intent) {
+          try {
+            const rawOrders = localStorage.getItem(CROSS_CHAIN_ORDERS_KEY);
+            const orders = rawOrders ? JSON.parse(rawOrders) : [];
+            orders.unshift({
+              orderId: quote.intent.orderId,
+              sourceChainId: quote.request.sourceChainId,
+              destinationChainId: quote.request.destinationChainId,
+              sourceTxHash: receipt.txHash,
+              destTxHash: receipt.bridgeDetails?.destTxHash,
+              provider: quote.bestRoute.crossChainQuote?.provider || 'ACROSS',
+              recipient: walletAddress,
+              quote: quote.bestRoute.crossChainQuote,
+              timestamp: Date.now()
+            });
+            localStorage.setItem(CROSS_CHAIN_ORDERS_KEY, JSON.stringify(orders.slice(0, 50)));
+          } catch {
+            // localStorage failure ignored
+          }
+        }
 
         set((state) => ({
           isConfirmSheetOpen: false,
@@ -1165,7 +1191,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         await get().refreshBalance();
 
         get().addNotification({
-          title: 'Trade Executed Successfully',
+          title: isCrossChain ? 'Cross-Chain Trade Initiated' : 'Trade Executed Successfully',
           message: `Swapped ${receipt.amountInFormatted} ${receipt.tokenIn.symbol} for ${receipt.amountOutFormatted} ${receipt.tokenOut.symbol}`,
           type: 'SUCCESS',
           txHash: receipt.txHash,
@@ -1201,7 +1227,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
 
     addNotification: (notif) => {
       const item: ZenithNotification = {
-        id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        id: `notif_${Date.now()}_${notifIdCounter++}`,
         timestamp: Date.now(),
         isRead: false,
         ...notif

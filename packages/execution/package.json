@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@zenith/chains": "*",
+    "@zenith/contracts": "*",
     "@zenith/routing": "*",
     "@zenith/security": "*",
     "@zenith/tokens": "*",

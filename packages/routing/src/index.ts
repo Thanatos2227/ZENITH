@@ -2,6 +2,10 @@ export * from './math/ammMath';
 export * from './scoring';
 export * from './dexAggregator';
 export * from './bridgeAggregator';
+export * from './crosschain/types';
+export * from './crosschain/providers/acrossProvider';
+export * from './crosschain/providers/stargateProvider';
+export * from './crosschain/providers/debridgeProvider';
+export * from './crosschain/crossChainAggregator';
 export * from './router';
 export * from './amountValidation';
-

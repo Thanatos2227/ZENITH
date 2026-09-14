@@ -1075,11 +1075,13 @@ export class MarketDataService {
       const timeLabel = this.formatTimeLabel(d, interval);
       const volatility = lastClose * 0.003;
       const open = lastClose;
-      const delta = (Math.random() - 0.5) * volatility;
+      const noise1 = (Math.sin(ts * 0.0001) + 1) / 2;
+      const noise2 = (Math.cos(ts * 0.0001) + 1) / 2;
+      const delta = (noise1 - 0.5) * volatility;
       const close = Math.max(open + delta, 0.000001);
-      const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-      const low = Math.min(open, close) - Math.random() * volatility * 0.5;
-      const volume = Math.floor(Math.random() * 800 + 120);
+      const high = Math.max(open, close) + noise2 * volatility * 0.5;
+      const low = Math.min(open, close) - noise1 * volatility * 0.5;
+      const volume = Math.floor(noise2 * 800 + 120);
 
       candles.push({ timestamp: ts, timeLabel, open, high, low, close, volume });
       lastClose = close;
@@ -1472,9 +1474,10 @@ export class MarketDataService {
       const ts = now - (29 - i) * 24 * 60 * 60 * 1000;
       const baseVol = 180000000 + Math.sin(i / 3) * 50000000;
       const baseTvl = totalTVL * 0.9 + (i / 30) * (totalTVL * 0.1);
+      const noise = (Math.sin(i * 1337) + Math.cos(i * 919)) / 2;
       return {
         timestamp: ts,
-        volumeUSD: Math.round(baseVol + (Math.random() - 0.5) * 20000000),
+        volumeUSD: Math.round(baseVol + noise * 20000000),
         tvlUSD: Math.round(baseTvl)
       };
     });

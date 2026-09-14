@@ -25,7 +25,7 @@ export const TokenLogo: React.FC<TokenLogoProps> = ({
 
   // Helper to generate secondary fallback URL from TrustWallet raw GitHub repo if address exists
   const getTrustWalletFallback = (): string | null => {
-    if (!address || !chainId || address === '0x0000000000000000000000000000000000000000' || isNative) {
+    if (!address || !chainId || isNative || address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
       return null;
     }
     const cleanAddress = address.trim();

@@ -184,12 +184,19 @@ export type DEXProtocol =
 
 export type BridgeProtocol =
   | 'STARGATE'
+  | 'STARGATE_V2'
   | 'ACROSS'
+  | 'ACROSS_V3'
   | 'LIFI'
   | 'SOCKET'
   | 'CHAINLINK_CCIP'
+  | 'DEBRIDGE'
   | 'DEBRIDGE_DLN'
   | 'WORMHOLE';
+
+export type Address = string;
+export type TxHash = string;
+export type ChainId = string;
 
 export interface RouteHop {
   dexProtocol: DEXProtocol;
@@ -213,18 +220,88 @@ export interface BridgeStep {
   relayerFee: string;
 }
 
+export interface CrossChainQuote {
+  provider: BridgeProtocol;
+  providerName: string;
+  bridgeName?: string;
+  sourceChainId: string;
+  destinationChainId: string;
+  sourceToken: Token;
+  destinationToken: Token;
+  sourceAmountRaw: string;
+  destinationAmountRaw: string;
+  minDestinationAmountRaw: string;
+  bridgeFeeUSD: number;
+  relayerFee: string;
+  gasEstimateUSD: number;
+  recipient: string;
+  expiration: number;
+  routeIdentifier: string;
+  executionTarget: string;
+  calldata: string;
+  value: string;
+  approvalTarget: string;
+  quoteTimestamp: number;
+  estimatedTransferTimeSec: number;
+  estimatedDurationSeconds?: number;
+  securityRating: 'A+' | 'A' | 'B' | 'EXPERIMENTAL';
+}
+
+export interface CrossChainExecution {
+  to: string;
+  data: string;
+  value: string;
+  chainId: number;
+  approvalTarget?: string;
+  requiredAllowanceRaw?: string;
+}
+
+export interface CrossChainStatus {
+  state: SettlementState;
+  sourceTxHash: string;
+  destinationTxHash?: string;
+  isComplete: boolean;
+  isFailed: boolean;
+  errorMessage?: string;
+  timestamp: number;
+}
+
+export interface CrossChainProvider {
+  readonly id: BridgeProtocol;
+  readonly name: string;
+  isAvailable(sourceChainId: string, destChainId: string, tokenIn: Token, tokenOut: Token): boolean;
+  getQuote(request: QuoteRequest): Promise<CrossChainQuote | null>;
+  buildExecution(quote: CrossChainQuote, userAddress: string, recipientAddress?: string): Promise<CrossChainExecution>;
+  getStatus(sourceTxHash: string, quote: CrossChainQuote): Promise<CrossChainStatus>;
+  getDestinationTransaction(sourceTxHash: string, quote: CrossChainQuote): Promise<string | null>;
+}
+
 export interface SwapRoute {
   id: string;
-  routeType: 'DIRECT' | 'MULTI_HOP' | 'SPLIT_ROUTE' | 'CROSS_CHAIN';
+  routeType: 'DIRECT' | 'MULTI_HOP' | 'SPLIT_ROUTE' | 'CROSS_CHAIN' | 'INTENT_SOLVER' | 'ZENITH_V4_CONCENTRATED' | 'ZENITH_DUTCH_INTENT';
   hops: RouteHop[];
   bridgeStep?: BridgeStep;
+  crossChainQuote?: CrossChainQuote;
+  execution?: CrossChainExecution;
   gasCostUSD: number;
   estimatedGasUnits: bigint | number;
+  dexKey?: string;
+  dexName?: string;
+  path?: Token[];
+  pools?: any[];
+  amountInRaw?: string;
+  amountInFormatted?: string;
+  amountOutRaw?: string;
+  amountOutFormatted?: string;
+  priceImpact?: PriceImpact;
+  effectiveExecutionScore?: number;
 }
 
 export interface PriceImpact {
   percentage: number;
-  level: 'NEGLIGIBLE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  level?: 'NEGLIGIBLE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  severity?: 'NEGLIGIBLE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priceImpactUSD?: number;
   warningMessage?: string;
 }
 
@@ -233,7 +310,7 @@ export interface ProtocolFee {
   feeAmountRaw: string;
   feeAmountFormatted: string;
   feeUSD: number;
-  treasuryRecipient: string;
+  treasuryRecipient?: string;
 }
 
 export interface SwapFee {
@@ -315,6 +392,8 @@ export interface SolverFillQuote {
 export interface QuoteRequest {
   sourceChainId: string;
   destinationChainId: string;
+  srcChainId?: string;
+  destChainId?: string;
   tokenIn: Token;
   tokenOut: Token;
   amountInRaw: string;
@@ -323,6 +402,7 @@ export interface QuoteRequest {
   slippageTolerancePercent: number;
   userWalletAddress?: string;
   recipientAddress?: string;
+  recipient?: string;
   mevProtectionEnabled?: boolean;
   gasPreset?: GasPreset;
   deadlineSeconds?: number;
@@ -428,6 +508,7 @@ export interface ReceiptView {
   txHash: string;
   sourceChain: ChainConfig;
   destinationChain: ChainConfig;
+  destChain?: ChainConfig;
   tokenIn: Token;
   tokenOut: Token;
   amountInFormatted: string;
@@ -448,6 +529,9 @@ export interface ReceiptView {
     sourceTxHash: string;
     destTxHash?: string;
     elapsedSec: number;
+    sourceExplorerUrl?: string;
+    destExplorerUrl?: string;
+    destinationVerified?: boolean;
   };
 }
 
@@ -504,11 +588,14 @@ export interface ZenithNotification {
   message: string;
   type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'BRIDGE_UPDATE';
   timestamp: number;
-  isRead: boolean;
+  isRead?: boolean;
   txHash?: string;
   chainId?: string;
   actionUrl?: string;
 }
+
+export type ExecutionStatus = TransactionStatus;
+export type SwapQuote = QuoteResponse;
 
 export interface ZenithPool {
   id: string;

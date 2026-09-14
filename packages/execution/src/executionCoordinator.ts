@@ -4,35 +4,70 @@ import { defaultEVMAdapter, EVMExecutionAdapter } from './adapters/evmAdapter';
 import { defaultSolanaAdapter, SolanaExecutionAdapter } from './adapters/solanaAdapter';
 import { ExecutionStateMachine } from './stateMachine';
 import { defaultIntentEngine, CrossChainIntentEngine } from './crosschain/intentEngine';
+import { defaultCrossChainTracker, CrossChainTracker, ActiveCrossChainOrder } from './crosschain/crossChainTracker';
+import { defaultTokenRiskEngine } from '@zenith/security';
+import {
+  RecipientMismatchError,
+  SecurityPolicyViolationError,
+  ConfigurationError
+} from '@zenith/contracts';
 
 export class ExecutionCoordinator {
   private evmAdapter: EVMExecutionAdapter;
   private solanaAdapter: SolanaExecutionAdapter;
   private intentEngine: CrossChainIntentEngine;
+  private tracker: CrossChainTracker;
 
   constructor(
     evmAdapter = defaultEVMAdapter,
     solanaAdapter = defaultSolanaAdapter,
-    intentEngine = defaultIntentEngine
+    intentEngine = defaultIntentEngine,
+    tracker = defaultCrossChainTracker
   ) {
     this.evmAdapter = evmAdapter;
     this.solanaAdapter = solanaAdapter;
     this.intentEngine = intentEngine;
+    this.tracker = tracker;
   }
 
   public async executeTrade(params: {
     quote: QuoteResponse;
     userAddress: string;
-    stateMachine: ExecutionStateMachine;
+    stateMachine?: ExecutionStateMachine;
     signer?: any;
     provider?: any;
+    skipDestinationWait?: boolean;
   }): Promise<ReceiptView> {
+    const stateMachine = params.stateMachine || new ExecutionStateMachine();
     const isCrossChain = params.quote.request.sourceChainId !== params.quote.request.destinationChainId;
     const sourceChain = defaultChainRegistry.getChain(params.quote.request.sourceChainId);
     const destChain = defaultChainRegistry.getChain(params.quote.request.destinationChainId);
 
     if (!sourceChain || !destChain) {
-      throw new Error('[ExecutionCoordinator] Source or destination chain config not found in registry');
+      throw new ConfigurationError('[ExecutionCoordinator] Source or destination chain config not found in registry');
+    }
+
+    // 1. Invariant: Recipient Security Enforcement
+    const expectedRecipient = params.quote.request.recipientAddress || params.quote.request.userWalletAddress || params.userAddress;
+    if (params.userAddress.toLowerCase() !== expectedRecipient.toLowerCase()) {
+      throw new RecipientMismatchError(params.userAddress, expectedRecipient);
+    }
+
+    // 2. Token Security Policy Check (Fail-Closed)
+    const riskIn = defaultTokenRiskEngine.evaluateToken(params.quote.request.tokenIn);
+    const riskOut = defaultTokenRiskEngine.evaluateToken(params.quote.request.tokenOut);
+
+    if (!riskIn.isTradeable) {
+      throw new SecurityPolicyViolationError(
+        `Execution blocked: Token ${params.quote.request.tokenIn.symbol} failed security policy (${riskIn.overallRiskLevel} risk).`,
+        riskIn.reasons
+      );
+    }
+    if (!riskOut.isTradeable) {
+      throw new SecurityPolicyViolationError(
+        `Execution blocked: Token ${params.quote.request.tokenOut.symbol} failed security policy (${riskOut.overallRiskLevel} risk).`,
+        riskOut.reasons
+      );
     }
 
     const steps: ExecutionStep[] = [];
@@ -41,14 +76,16 @@ export class ExecutionCoordinator {
       steps.push({
         id: 'step-approve',
         title: `Approve ${params.quote.request.tokenIn.symbol}`,
-        description: 'Authorize router contract to spend tokens',
+        description: 'Authorize router/bridge contract to spend tokens',
         status: 'PENDING'
       });
     }
 
     steps.push({
       id: 'step-execute',
-      title: isCrossChain ? 'Initiate Cross-Chain Intent Swap' : (params.quote.tradeType === 'EXACT_OUTPUT' ? 'Execute Exact-Output Swap' : 'Execute Swap'),
+      title: isCrossChain
+        ? `Initiate Cross-Chain Bridge (${params.quote.bestRoute.crossChainQuote?.providerName || 'Bridge'})`
+        : (params.quote.tradeType === 'EXACT_OUTPUT' ? 'Execute Exact-Output Swap' : 'Execute Swap'),
       description: `Swap ${params.quote.amountInFormatted} ${params.quote.request.tokenIn.symbol} for ${params.quote.amountOutFormatted} ${params.quote.request.tokenOut.symbol}`,
       status: 'PENDING'
     });
@@ -56,13 +93,13 @@ export class ExecutionCoordinator {
     if (isCrossChain) {
       steps.push({
         id: 'step-intent-fulfill',
-        title: 'Solver Intent Fulfillment',
-        description: `Filler settling assets on ${destChain.shortName}`,
+        title: 'Destination Settlement & Verification',
+        description: `Bridge tracking on ${destChain.shortName}`,
         status: 'PENDING'
       });
     }
 
-    params.stateMachine.initializeSteps(steps);
+    stateMachine.initializeSteps(steps);
 
     let txHash = '';
 
@@ -72,13 +109,15 @@ export class ExecutionCoordinator {
       this.intentEngine.updateIntentState(params.quote.intent.orderId, 'SUBMITTED');
     }
 
+    // Execute source transaction
     if (sourceChain.executionEnvironment === 'SOLANA') {
       const result = await this.solanaAdapter.executeSwap({
         quote: params.quote,
         userPublicKey: params.userAddress,
+        walletProvider: params.signer,
         onStatusChange: (status, signature) => {
           if (signature) txHash = signature;
-          params.stateMachine.transitionTo(status, { id: 'step-execute', status: 'ACTIVE', txHash: signature });
+          stateMachine.transitionTo(status, { id: 'step-execute', status: 'ACTIVE', txHash: signature });
         }
       });
       txHash = result.txSignature;
@@ -91,55 +130,85 @@ export class ExecutionCoordinator {
         onStatusChange: (status, hash) => {
           if (hash) txHash = hash;
           if (status === 'APPROVING') {
-            params.stateMachine.transitionTo('APPROVING', { id: 'step-approve', status: 'ACTIVE' });
+            stateMachine.transitionTo('APPROVING', { id: 'step-approve', status: 'ACTIVE' });
           } else if (status === 'APPROVED') {
-            params.stateMachine.transitionTo('APPROVED', { id: 'step-approve', status: 'SUCCESS' });
+            stateMachine.transitionTo('APPROVED', { id: 'step-approve', status: 'SUCCESS' });
           } else if (status === 'SIGNING') {
-            params.stateMachine.transitionTo('SIGNING', { id: 'step-execute', status: 'ACTIVE' });
+            stateMachine.transitionTo('SIGNING', { id: 'step-execute', status: 'ACTIVE' });
           } else if (status === 'SUBMITTING' || status === 'BROADCASTED') {
-            params.stateMachine.transitionTo(status, { id: 'step-execute', status: 'ACTIVE', txHash: hash });
+            stateMachine.transitionTo(status, { id: 'step-execute', status: 'ACTIVE', txHash: hash });
           } else if (status === 'CONFIRMING') {
-            params.stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'ACTIVE', txHash: hash });
+            stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'ACTIVE', txHash: hash });
           } else if (status === 'COMPLETED') {
-            params.stateMachine.transitionTo('COMPLETED', { id: 'step-execute', status: 'SUCCESS', txHash: hash });
+            stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'SUCCESS', txHash: hash });
           }
         }
       });
       txHash = result.txHash;
     }
 
-    params.stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'SUCCESS', txHash });
+    stateMachine.transitionTo('CONFIRMING', { id: 'step-execute', status: 'SUCCESS', txHash });
 
+    let destinationTxHash: string | undefined;
+
+    // Cross-chain tracking and destination settlement verification
     if (isCrossChain && params.quote.intent) {
-      params.stateMachine.transitionTo('BRIDGE_IN_FLIGHT', { id: 'step-intent-fulfill', status: 'ACTIVE' });
+      stateMachine.transitionTo('BRIDGE_IN_FLIGHT', { id: 'step-intent-fulfill', status: 'ACTIVE' });
       this.intentEngine.updateIntentState(params.quote.intent.orderId, 'ACCEPTED', { txHashSource: txHash });
       this.intentEngine.updateIntentState(params.quote.intent.orderId, 'FULFILLING');
 
-      await new Promise((r) => setTimeout(r, 600));
+      const activeOrder: ActiveCrossChainOrder = {
+        orderId: params.quote.intent.orderId,
+        sourceChainId: params.quote.request.sourceChainId,
+        destinationChainId: params.quote.request.destinationChainId,
+        sourceTxHash: txHash,
+        provider: params.quote.bestRoute.crossChainQuote?.provider || 'ACROSS',
+        recipient: params.userAddress,
+        quote: params.quote.bestRoute.crossChainQuote!,
+        status: 'FULFILLING',
+        createdAt: Date.now(),
+        lastUpdated: Date.now()
+      };
 
-      const destTxHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'DESTINATION_FILLED', { txHashDestination: destTxHash });
-      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'VERIFIED');
-      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'SETTLING');
-      this.intentEngine.updateIntentState(params.quote.intent.orderId, 'SETTLED');
+      this.tracker.registerOrder(activeOrder);
 
-      params.stateMachine.transitionTo('BRIDGE_DESTINATION_CONFIRMED', {
-        id: 'step-intent-fulfill',
-        status: 'SUCCESS',
-        txHash: destTxHash
-      });
+      // In production or synchronous testing: track order if not skipped
+      if (!params.skipDestinationWait) {
+        const trackingResult = await this.tracker.trackUntilSettled({
+          order: activeOrder,
+          stateMachine: stateMachine,
+          maxPollDurationMs: 8000, // short synchronous poll for coordinator response
+          pollIntervalMs: 1500,
+          onStateChange: (state, meta) => {
+            if (params.quote.intent) {
+              this.intentEngine.updateIntentState(params.quote.intent.orderId, state, {
+                txHashDestination: meta?.destTxHash
+              });
+            }
+          }
+        });
+
+        if (trackingResult.isSuccess && trackingResult.destinationTxHash) {
+          destinationTxHash = trackingResult.destinationTxHash;
+        }
+      }
     }
 
-    params.stateMachine.transitionTo('COMPLETED');
-
     const explorerUrl = defaultChainRegistry.getExplorerTxUrl(sourceChain.id, txHash);
+    const destExplorerUrl = destinationTxHash
+      ? defaultChainRegistry.getExplorerTxUrl(destChain.id, destinationTxHash)
+      : undefined;
+
     const amountOutNum = Number(params.quote.amountOutFormatted.replace(/,/g, ''));
-    const amountOutUSD = params.quote.request.tokenOut.priceUSD ? amountOutNum * params.quote.request.tokenOut.priceUSD : undefined;
+    const amountOutUSD = params.quote.request.tokenOut.priceUSD
+      ? amountOutNum * params.quote.request.tokenOut.priceUSD
+      : undefined;
 
     const receipt: ReceiptView = {
       txHash,
       sourceChain,
       destinationChain: destChain,
+      destChain,
       tokenIn: params.quote.request.tokenIn,
       tokenOut: params.quote.request.tokenOut,
       amountInFormatted: params.quote.amountInFormatted,
@@ -154,11 +223,23 @@ export class ExecutionCoordinator {
       status: 'COMPLETED',
       explorerUrl,
       routeSummary: isCrossChain
-        ? `Cross-chain fill via ${params.quote.intent?.solverId || 'ZENITH Stargate Relayer'}`
-        : `Swapped via ${params.quote.bestRoute.hops.map((h) => h.dexProtocol).join(' + ')}`
+        ? `Cross-chain via ${params.quote.bestRoute.crossChainQuote?.providerName || 'Across V3'}`
+        : `Swapped via ${params.quote.bestRoute.hops.map((h) => h.dexProtocol).join(' + ')}`,
+      bridgeDetails: isCrossChain
+        ? {
+            bridgeName: params.quote.bestRoute.crossChainQuote?.providerName || 'Across Protocol',
+            sourceTxHash: txHash,
+            destTxHash: destinationTxHash,
+            elapsedSec: params.quote.bestRoute.crossChainQuote?.estimatedTransferTimeSec || 30,
+            sourceExplorerUrl: explorerUrl,
+            destExplorerUrl,
+            destinationVerified: Boolean(destinationTxHash)
+          }
+        : undefined
     };
 
-    params.stateMachine.setReceipt(receipt);
+    stateMachine.setReceipt(receipt);
+    stateMachine.transitionTo('COMPLETED', { id: 'step-execute', status: 'SUCCESS', txHash });
     return receipt;
   }
 }

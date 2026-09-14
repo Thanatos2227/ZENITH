@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@zenith/types": ["./packages/types/src"],
+      "@zenith/types/*": ["./packages/types/src/*"],
+      "@zenith/contracts": ["./packages/contracts/src"],
+      "@zenith/contracts/*": ["./packages/contracts/src/*"],
+      "@zenith/chains": ["./packages/chains/src"],
+      "@zenith/chains/*": ["./packages/chains/src/*"],
+      "@zenith/tokens": ["./packages/tokens/src"],
+      "@zenith/tokens/*": ["./packages/tokens/src/*"],
+      "@zenith/security": ["./packages/security/src"],
+      "@zenith/security/*": ["./packages/security/src/*"],
+      "@zenith/routing": ["./packages/routing/src"],
+      "@zenith/routing/*": ["./packages/routing/src/*"],
+      "@zenith/execution": ["./packages/execution/src"],
+      "@zenith/execution/*": ["./packages/execution/src/*"],
+      "@zenith/ui": ["./packages/ui/src"],
+      "@zenith/ui/*": ["./packages/ui/src/*"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*",
+    "apps/*/src/**/*",
+    "tests/**/*",
+    "scripts/**/*"
+  ]
+}

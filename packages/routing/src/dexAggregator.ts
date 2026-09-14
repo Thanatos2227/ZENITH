@@ -1,5 +1,6 @@
 import { DEXProtocol, GasPreset, RouteHop, SwapRoute, Token } from '@zenith/types';
 import { defaultChainRegistry } from '@zenith/chains';
+import { EVMContractRegistry, SolanaProgramRegistry } from '@zenith/contracts';
 
 export class DEXAggregator {
   public findRoutes(params: {
@@ -15,62 +16,38 @@ export class DEXAggregator {
 
     const routes: SwapRoute[] = [];
     const chainId = params.chainId.toLowerCase();
+    const chain = defaultChainRegistry.getChain(chainId);
+    const chainIdNum = chain?.chainId || 1;
 
     const directDEX = this.selectPrimaryDEX(chainId);
     const directGasUnits = defaultChainRegistry.getGasUnits(chainId, false);
     const directGasCostUSD = defaultChainRegistry.getEstimatedGasCostUSD(chainId, 'SWAP', params.gasPreset);
 
-    const zenithNativeGasUnits = (directGasUnits * 8n) / 10n;
-    routes.push({
-      id: `route-zenith-v4-concentrated`,
-      routeType: 'DIRECT',
-      hops: [
-        {
-          dexProtocol: 'ZENITH_V4_CONCENTRATED',
-          poolAddress: '0xZENITHPoolManagerSingleton000000000001',
-          tokenIn: params.tokenIn,
-          tokenOut: params.tokenOut,
-          feeTierBps: 5,
-          proportionPercent: 100,
-          estimatedGas: zenithNativeGasUnits
-        }
-      ],
-      gasCostUSD: directGasCostUSD * 0.8,
-      estimatedGasUnits: zenithNativeGasUnits
-    });
-
-    routes.push({
-      id: `route-zenith-dutch-intent`,
-      routeType: 'DIRECT',
-      hops: [
-        {
-          dexProtocol: 'ZENITH_DUTCH_INTENT',
-          poolAddress: '0xZENITHReactorSettlement000000000001',
-          tokenIn: params.tokenIn,
-          tokenOut: params.tokenOut,
-          feeTierBps: 0,
-          proportionPercent: 100,
-          estimatedGas: 0n
-        }
-      ],
-      gasCostUSD: 0,
-      estimatedGasUnits: 0n
-    });
+    let routerAddress: string;
+    if (chain?.executionEnvironment === 'SOLANA') {
+      routerAddress = SolanaProgramRegistry.getProgramId('RAYDIUM');
+    } else {
+      try {
+        routerAddress = EVMContractRegistry.getPrimaryRouter(chainIdNum);
+      } catch {
+        routerAddress = params.tokenIn.address;
+      }
+    }
 
     const directHops: RouteHop[] = [
       {
         dexProtocol: directDEX,
-        poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
+        poolAddress: routerAddress,
         tokenIn: params.tokenIn,
         tokenOut: params.tokenOut,
-        feeTierBps: 5,
+        feeTierBps: 30,
         proportionPercent: 100,
         estimatedGas: directGasUnits
       }
     ];
 
     routes.push({
-      id: `route-direct-${directDEX.toLowerCase()}`,
+      id: `route-direct-${directDEX.toLowerCase()}-${chainId}`,
       routeType: 'DIRECT',
       hops: directHops,
       gasCostUSD: directGasCostUSD,
@@ -83,33 +60,40 @@ export class DEXAggregator {
       params.tokenIn.symbol === 'ETH' ||
       params.tokenOut.symbol === 'ETH';
 
-    if (!isDirectStablePair && params.tokenIn.symbol !== params.tokenOut.symbol) {
+    if (!isDirectStablePair && params.tokenIn.symbol !== params.tokenOut.symbol && chain?.executionEnvironment === 'EVM') {
+      let wrappedNativeAddress: string;
+      try {
+        wrappedNativeAddress = EVMContractRegistry.getWrappedNative(chainIdNum);
+      } catch {
+        wrappedNativeAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+      }
+
       const intermediateToken: Token = {
-        address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+        address: wrappedNativeAddress,
         chainId: params.chainId,
-        name: 'Wrapped Ether',
-        symbol: 'WETH',
+        name: 'Wrapped Native Asset',
+        symbol: chain.nativeCurrency?.symbol ? `W${chain.nativeCurrency.symbol}` : 'WETH',
         decimals: 18,
         verificationTier: 'VERIFIED_CANONICAL',
         priceUSD: 2465.87
       };
 
-      const multiHopGasUnits = directGasUnits * 14n / 10n;
+      const multiHopGasUnits = (directGasUnits * 14n) / 10n;
       const multiHopGasCostUSD = directGasCostUSD * 1.4;
 
       const multiHops: RouteHop[] = [
         {
           dexProtocol: directDEX,
-          poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
+          poolAddress: routerAddress,
           tokenIn: params.tokenIn,
           tokenOut: intermediateToken,
-          feeTierBps: 5,
+          feeTierBps: 30,
           proportionPercent: 100,
           estimatedGas: directGasUnits
         },
         {
           dexProtocol: directDEX,
-          poolAddress: '0x11b815efb8f581194ae79006d24e0d814b7697f6',
+          poolAddress: routerAddress,
           tokenIn: intermediateToken,
           tokenOut: params.tokenOut,
           feeTierBps: 30,
@@ -119,7 +103,7 @@ export class DEXAggregator {
       ];
 
       routes.push({
-        id: `route-multihop-${params.tokenIn.symbol.toLowerCase()}-weth-${params.tokenOut.symbol.toLowerCase()}`,
+        id: `route-multihop-${params.tokenIn.symbol.toLowerCase()}-wnative-${params.tokenOut.symbol.toLowerCase()}`,
         routeType: 'MULTI_HOP',
         hops: multiHops,
         gasCostUSD: multiHopGasCostUSD,
@@ -127,38 +111,70 @@ export class DEXAggregator {
       });
     }
 
-    if (params.amountInNum * (params.tokenIn.priceUSD || 1) > 1500) {
-      const secondaryDEX = this.selectSecondaryDEX(chainId);
-      const splitGasUnits = defaultChainRegistry.getGasUnits(chainId, true);
-      const splitGasCostUSD = defaultChainRegistry.getEstimatedGasCostUSD(chainId, 'SPLIT_SWAP', params.gasPreset);
-
-      const splitHops: RouteHop[] = [
-        {
-          dexProtocol: directDEX,
-          poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
-          tokenIn: params.tokenIn,
-          tokenOut: params.tokenOut,
-          feeTierBps: 5,
-          proportionPercent: 60,
-          estimatedGas: splitGasUnits / 2n
-        },
-        {
-          dexProtocol: secondaryDEX,
-          poolAddress: '0xdac17f958d2ee523a2206206994597c13d831ec7',
-          tokenIn: params.tokenIn,
-          tokenOut: params.tokenOut,
-          feeTierBps: 10,
-          proportionPercent: 40,
-          estimatedGas: splitGasUnits / 2n
-        }
-      ];
-
+    if (chain?.executionEnvironment === 'EVM') {
+      const splitGasUnits = (directGasUnits * 16n) / 10n;
+      const splitGasCostUSD = directGasCostUSD * 1.6;
       routes.push({
-        id: `route-split-${directDEX.toLowerCase()}-${secondaryDEX.toLowerCase()}`,
+        id: `route-split-${params.tokenIn.symbol.toLowerCase()}-${params.tokenOut.symbol.toLowerCase()}-${chainId}`,
         routeType: 'SPLIT_ROUTE',
-        hops: splitHops,
+        hops: [
+          {
+            dexProtocol: directDEX,
+            poolAddress: routerAddress,
+            tokenIn: params.tokenIn,
+            tokenOut: params.tokenOut,
+            feeTierBps: 30,
+            proportionPercent: 60,
+            estimatedGas: (directGasUnits * 6n) / 10n
+          },
+          {
+            dexProtocol: 'UNISWAP_V2',
+            poolAddress: routerAddress,
+            tokenIn: params.tokenIn,
+            tokenOut: params.tokenOut,
+            feeTierBps: 30,
+            proportionPercent: 40,
+            estimatedGas: (directGasUnits * 4n) / 10n
+          }
+        ],
         gasCostUSD: splitGasCostUSD,
         estimatedGasUnits: splitGasUnits
+      });
+
+      routes.push({
+        id: `route-v4-${params.tokenIn.symbol.toLowerCase()}-${params.tokenOut.symbol.toLowerCase()}-${chainId}`,
+        routeType: 'DIRECT',
+        hops: [
+          {
+            dexProtocol: 'ZENITH_V4_CONCENTRATED',
+            poolAddress: routerAddress,
+            tokenIn: params.tokenIn,
+            tokenOut: params.tokenOut,
+            feeTierBps: 25,
+            proportionPercent: 100,
+            estimatedGas: directGasUnits
+          }
+        ],
+        gasCostUSD: directGasCostUSD * 0.8,
+        estimatedGasUnits: (directGasUnits * 8n) / 10n
+      });
+
+      routes.push({
+        id: `route-intent-${params.tokenIn.symbol.toLowerCase()}-${params.tokenOut.symbol.toLowerCase()}-${chainId}`,
+        routeType: 'INTENT_SOLVER',
+        hops: [
+          {
+            dexProtocol: 'ZENITH_DUTCH_INTENT',
+            poolAddress: routerAddress,
+            tokenIn: params.tokenIn,
+            tokenOut: params.tokenOut,
+            feeTierBps: 0,
+            proportionPercent: 100,
+            estimatedGas: 0n
+          }
+        ],
+        gasCostUSD: 0,
+        estimatedGasUnits: 0n
       });
     }
 
@@ -189,7 +205,6 @@ export class DEXAggregator {
       case 'zksync':
       case 'mode':
       case 'taiko':
-        return 'UNISWAP_V3';
       case 'berachain':
       case 'sonic':
       case 'soneium':
@@ -207,27 +222,7 @@ export class DEXAggregator {
         return 'UNISWAP_V3';
     }
   }
-
-  private selectSecondaryDEX(chainId: string): DEXProtocol {
-    switch (chainId) {
-      case 'solana':
-        return 'ORCA_WHIRLPOOL';
-      case 'base':
-        return 'UNISWAP_V3';
-      case 'arbitrum':
-        return 'UNISWAP_V3';
-      case 'polygon':
-        return 'UNISWAP_V3';
-      case 'bnb':
-        return 'UNISWAP_V3';
-      case 'avalanche':
-        return 'PANCAKESWAP';
-      case 'optimism':
-        return 'UNISWAP_V3';
-      default:
-        return 'CURVE';
-    }
-  }
 }
 
 export const defaultDEXAggregator = new DEXAggregator();
+export const DynamicDEXSplitter = DEXAggregator;

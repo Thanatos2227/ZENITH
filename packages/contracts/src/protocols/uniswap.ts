@@ -1,0 +1,56 @@
+import { UnsupportedProtocolError } from '../errors';
+
+/**
+ * Uniswap V3 SwapRouter02 & SwapRouter Canonical Deployments
+ * Sourced from official Uniswap Docs: https://docs.uniswap.org/contracts/v3/reference/deployments
+ */
+export const UNISWAP_V3_SWAP_ROUTERS: Record<number, string> = {
+  1: '0xE592427A0AEce92De3Edee1F18E0157C05861564',      // Ethereum
+  10: '0xE592427A0AEce92De3Edee1F18E0157C05861564',     // Optimism
+  56: '0xB9714879f3842923608032F71fC48E3006863D23',     // BNB Chain
+  137: '0xE592427A0AEce92De3Edee1F18E0157C05861564',    // Polygon
+  8453: '0x2626664c2603336E57B271c5C0b26F421741e481',   // Base (SwapRouter02)
+  42161: '0xE592427A0AEce92De3Edee1F18E0157C05861564',  // Arbitrum One
+  43114: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE',  // Avalanche
+  324: '0x39E098A15b62b322210777B0E650e24021C612E3',    // ZKSync
+  59144: '0xE592427A0AEce92De3Edee1F18E0157C05861564',  // Linea
+  534352: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // Scroll
+  81457: '0x337d4F504E094c85D68A90Bc29130465E455b662',  // Blast
+  34443: '0xC962df3068f69B5DE101e4a6e355D40F0f84FE9B'   // Mode
+};
+
+export const UNISWAP_V3_QUOTER_V2: Record<number, string> = {
+  1: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
+  10: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
+  56: '0x78D78E420Da98ad378D7799bE8f241d19F297614',
+  137: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
+  8453: '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a',
+  42161: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
+  43114: '0xbe0243716483E82245b78b66804B9034E571F185'
+};
+
+export const UNISWAP_V3_FACTORY: Record<number, string> = {
+  1: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+  10: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+  56: '0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865',
+  137: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+  8453: '0x33128a8fC17869897dcE68Ed026d694621f6FDfD',
+  42161: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+  43114: '0x740b1c1de25031C31FF4fC9A62f554A55cdC1baD'
+};
+
+export function getUniswapV3Router(chainId: number): string {
+  const router = UNISWAP_V3_SWAP_ROUTERS[chainId];
+  if (!router) {
+    throw new UnsupportedProtocolError('UNISWAP_V3', chainId);
+  }
+  return router;
+}
+
+export function getUniswapV3Quoter(chainId: number): string | undefined {
+  return UNISWAP_V3_QUOTER_V2[chainId];
+}
+
+export function getUniswapV3Factory(chainId: number): string | undefined {
+  return UNISWAP_V3_FACTORY[chainId];
+}
