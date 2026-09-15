@@ -107,7 +107,7 @@ export const SwapCard: React.FC = () => {
     ? (walletBalances[tokenInKey] ?? walletBalances[tokenInKeyLower] ?? (tokenIn.isNative ? (walletBalances[`${sourceChain.id}:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`] ?? walletBalances[`${sourceChain.id}:0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`]) : undefined) ?? '0.00')
     : '0.00';
   const tokenInBalanceNum = parseFloat(tokenInBalanceStr) || 0;
-  const isInsufficientBalance = isWalletConnected && !isNetworkMismatch && tokenInBalanceNum > 0 && numAmountIn > tokenInBalanceNum;
+  const isInsufficientBalance = isWalletConnected && !isNetworkMismatch && numAmountIn > tokenInBalanceNum;
 
   const handlePercentage = (pct: number) => {
     if (tokenInBalanceNum <= 0) {

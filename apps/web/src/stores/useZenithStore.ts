@@ -1137,10 +1137,10 @@ export const useZenithStore = create<ZenithState>((set, get) => {
       const userBalanceNum = userBalanceStr !== undefined ? parseFloat(userBalanceStr) : undefined;
       const amountInNum = parseFloat(quote.amountInFormatted.replace(/,/g, ''));
 
-      if (userBalanceNum !== undefined && userBalanceNum > 0 && userBalanceNum < amountInNum && isWalletConnected && signer) {
+      if (userBalanceNum !== undefined && userBalanceNum < amountInNum && isWalletConnected && signer) {
         get().addNotification({
           title: 'Insufficient Balance',
-          message: `You have ${userBalanceStr} ${quote.request.tokenIn.symbol}, but trying to swap ${quote.amountInFormatted} ${quote.request.tokenIn.symbol}.`,
+          message: `Your wallet holds ${userBalanceStr} ${quote.request.tokenIn.symbol}, but this trade requires ${quote.amountInFormatted} ${quote.request.tokenIn.symbol}.`,
           type: 'ERROR'
         });
         return;
@@ -1198,7 +1198,15 @@ export const useZenithStore = create<ZenithState>((set, get) => {
         set({ isConfirmSheetOpen: false });
         executionSM.transitionTo('FAILED', { id: 'step-execute', status: 'ERROR' });
 
-        const errMsg = err?.message || String(err);
+        let errMsg = err?.reason || err?.message || String(err);
+        if (
+          errMsg.includes('STF') ||
+          err?.revert?.args?.[0] === 'STF' ||
+          err?.data?.includes('535446')
+        ) {
+          errMsg = `SafeTransferFrom failed (STF): Insufficient ${quote.request.tokenIn.symbol} balance or token allowance in your connected wallet.`;
+        }
+
         const isUserRejected =
           err?.code === 4001 ||
           err?.code === 'ACTION_REJECTED' ||

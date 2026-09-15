@@ -126,9 +126,26 @@ export class EVMExecutionAdapter {
       requiredAllowance = BigInt(dexExecution.approvalAmount || dexExecution.requiredAllowanceRaw || quote.amountInRaw);
     }
 
-    // Token allowance check and approval if needed
+    // Token balance and allowance check before execution
     if (!isNativeIn && approvalTarget !== CANONICAL_NATIVE_ADDRESS) {
       const validatedTokenIn = validateTokenAddress(tokenIn.address, quote.request.sourceChainId);
+      const tokenContract = new Contract(validatedTokenIn, ERC20_ABI, signer);
+
+      try {
+        if (typeof tokenContract.balanceOf === 'function') {
+          const userBalance: bigint = await tokenContract.balanceOf(validatedUser);
+          const requiredAmount = BigInt(quote.amountInRaw);
+          if (userBalance < requiredAmount) {
+            throw new Error(
+              `Insufficient ${tokenIn.symbol} balance: Wallet has less than required ${quote.amountInFormatted} ${tokenIn.symbol}.`
+            );
+          }
+        }
+      } catch (balErr: any) {
+        if (balErr.message?.includes('Insufficient')) throw balErr;
+        console.warn('[EVMAdapter] Pre-flight balance check warning:', balErr);
+      }
+
       const currentAllowance = await this.checkAllowance({
         tokenAddress: validatedTokenIn,
         ownerAddress: validatedUser,
@@ -138,7 +155,6 @@ export class EVMExecutionAdapter {
 
       if (currentAllowance < requiredAllowance) {
         params.onStatusChange?.('APPROVING');
-        const tokenContract = new Contract(validatedTokenIn, ERC20_ABI, signer);
         const approveTx = await tokenContract.approve(approvalTarget, requiredAllowance);
         await approveTx.wait(1);
         params.onStatusChange?.('APPROVED');
@@ -185,7 +201,22 @@ export class EVMExecutionAdapter {
     params.onStatusChange?.('SIGNING');
 
     // Send the authoritative executable transaction
-    const tx = await signer.sendTransaction(submissionTx);
+    let tx;
+    try {
+      tx = await signer.sendTransaction(submissionTx);
+    } catch (sendErr: any) {
+      const rawMsg = sendErr?.reason || sendErr?.message || String(sendErr);
+      if (
+        rawMsg.includes('STF') ||
+        sendErr?.revert?.args?.[0] === 'STF' ||
+        sendErr?.data?.includes('535446')
+      ) {
+        throw new Error(
+          `SafeTransferFrom failed (STF): Insufficient ${tokenIn.symbol} balance or token allowance in your connected wallet.`
+        );
+      }
+      throw sendErr;
+    }
 
     const txHash = tx.hash;
     params.onStatusChange?.('SUBMITTING', txHash);
