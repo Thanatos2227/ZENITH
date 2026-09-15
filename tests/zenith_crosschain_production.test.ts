@@ -47,8 +47,8 @@ test('Contracts Registry: Across, Stargate, deBridge, and Fail-Closed Treasury',
   assert.equal(getPermit2Address(1), '0x000000000022D473030F116dDEE9F6B43aC78BA3');
   assert.equal(getPermit2Address(42161), '0x000000000022D473030F116dDEE9F6B43aC78BA3');
 
-  // Uniswap V3 Routers
-  assert.equal(getUniswapV3Router(1), '0xE592427A0AEce92De3Edee1F18E0157C05861564');
+  // Uniswap V3 Routers (SwapRouter02 canonical)
+  assert.equal(getUniswapV3Router(1), '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45');
   assert.equal(getUniswapV3Router(8453), '0x2626664c2603336E57B271c5C0b26F421741e481');
 
   // Treasury Address fails closed when unconfigured

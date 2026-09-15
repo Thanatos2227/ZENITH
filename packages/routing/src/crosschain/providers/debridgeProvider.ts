@@ -72,7 +72,7 @@ export class DeBridgeProvider implements CrossChainProvider {
     // Fetch authoritative live deBridge DLN API quote
     try {
       const url = `https://dln.debridge.finance/v1.0/dln/order/quote?srcChainId=${srcChain.chainId}&srcChainTokenIn=${validatedInputToken}&srcChainTokenInAmount=${amountInBig.toString()}&dstChainId=${dstChain.chainId}&dstChainTokenOut=${validatedOutputToken}&prependOperatingExpense=true`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
       if (!res.ok) {
         // deBridge DLN does not support this route or API returned error — fail closed
         return null;

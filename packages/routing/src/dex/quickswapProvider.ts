@@ -2,6 +2,8 @@ import { DEXProtocol, Token } from '@zenith/types';
 import { Interface } from 'ethers';
 import {
   QUICKSWAP_V3_ROUTER_ABI,
+  QUICKSWAP_V2_ROUTER_ABI,
+  QUICKSWAP_V2_ROUTER,
   CANONICAL_NATIVE_ADDRESS,
   getQuickSwapRouter
 } from '@zenith/contracts';
@@ -61,7 +63,7 @@ export class QuickSwapProvider implements DEXProvider {
         approvalTarget: routerAddress,
         gasEstimate: 175000n,
         gasEstimateUnits: 175000n,
-        gasCostUSD: 0.02,
+        gasCostUSD: 0.04,
         quoteTimestamp,
         expiration: quoteTimestamp + 15000,
         routePath: [params.tokenIn.address, params.tokenOut.address]
@@ -79,15 +81,57 @@ export class QuickSwapProvider implements DEXProvider {
   ): Promise<DEXExecution> {
     const chainIdNum = typeof quote.chainId === 'number' ? quote.chainId : Number(quote.chainId);
     const routerAddress = getQuickSwapRouter(chainIdNum);
-    const iface = new Interface(QUICKSWAP_V3_ROUTER_ABI);
     const recipient = recipientAddress || userAddress;
     const swapDeadline = deadline || Math.floor(Date.now() / 1000) + 1200;
 
     const tokenInAddr = resolvePoolTokenAddress(quote.tokenIn, chainIdNum);
     const tokenOutAddr = resolvePoolTokenAddress(quote.tokenOut, chainIdNum);
 
-    // QuickSwap V3 exactInputSingle:
-    // (address tokenIn, address tokenOut, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice)
+    const isNativeIn = isNativeToken(quote.tokenIn.address) || Boolean(quote.tokenIn.isNative);
+    const isNativeOut = isNativeToken(quote.tokenOut.address) || Boolean(quote.tokenOut.isNative);
+
+    if (isNativeIn) {
+      const v2Iface = new Interface(QUICKSWAP_V2_ROUTER_ABI);
+      const calldata = v2Iface.encodeFunctionData('swapExactETHForTokens', [
+        quote.minimumAmountOut,
+        [tokenInAddr, tokenOutAddr],
+        recipient,
+        swapDeadline
+      ]);
+      return {
+        to: QUICKSWAP_V2_ROUTER,
+        data: calldata,
+        value: quote.amountIn.toString(),
+        chainId: chainIdNum,
+        gasLimit: quote.gasEstimate.toString(),
+        gasEstimateUnits: quote.gasEstimate,
+        approvalTarget: CANONICAL_NATIVE_ADDRESS,
+        approvalAmount: '0',
+        requiredAllowanceRaw: '0'
+      };
+    } else if (isNativeOut) {
+      const v2Iface = new Interface(QUICKSWAP_V2_ROUTER_ABI);
+      const calldata = v2Iface.encodeFunctionData('swapExactTokensForETH', [
+        quote.amountIn,
+        quote.minimumAmountOut,
+        [tokenInAddr, tokenOutAddr],
+        recipient,
+        swapDeadline
+      ]);
+      return {
+        to: QUICKSWAP_V2_ROUTER,
+        data: calldata,
+        value: '0',
+        chainId: chainIdNum,
+        gasLimit: quote.gasEstimate.toString(),
+        gasEstimateUnits: quote.gasEstimate,
+        approvalTarget: QUICKSWAP_V2_ROUTER,
+        approvalAmount: quote.amountIn.toString(),
+        requiredAllowanceRaw: quote.amountIn.toString()
+      };
+    }
+
+    const iface = new Interface(QUICKSWAP_V3_ROUTER_ABI);
     const calldata = iface.encodeFunctionData('exactInputSingle', [
       [
         tokenInAddr,
@@ -100,16 +144,14 @@ export class QuickSwapProvider implements DEXProvider {
       ]
     ]);
 
-    const isNative = isNativeToken(quote.tokenIn.address) || Boolean(quote.tokenIn.isNative);
-
     return {
       to: routerAddress,
       data: calldata,
-      value: isNative ? quote.amountIn.toString() : '0',
+      value: '0',
       chainId: chainIdNum,
       gasLimit: quote.gasEstimate.toString(),
       gasEstimateUnits: quote.gasEstimate,
-      approvalTarget: isNative ? CANONICAL_NATIVE_ADDRESS : routerAddress,
+      approvalTarget: routerAddress,
       approvalAmount: quote.amountIn.toString(),
       requiredAllowanceRaw: quote.amountIn.toString()
     };

@@ -1,5 +1,8 @@
 import { DEXProtocol, Token } from '@zenith/types';
 import { DEXProvider, DEXQuote, DEXExecution } from './types';
+import { ZenithV1Provider } from './zenithV1Provider';
+import { ZenithV2Provider } from './zenithV2Provider';
+import { ZenithV3Provider } from './zenithV3Provider';
 import { UniswapV3Provider } from './uniswapV3Provider';
 import { QuickSwapProvider } from './quickswapProvider';
 import { AerodromeProvider } from './aerodromeProvider';
@@ -17,6 +20,12 @@ export class DEXAggregator {
         this.providers.set(p.protocol, p);
       }
     } else {
+      // Sovereign Zenith AMM Protocol Tier Providers
+      this.registerProvider(new ZenithV3Provider());
+      this.registerProvider(new ZenithV2Provider());
+      this.registerProvider(new ZenithV1Provider());
+
+      // Secondary Network Liquidity Providers
       this.registerProvider(new UniswapV3Provider());
       this.registerProvider(new QuickSwapProvider());
       this.registerProvider(new AerodromeProvider());

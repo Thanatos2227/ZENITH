@@ -164,11 +164,15 @@ export interface UnsupportedTokenMetadata {
 }
 
 export type DEXProtocol =
+  | 'ZENITH_V1'
+  | 'ZENITH_V2'
+  | 'ZENITH_V3'
+  | 'ZENITH_V4_CONCENTRATED'
+  | 'ZENITH_DUTCH_INTENT'
+  | 'ZENITH_INTERNAL_RFIS'
   | 'UNISWAP_V2'
   | 'UNISWAP_V3'
   | 'UNISWAP_V4'
-  | 'ZENITH_V4_CONCENTRATED'
-  | 'ZENITH_DUTCH_INTENT'
   | 'CURVE'
   | 'BALANCER_V2'
   | 'AERODROME'
@@ -179,8 +183,7 @@ export type DEXProtocol =
   | 'TRADER_JOE'
   | 'RAYDIUM'
   | 'ORCA_WHIRLPOOL'
-  | 'METEORA'
-  | 'ZENITH_INTERNAL_RFIS';
+  | 'METEORA';
 
 export type BridgeProtocol =
   | 'STARGATE'
@@ -462,6 +465,8 @@ export interface QuoteRequest {
   tokenOut: Token;
   amountInRaw: string;
   amountOutRaw?: string;
+  amountIn?: string;
+  amountOut?: string;
   tradeType?: TradeType;
   slippageTolerancePercent: number;
   userWalletAddress?: string;

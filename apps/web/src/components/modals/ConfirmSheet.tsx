@@ -121,11 +121,21 @@ export const ConfirmSheet: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-2 text-xs bg-slate-900/60 rounded-xl p-3.5 border border-slate-800">
+          <div className="space-y-2.5 text-xs bg-slate-900/60 rounded-xl p-3.5 border border-slate-800">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <div className="flex items-center gap-1.5 text-emerald-300 font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Minimum Requested Pay to User</span>
+              </div>
+              <span className="font-mono font-bold text-emerald-400">
+                {quote.minimumReceivedFormatted} {tokenOut.symbol}
+              </span>
+            </div>
+
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Minimum Received</span>
-              <span className="font-mono font-semibold text-white">
-                {quote.minimumReceivedFormatted} {tokenOut.symbol} ({slippageTolerancePercent}% slip)
+              <span className="text-slate-400">Slippage Protection</span>
+              <span className="font-mono text-cyan-300 font-medium">
+                {slippageTolerancePercent}% Max Slippage
               </span>
             </div>
 

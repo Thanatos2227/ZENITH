@@ -31,9 +31,9 @@ test('Zenith Cross-Chain Router: Canonical Protocol Registrations Validation', (
   assert.equal(getPermit2Address(1), '0x000000000022D473030F116dDEE9F6B43aC78BA3');
   assert.equal(getPermit2Address(8453), '0x000000000022D473030F116dDEE9F6B43aC78BA3');
 
-  // Validate Uniswap V3 Router
-  assert.equal(getUniswapV3Router(1), '0xE592427A0AEce92De3Edee1F18E0157C05861564');
-  assert.equal(getUniswapV3Router(42161), '0xE592427A0AEce92De3Edee1F18E0157C05861564');
+  // Validate Uniswap V3 Router (SwapRouter02 canonical)
+  assert.equal(getUniswapV3Router(1), '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45');
+  assert.equal(getUniswapV3Router(42161), '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45');
 });
 
 test('Zenith Cross-Chain Router: End-to-End Cross-Chain Quote & Routing', async () => {
@@ -168,12 +168,12 @@ test('Zenith Cross-Chain Router: Mock Signer Execution Flow', async () => {
   assert.ok(stepStatuses.includes('COMPLETED'));
 });
 
-test('Zenith Cross-Chain Router: Direct Unsupported Pair Fails Closed', async () => {
+test('Zenith Cross-Chain Router: Direct Unsupported Pair Fails Closed on Micro-Dust', async () => {
   const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'polygon' && t.isNative)!; // POL
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'USDT')!;
   const user = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
 
-  // Direct bridge for POL -> USDT is not supported by bridges directly
+  // 1 POL (~$0.097) is below minimum bridge viability threshold ($1.00 USD)
   // Router must fail closed with CROSS_CHAIN_QUOTE_UNAVAILABLE
   await assert.rejects(
     async () => {
@@ -190,4 +190,38 @@ test('Zenith Cross-Chain Router: Direct Unsupported Pair Fails Closed', async ()
     /CROSS_CHAIN_QUOTE_UNAVAILABLE|No valid cross-chain bridge quote available/
   );
 });
+
+test('Zenith Cross-Chain Router: POL (Polygon) -> USDC (Arbitrum) Multi-Hop Swap + Bridge Routing', async () => {
+  const polToken = DEFAULT_TOKENS.find((t) => t.chainId === 'polygon' && (t.symbol === 'POL' || t.isNative))!;
+  const usdcToken = DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'USDC')!;
+  const user = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
+
+  assert.ok(polToken, 'POL token must exist on Polygon');
+  assert.ok(usdcToken, 'USDC token must exist on Arbitrum');
+
+  // Test 100 POL (~$9.78 USD)
+  const quote = await defaultZenithRouter.getQuote({
+    sourceChainId: 'polygon',
+    destinationChainId: 'arbitrum',
+    tokenIn: polToken,
+    tokenOut: usdcToken,
+    amountInRaw: '100000000000000000000', // 100 POL
+    recipient: user,
+    slippageTolerancePercent: 0.5
+  });
+
+  assert.ok(quote, 'Quote must be returned for 100 POL -> USDC (Arbitrum)');
+  assert.equal(quote.bestRoute.routeType, 'CROSS_CHAIN');
+  assert.ok(quote.bestRoute.bridgeStep, 'Route must have bridgeStep');
+  assert.ok(quote.bestRoute.hops.length >= 1, 'Route must have at least 1 hop (Source DEX Swap)');
+  assert.equal(quote.request.tokenIn.symbol, 'POL');
+  assert.equal(quote.request.tokenOut.symbol, 'USDC');
+
+  const outAmountNum = parseFloat(quote.amountOutFormatted.replace(/,/g, ''));
+  assert.ok(outAmountNum > 5.0 && outAmountNum < 15.0, `Expected ~9.7 USDC for 100 POL, got ${outAmountNum}`);
+  assert.ok(BigInt(quote.amountOutRaw) > 0n);
+  assert.ok(BigInt(quote.minimumReceivedRaw) > 0n);
+  assert.ok(BigInt(quote.minimumReceivedRaw) <= BigInt(quote.amountOutRaw));
+});
+
 

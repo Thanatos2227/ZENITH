@@ -5,6 +5,7 @@ import {
   ArrowDownUp,
   RefreshCw,
   ShieldAlert,
+  ShieldCheck,
   ChevronDown,
   Sparkles,
   ArrowRight,
@@ -51,7 +52,9 @@ export const SwapCard: React.FC = () => {
     orderType,
     setOrderType,
     limitPrice,
-    setLimitPrice
+    setLimitPrice,
+    slippageTolerancePercent,
+    slippagePreset
   } = useZenithStore();
 
   const [refreshTimer, setRefreshTimer] = useState<number>(10);
@@ -390,15 +393,16 @@ export const SwapCard: React.FC = () => {
                 : '$0.00'}
             </span>
             {quote && isAmountValid && (
-              <span className="font-mono">
-                Min: {quote.minimumReceivedFormatted} {tokenOut.symbol}
+              <span className="font-mono text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 text-[11px] flex items-center gap-1" title="Minimum requested pay to user after slippage">
+                <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span>Min Requested Pay to User: {quote.minimumReceivedFormatted} {tokenOut.symbol}</span>
               </span>
             )}
           </div>
         </div>
 
         {quote && isAmountValid && (
-          <div className="space-y-2 mb-4 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50 text-xs">
+          <div className="space-y-2 mb-4 bg-slate-900/50 rounded-xl p-3.5 border border-slate-800/60 text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-slate-400">Rate</span>
@@ -424,6 +428,23 @@ export const SwapCard: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="flex items-center justify-between py-1.5 px-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+              <div className="flex items-center gap-1.5 text-emerald-300">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="font-semibold">Minimum Requested Pay to User</span>
+              </div>
+              <span className="font-mono text-emerald-400 font-bold">
+                {quote.minimumReceivedFormatted} {tokenOut.symbol}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Slippage Tolerance</span>
+              <span className="font-mono text-cyan-300 font-medium">
+                {slippageTolerancePercent}% ({slippagePreset})
+              </span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -469,7 +490,9 @@ export const SwapCard: React.FC = () => {
               <span className="text-slate-400">Route</span>
               <span className="font-mono text-cyan-300 font-medium">
                 {isCrossChain
-                  ? `${quote.bestRoute.bridgeStep?.bridgeProtocol} Bridge`
+                  ? quote.bestRoute.hops.length > 0
+                    ? `${quote.bestRoute.hops.map((h) => h.dexProtocol).join(' → ')} → ${quote.bestRoute.bridgeStep?.bridgeProtocol} Bridge`
+                    : `${quote.bestRoute.bridgeStep?.bridgeProtocol} Bridge`
                   : quote.bestRoute.hops.map((h) => h.dexProtocol).join(' → ')}
               </span>
             </div>

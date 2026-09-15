@@ -5,6 +5,9 @@ import { getCamelotRouter } from '../protocols/camelot';
 import { getQuickSwapRouter } from '../protocols/quickswap';
 import { getPancakeSwapRouter } from '../protocols/pancakeswap';
 import { getTraderJoeRouter } from '../protocols/traderjoe';
+import { getZenithV1Router } from '../protocols/zenithV1';
+import { getZenithV2Router } from '../protocols/zenithV2';
+import { getZenithV3Router } from '../protocols/zenithV3';
 import { getAcrossSpokePool, isAcrossSupported } from '../protocols/across';
 import { getStargateRouter, isStargateSupported } from '../protocols/stargate';
 import { getDeBridgeSourceContract, isDeBridgeSupported } from '../protocols/debridge';
@@ -51,6 +54,21 @@ export class EVMContractRegistry {
 
   public static getRouterForProtocol(protocol: string, chainId: number): string {
     switch (protocol.toUpperCase()) {
+      case 'ZENITH_V1': {
+        const r = getZenithV1Router(chainId);
+        if (!r) throw new UnsupportedProtocolError(protocol, chainId);
+        return r;
+      }
+      case 'ZENITH_V2': {
+        const r = getZenithV2Router(chainId);
+        if (!r) throw new UnsupportedProtocolError(protocol, chainId);
+        return r;
+      }
+      case 'ZENITH_V3': {
+        const r = getZenithV3Router(chainId);
+        if (!r) throw new UnsupportedProtocolError(protocol, chainId);
+        return r;
+      }
       case 'UNISWAP_V3':
       case 'UNISWAP_V2':
       case 'UNISWAP_V4':

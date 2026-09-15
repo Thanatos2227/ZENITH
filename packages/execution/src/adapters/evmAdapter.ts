@@ -1,4 +1,4 @@
-import { Contract, JsonRpcSigner, BrowserProvider } from 'ethers';
+import { Contract, JsonRpcSigner, BrowserProvider, formatUnits } from 'ethers';
 import { QuoteResponse, TransactionStatus, DEXExecution, CrossChainExecution } from '@zenith/types';
 import {
   SignerRequiredError,
@@ -8,7 +8,11 @@ import {
   validateTokenAddress,
   InvalidCalldataError
 } from '@zenith/contracts';
-import { defaultDEXAggregator, defaultCrossChainAggregator, isNativeToken } from '@zenith/routing';
+import {
+  defaultDEXAggregator,
+  defaultCrossChainAggregator,
+  isNativeToken
+} from '@zenith/routing';
 
 export interface EVMExecutionParams {
   quote: QuoteResponse;
@@ -126,7 +130,25 @@ export class EVMExecutionAdapter {
       requiredAllowance = BigInt(dexExecution.approvalAmount || dexExecution.requiredAllowanceRaw || quote.amountInRaw);
     }
 
-    // Token balance and allowance check before execution
+    // Same-Chain Native Token balance verification
+    if (!isCrossChain && isNativeIn) {
+      try {
+        if (typeof signer.provider?.getBalance === 'function') {
+          const nativeBalance = await signer.provider.getBalance(validatedUser);
+          const requiredNative = BigInt(quote.amountInRaw);
+          if (nativeBalance < requiredNative) {
+            throw new Error(
+              `Insufficient native ${tokenIn.symbol} balance: Wallet holds ${formatUnits(nativeBalance, 18)} ${tokenIn.symbol}, but swap requires ${quote.amountInFormatted} ${tokenIn.symbol}.`
+            );
+          }
+        }
+      } catch (nativeErr: any) {
+        if (nativeErr.message?.includes('Insufficient')) throw nativeErr;
+        console.warn('[EVMAdapter] Native balance verification note:', nativeErr);
+      }
+    }
+
+    // Token balance and allowance check before execution for ERC20 tokens
     if (!isNativeIn && approvalTarget !== CANONICAL_NATIVE_ADDRESS) {
       const validatedTokenIn = validateTokenAddress(tokenIn.address, quote.request.sourceChainId);
       const tokenContract = new Contract(validatedTokenIn, ERC20_ABI, signer);
@@ -156,7 +178,9 @@ export class EVMExecutionAdapter {
       if (currentAllowance < requiredAllowance) {
         params.onStatusChange?.('APPROVING');
         const approveTx = await tokenContract.approve(approvalTarget, requiredAllowance);
-        await approveTx.wait(1);
+        if (typeof approveTx?.wait === 'function') {
+          await approveTx.wait(1);
+        }
         params.onStatusChange?.('APPROVED');
       }
     }
@@ -213,6 +237,16 @@ export class EVMExecutionAdapter {
       ) {
         throw new Error(
           `SafeTransferFrom failed (STF): Insufficient ${tokenIn.symbol} balance or token allowance in your connected wallet.`
+        );
+      }
+      if (
+        rawMsg.includes('Too little received') ||
+        rawMsg.includes('TOO_LITTLE_RECEIVED') ||
+        rawMsg.includes('Slippage limit exceeded') ||
+        sendErr?.revert?.args?.[0] === 'Too little received'
+      ) {
+        throw new Error(
+          `Slippage Limit Exceeded (Too little received): On-chain pool output was below your minimum requested pay to user of ${quote.minimumReceivedFormatted} ${quote.request.tokenOut.symbol}. Please increase your slippage tolerance (e.g. 1.0% or 2.0%) or refresh the quote.`
         );
       }
       throw sendErr;

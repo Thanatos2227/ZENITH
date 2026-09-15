@@ -5,16 +5,16 @@ import { UnsupportedProtocolError } from '../errors';
  * Sourced from official Uniswap Docs: https://docs.uniswap.org/contracts/v3/reference/deployments
  */
 export const UNISWAP_V3_SWAP_ROUTERS: Record<number, string> = {
-  1: '0xE592427A0AEce92De3Edee1F18E0157C05861564',      // Ethereum
-  10: '0xE592427A0AEce92De3Edee1F18E0157C05861564',     // Optimism
-  56: '0xB9714879f3842923608032F71fC48E3006863D23',     // BNB Chain
-  137: '0xE592427A0AEce92De3Edee1F18E0157C05861564',    // Polygon
+  1: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',      // Ethereum (SwapRouter02)
+  10: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',     // Optimism (SwapRouter02)
+  56: '0xB9714879f3842923608032F71fC48E3006863D23',     // BNB Chain (SwapRouter02)
+  137: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',    // Polygon (SwapRouter02)
   8453: '0x2626664c2603336E57B271c5C0b26F421741e481',   // Base (SwapRouter02)
-  42161: '0xE592427A0AEce92De3Edee1F18E0157C05861564',  // Arbitrum One
+  42161: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',  // Arbitrum One (SwapRouter02)
   43114: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE',  // Avalanche
   324: '0x39E098A15b62b322210777B0E650e24021C612E3',    // ZKSync
-  59144: '0xE592427A0AEce92De3Edee1F18E0157C05861564',  // Linea
-  534352: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // Scroll
+  59144: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',  // Linea (SwapRouter02)
+  534352: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Scroll (SwapRouter02)
   81457: '0x337d4F504E094c85D68A90Bc29130465E455b662',  // Blast
   34443: '0xC962df3068f69B5DE101e4a6e355D40F0f84FE9B'   // Mode
 };
@@ -40,11 +40,16 @@ export const UNISWAP_V3_FACTORY: Record<number, string> = {
 };
 
 export const UNISWAP_V3_SWAP_ROUTER_ABI = [
+  'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)',
   'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)',
+  'function exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum)) external payable returns (uint256 amountOut)',
   'function exactInput((bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum)) external payable returns (uint256 amountOut)',
+  'function exactOutputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountOut, uint256 amountInMaximum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountIn)',
   'function exactOutputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountIn)',
+  'function exactOutput((bytes path, address recipient, uint256 amountOut, uint256 amountInMaximum)) external payable returns (uint256 amountIn)',
   'function exactOutput((bytes path, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum)) external payable returns (uint256 amountIn)',
   'function multicall(bytes[] calldata data) external payable returns (bytes[] memory results)',
+  'function multicall(uint256 deadline, bytes[] calldata data) external payable returns (bytes[] memory results)',
   'function unwrapWETH9(uint256 amountMinimum, address recipient) external payable',
   'function refundETH() external payable'
 ];
@@ -53,6 +58,25 @@ export const UNISWAP_V3_QUOTER_V2_ABI = [
   'function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96)) external returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
   'function quoteExactInput(bytes path, uint256 amountIn) external returns (uint256 amountOut, uint160[] sqrtPriceX96AfterList, uint32[] initializedTicksCrossedList, uint256 gasEstimate)'
 ];
+
+export const UNISWAP_UNIVERSAL_ROUTERS: Record<number, string> = {
+  1: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
+  10: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
+  56: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4',
+  137: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
+  8453: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
+  42161: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
+  43114: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
+};
+
+export const UNISWAP_UNIVERSAL_ROUTER_ABI = [
+  'function execute(bytes calldata commands, bytes[] calldata inputs, uint256 deadline) external payable',
+  'function execute(bytes calldata commands, bytes[] calldata inputs) external payable'
+];
+
+export function getUniswapUniversalRouter(chainId: number): string | undefined {
+  return UNISWAP_UNIVERSAL_ROUTERS[chainId];
+}
 
 export function getUniswapV3Router(chainId: number): string {
   const router = UNISWAP_V3_SWAP_ROUTERS[chainId];

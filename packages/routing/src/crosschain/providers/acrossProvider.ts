@@ -30,8 +30,8 @@ export class AcrossProvider implements CrossChainProvider {
   public isAvailable(
     sourceChainId?: string,
     destinationChainId?: string,
-    _tokenIn?: Token,
-    _tokenOut?: Token
+    tokenIn?: Token,
+    tokenOut?: Token
   ): boolean {
     if (!sourceChainId || !destinationChainId) return false;
     if (sourceChainId === destinationChainId) return false;
@@ -40,6 +40,15 @@ export class AcrossProvider implements CrossChainProvider {
 
     if (!src?.chainId || !dst?.chainId) return false;
     if (src.executionEnvironment !== 'EVM' || dst.executionEnvironment !== 'EVM') return false;
+
+    // Verify token compatibility: Across bridges canonical assets (e.g. USDC, USDT, WETH/ETH, DAI, WBTC)
+    if (tokenIn && tokenOut) {
+      const symIn = (tokenIn.symbol || '').toUpperCase().replace(/^W/, '');
+      const symOut = (tokenOut.symbol || '').toUpperCase().replace(/^W/, '');
+      if (symIn !== symOut && !(symIn.startsWith('USD') && symOut.startsWith('USD'))) {
+        return false;
+      }
+    }
 
     return isAcrossSupported(src.chainId) && isAcrossSupported(dst.chainId);
   }
@@ -74,7 +83,7 @@ export class AcrossProvider implements CrossChainProvider {
     // Fetch authoritative live Across quote from suggested-fees API
     try {
       const url = `https://app.across.to/api/suggested-fees?inputToken=${validatedInputToken}&outputToken=${validatedOutputToken}&originChainId=${srcChain.chainId}&destinationChainId=${dstChain.chainId}&amount=${amountInBig.toString()}`;
-      const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
       if (!resp.ok) {
         // Across does not support this route or API returned error — fail closed
         return null;

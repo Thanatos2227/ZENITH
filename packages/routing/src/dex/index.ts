@@ -1,5 +1,8 @@
 export * from './types';
 export * from './dexMath';
+export * from './zenithV1Provider';
+export * from './zenithV2Provider';
+export * from './zenithV3Provider';
 export * from './uniswapV3Provider';
 export * from './quickswapProvider';
 export * from './aerodromeProvider';
@@ -8,3 +11,4 @@ export * from './camelotProvider';
 export * from './pancakeSwapProvider';
 export * from './traderJoeProvider';
 export * from './dexAggregator';
+

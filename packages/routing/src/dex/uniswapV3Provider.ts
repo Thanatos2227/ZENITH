@@ -1,10 +1,12 @@
 import { DEXProtocol, Token } from '@zenith/types';
-import { Interface } from 'ethers';
+import { Interface, AbiCoder, solidityPacked } from 'ethers';
 import {
   UNISWAP_V3_SWAP_ROUTERS,
   UNISWAP_V3_SWAP_ROUTER_ABI,
   CANONICAL_NATIVE_ADDRESS,
-  getUniswapV3Router
+  getUniswapV3Router,
+  getUniswapUniversalRouter,
+  UNISWAP_UNIVERSAL_ROUTER_ABI
 } from '@zenith/contracts';
 import { DEXProvider, DEXQuote, DEXExecution, DEXQuoteParams } from './types';
 import { calculateDEXLiquidityOutput, isNativeToken, resolvePoolTokenAddress } from './dexMath';
@@ -80,36 +82,127 @@ export class UniswapV3Provider implements DEXProvider {
   ): Promise<DEXExecution> {
     const chainIdNum = typeof quote.chainId === 'number' ? quote.chainId : Number(quote.chainId);
     const routerAddress = getUniswapV3Router(chainIdNum);
-    const iface = new Interface(UNISWAP_V3_SWAP_ROUTER_ABI);
     const recipient = recipientAddress || userAddress;
     const swapDeadline = deadline || Math.floor(Date.now() / 1000) + 1200;
 
     const tokenInAddr = resolvePoolTokenAddress(quote.tokenIn, chainIdNum);
     const tokenOutAddr = resolvePoolTokenAddress(quote.tokenOut, chainIdNum);
 
-    const calldata = iface.encodeFunctionData('exactInputSingle', [
-      [
-        tokenInAddr,
-        tokenOutAddr,
-        quote.feeTierBps * 100, // fee in hundredths of a bip (3000 = 0.3%)
-        recipient,
-        swapDeadline,
-        quote.amountIn,
-        quote.minimumAmountOut,
-        0 // sqrtPriceLimitX96 = 0 for no limit
-      ]
-    ]);
+    const isNativeIn = isNativeToken(quote.tokenIn.address) || Boolean(quote.tokenIn.isNative);
+    const isNativeOut = isNativeToken(quote.tokenOut.address) || Boolean(quote.tokenOut.isNative);
+    const universalRouter = getUniswapUniversalRouter(chainIdNum);
 
-    const isNative = isNativeToken(quote.tokenIn.address) || Boolean(quote.tokenIn.isNative);
+    // If native asset is involved on source or destination, execute via Universal Router (WRAP_ETH / UNWRAP_WETH)
+    if ((isNativeIn || isNativeOut) && universalRouter) {
+      const uIface = new Interface(UNISWAP_UNIVERSAL_ROUTER_ABI);
+      const abiCoder = AbiCoder.defaultAbiCoder();
+      const path = solidityPacked(
+        ['address', 'uint24', 'address'],
+        [tokenInAddr, quote.feeTierBps * 100, tokenOutAddr]
+      );
+      const ROUTER_ADDRESS_THIS = '0x0000000000000000000000000000000000000002';
+
+      if (isNativeIn) {
+        // Native In -> Token Out:
+        // Command 0x0b (WRAP_ETH) + 0x00 (V3_SWAP_EXACT_IN)
+        const wrapInput = abiCoder.encode(['address', 'uint256'], [ROUTER_ADDRESS_THIS, quote.amountIn]);
+        const swapInput = abiCoder.encode(
+          ['address', 'uint256', 'uint256', 'bytes', 'bool'],
+          [recipient, quote.amountIn, quote.minimumAmountOut, path, false]
+        );
+        const calldata = uIface.encodeFunctionData('execute(bytes,bytes[],uint256)', [
+          '0x0b00',
+          [wrapInput, swapInput],
+          swapDeadline
+        ]);
+
+        return {
+          to: universalRouter,
+          data: calldata,
+          value: quote.amountIn.toString(),
+          chainId: chainIdNum,
+          gasLimit: quote.gasEstimate.toString(),
+          gasEstimateUnits: quote.gasEstimate,
+          approvalTarget: CANONICAL_NATIVE_ADDRESS,
+          approvalAmount: '0',
+          requiredAllowanceRaw: '0'
+        };
+      } else {
+        // Token In -> Native Out:
+        // Command 0x00 (V3_SWAP_EXACT_IN) + 0x01 (UNWRAP_WETH)
+        const swapInput = abiCoder.encode(
+          ['address', 'uint256', 'uint256', 'bytes', 'bool'],
+          [ROUTER_ADDRESS_THIS, quote.amountIn, quote.minimumAmountOut, path, true]
+        );
+        const unwrapInput = abiCoder.encode(['address', 'uint256'], [recipient, quote.minimumAmountOut]);
+        const calldata = uIface.encodeFunctionData('execute(bytes,bytes[],uint256)', [
+          '0x0001',
+          [swapInput, unwrapInput],
+          swapDeadline
+        ]);
+
+        return {
+          to: universalRouter,
+          data: calldata,
+          value: '0',
+          chainId: chainIdNum,
+          gasLimit: quote.gasEstimate.toString(),
+          gasEstimateUnits: quote.gasEstimate,
+          approvalTarget: universalRouter,
+          approvalAmount: quote.amountIn.toString(),
+          requiredAllowanceRaw: quote.amountIn.toString()
+        };
+      }
+    }
+
+    // Standard ERC20 -> ERC20 execution via SwapRouter02 / SwapRouter
+    const iface = new Interface(UNISWAP_V3_SWAP_ROUTER_ABI);
+    const isSwapRouter02 = routerAddress.toLowerCase() === '0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45'.toLowerCase() ||
+      routerAddress.toLowerCase() === '0x2626664c2603336e57b271c5c0b26f421741e481'.toLowerCase() ||
+      routerAddress.toLowerCase() === '0xb9714879f3842923608032f71fc48e3006863d23'.toLowerCase();
+
+    let calldata: string;
+    if (isSwapRouter02) {
+      calldata = iface.encodeFunctionData(
+        'exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))',
+        [
+          [
+            tokenInAddr,
+            tokenOutAddr,
+            quote.feeTierBps * 100,
+            recipient,
+            quote.amountIn,
+            quote.minimumAmountOut,
+            0
+          ]
+        ]
+      );
+    } else {
+      calldata = iface.encodeFunctionData(
+        'exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))',
+        [
+          [
+            tokenInAddr,
+            tokenOutAddr,
+            quote.feeTierBps * 100,
+            recipient,
+            swapDeadline,
+            quote.amountIn,
+            quote.minimumAmountOut,
+            0
+          ]
+        ]
+      );
+    }
 
     return {
       to: routerAddress,
       data: calldata,
-      value: isNative ? quote.amountIn.toString() : '0',
+      value: isNativeIn ? quote.amountIn.toString() : '0',
       chainId: chainIdNum,
       gasLimit: quote.gasEstimate.toString(),
       gasEstimateUnits: quote.gasEstimate,
-      approvalTarget: isNative ? CANONICAL_NATIVE_ADDRESS : routerAddress,
+      approvalTarget: isNativeIn ? CANONICAL_NATIVE_ADDRESS : routerAddress,
       approvalAmount: quote.amountIn.toString(),
       requiredAllowanceRaw: quote.amountIn.toString()
     };

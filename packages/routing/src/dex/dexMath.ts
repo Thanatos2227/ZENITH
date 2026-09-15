@@ -87,7 +87,8 @@ export function calculateConstantProductOutput(params: {
   const rawCalc = numerator / denominator;
   const amountOutRaw = rawCalc === 0n ? 1n : rawCalc;
 
-  const slippageMultiplier = 10000n - BigInt(Math.max(0, slippageToleranceBps));
+  const safeSlippage = slippageToleranceBps !== undefined && !isNaN(slippageToleranceBps) ? slippageToleranceBps : 50;
+  const slippageMultiplier = 10000n - BigInt(Math.max(0, safeSlippage));
   const calcMin = (amountOutRaw * slippageMultiplier) / 10000n;
   const minimumOutRaw = calcMin === 0n ? 1n : calcMin;
 
@@ -142,6 +143,30 @@ export const VERIFIED_DEX_POOLS: Record<number, PoolReserves[]> = {
       reserve0: 50_000_000n * 10n ** 6n,
       reserve1: 50_000_000n * 10n ** 6n,
       feeBps: 5
+    },
+    // USDC -> WETH (18 decimals)
+    {
+      token0: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+      token1: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+      reserve0: 30_000_000n * 10n ** 6n,
+      reserve1: 10_000n * 10n ** 18n,
+      feeBps: 30
+    },
+    // USDC.e -> WETH
+    {
+      token0: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+      token1: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+      reserve0: 30_000_000n * 10n ** 6n,
+      reserve1: 10_000n * 10n ** 18n,
+      feeBps: 30
+    },
+    // POL -> WETH
+    {
+      token0: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+      token1: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+      reserve0: 30_000_000n * 10n ** 18n,
+      reserve1: 1_000n * 10n ** 18n,
+      feeBps: 30
     }
   ],
 
@@ -457,3 +482,81 @@ export function calculateDEXLiquidityOutput(params: {
     priceImpactPercent: result.priceImpactPercent
   };
 }
+
+/**
+ * Calculates input required to receive an exact output for constant product AMM.
+ */
+export function calculateConstantProductInput(
+  amountOutRaw: bigint,
+  reserveInRaw: bigint,
+  reserveOutRaw: bigint,
+  feeBps: number = 30
+): bigint {
+  if (amountOutRaw >= reserveOutRaw) {
+    throw new Error('Requested amount exceeds pool reserves');
+  }
+  const numerator = reserveInRaw * amountOutRaw * 10000n;
+  const denominator = (reserveOutRaw - amountOutRaw) * (10000n - BigInt(feeBps));
+  return (numerator / denominator) + 1n;
+}
+
+/**
+ * Integer square root using Babylonian method
+ */
+export function sqrtBigInt(value: bigint): bigint {
+  if (value < 0n) throw new Error('Square root of negative number');
+  if (value === 0n) return 0n;
+  let z = (value + 1n) / 2n;
+  let y = value;
+  while (z < y) {
+    y = z;
+    z = (value / z + z) / 2n;
+  }
+  return y;
+}
+
+/**
+ * Calculates V3 sqrtPriceX96 from token reserves
+ */
+export function calculateV3SqrtPriceX96(reserve0: bigint, reserve1: bigint): bigint {
+  if (reserve0 <= 0n || reserve1 <= 0n) throw new Error('Reserves must be positive');
+  // price = reserve1 / reserve0
+  // sqrtPriceX96 = sqrt(reserve1 / reserve0) * 2^96 = sqrt((reserve1 * 2^192) / reserve0)
+  const ratioX192 = (reserve1 * (1n << 192n)) / reserve0;
+  return sqrtBigInt(ratioX192);
+}
+
+/**
+ * Calculates concentrated liquidity swap output
+ */
+export function calculateV3AmountOut(
+  amountIn: bigint,
+  _liquidity: bigint,
+  sqrtPriceX96: bigint,
+  feeBps: number = 30
+): bigint {
+  const feeMultiplier = 10000n - BigInt(feeBps);
+  const amountInWithFee = (amountIn * feeMultiplier) / 10000n;
+  // deltaY = liquidity * (sqrtPriceNext - sqrtPriceCurrent)
+  // For small trade approx: amountOut = (amountInWithFee * (sqrtPriceX96 * sqrtPriceX96)) >> 192
+  const numerator = amountInWithFee * sqrtPriceX96 * sqrtPriceX96;
+  return numerator >> 192n;
+}
+
+/**
+ * Calculates price impact percentage
+ */
+export function calculatePriceImpactPercent(
+  amountIn: bigint,
+  amountOut: bigint,
+  reserveIn: bigint,
+  reserveOut: bigint
+): number {
+  if (reserveIn <= 0n || reserveOut <= 0n) return 0;
+  const idealOut = (amountIn * reserveOut) / reserveIn;
+  if (idealOut <= 0n) return 0;
+  const diff = idealOut > amountOut ? idealOut - amountOut : 0n;
+  const impactBps = Number((diff * 10000n) / idealOut);
+  return Number((impactBps / 100).toFixed(4));
+}
+

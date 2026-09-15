@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: MIT
+import { DEXProtocol, Token } from '@zenith/types';
+import { Interface } from 'ethers';
+import {
+  ZENITH_V3_ROUTER_ABI,
+  CANONICAL_NATIVE_ADDRESS,
+  getZenithV3Router,
+  ZENITH_V3_ROUTERS
+} from '@zenith/contracts';
+import { DEXProvider, DEXQuote, DEXExecution, DEXQuoteParams } from './types';
+import { calculateDEXLiquidityOutput, isNativeToken, resolvePoolTokenAddress } from './dexMath';
+
+export class ZenithV3Provider implements DEXProvider {
+  public readonly id: DEXProtocol = 'ZENITH_V3';
+  public readonly protocol: DEXProtocol = 'ZENITH_V3';
+  public readonly name = 'ZENITH V3 Concentrated AMM';
+  public readonly supportedChainIds: number[] = [1, 10, 56, 137, 8453, 42161, 43114];
+
+  public isAvailable(chainId: number | string, _tokenIn: Token, _tokenOut: Token): boolean {
+    const id = typeof chainId === 'number' ? chainId : (chainId === 'polygon' ? 137 : Number(chainId));
+    return this.supportedChainIds.includes(id);
+  }
+
+  public async getQuote(params: DEXQuoteParams): Promise<DEXQuote | null> {
+    if (!this.supportedChainIds.includes(params.chainId)) {
+      return null;
+    }
+
+    try {
+      const routerAddress = getZenithV3Router(params.chainId) || ZENITH_V3_ROUTERS[137];
+
+      const effectiveFeeBps = (params as any).feeTierBps !== undefined ? (params as any).feeTierBps : 30;
+
+      const calculated = calculateDEXLiquidityOutput({
+        chainId: params.chainId,
+        tokenIn: params.tokenIn,
+        tokenOut: params.tokenOut,
+        amountIn: params.amountIn,
+        feeTierBps: effectiveFeeBps,
+        slippageToleranceBps: params.slippageToleranceBps
+      });
+
+      if (!calculated) {
+        return null;
+      }
+
+      const quoteTimestamp = Date.now();
+
+      return {
+        provider: this.protocol,
+        providerName: this.name,
+        chainId: params.chainId,
+        tokenIn: params.tokenIn,
+        tokenOut: params.tokenOut,
+        amountIn: params.amountIn,
+        amountOut: calculated.amountOut,
+        minimumAmountOut: calculated.minimumAmountOut,
+        amountInRaw: params.amountIn.toString(),
+        amountOutRaw: calculated.amountOut.toString(),
+        minimumOutRaw: calculated.minimumAmountOut.toString(),
+        feeAmount: calculated.feeAmount,
+        feeAmountRaw: calculated.feeAmount.toString(),
+        feeTierBps: effectiveFeeBps,
+        priceImpactPercent: calculated.priceImpactPercent,
+        executionTarget: routerAddress,
+        approvalTarget: routerAddress,
+        gasEstimate: 185000n,
+        gasEstimateUnits: 185000n,
+        gasCostUSD: 0.04,
+        quoteTimestamp,
+        expiration: quoteTimestamp + 15000,
+        routePath: [params.tokenIn.address, params.tokenOut.address]
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  public async buildExecution(
+    quote: DEXQuote,
+    userAddress: string,
+    recipientAddress?: string,
+    deadline?: number
+  ): Promise<DEXExecution> {
+    const chainIdNum = typeof quote.chainId === 'number' ? quote.chainId : Number(quote.chainId);
+    const routerAddress = ZENITH_V3_ROUTERS[chainIdNum] || ZENITH_V3_ROUTERS[137];
+    const iface = new Interface(ZENITH_V3_ROUTER_ABI);
+    const recipient = recipientAddress || userAddress;
+    const swapDeadline = deadline || Math.floor(Date.now() / 1000) + 1200;
+
+    const tokenInAddr = resolvePoolTokenAddress(quote.tokenIn, chainIdNum);
+    const tokenOutAddr = resolvePoolTokenAddress(quote.tokenOut, chainIdNum);
+
+    const isNativeIn = isNativeToken(quote.tokenIn.address) || Boolean(quote.tokenIn.isNative);
+
+    const calldata = iface.encodeFunctionData('exactInputSingle', [
+      [
+        tokenInAddr,
+        tokenOutAddr,
+        (quote.feeTierBps || 30) * 100, // fee in pips (3000 = 0.30%)
+        recipient,
+        swapDeadline,
+        quote.amountIn,
+        quote.minimumAmountOut,
+        0
+      ]
+    ]);
+
+    return {
+      to: routerAddress,
+      data: calldata,
+      value: isNativeIn ? quote.amountIn.toString() : '0',
+      chainId: chainIdNum,
+      gasLimit: quote.gasEstimate.toString(),
+      gasEstimateUnits: quote.gasEstimate,
+      approvalTarget: isNativeIn ? CANONICAL_NATIVE_ADDRESS : routerAddress,
+      approvalAmount: isNativeIn ? '0' : quote.amountIn.toString(),
+      requiredAllowanceRaw: isNativeIn ? '0' : quote.amountIn.toString()
+    };
+  }
+}
+
+export const zenithV3Provider = new ZenithV3Provider();
+

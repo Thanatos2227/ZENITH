@@ -1,0 +1,23 @@
+{
+  "name": "@zenith/sdk",
+  "version": "4.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@zenith/types": "*",
+    "@zenith/chains": "*",
+    "@zenith/tokens": "*",
+    "@zenith/contracts": "*",
+    "@zenith/security": "*",
+    "@zenith/routing": "*",
+    "@zenith/execution": "*",
+    "ethers": "^6.12.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

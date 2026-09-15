@@ -108,7 +108,15 @@ export class ChainRegistry {
       const key = this.chainIdToKey.get(keyOrId);
       return key ? this.chains.get(key) : undefined;
     }
-    return this.chains.get(keyOrId.toLowerCase());
+    const directMatch = this.chains.get(keyOrId.toLowerCase());
+    if (directMatch) return directMatch;
+
+    const num = Number(keyOrId);
+    if (!isNaN(num) && this.chainIdToKey.has(num)) {
+      const key = this.chainIdToKey.get(num);
+      return key ? this.chains.get(key) : undefined;
+    }
+    return undefined;
   }
 
   public getAllChains(includeMaintenance = true): ChainConfig[] {

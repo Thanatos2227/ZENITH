@@ -148,13 +148,31 @@ export class ZenithRouter {
       }
     } else {
       if (tradeType === 'EXACT_INPUT') {
-        amountInBig = BigInt(request.amountInRaw || (request as any).amountIn || '0');
+        if (request.amountInRaw) {
+          amountInBig = BigInt(request.amountInRaw);
+        } else if (request.amountIn) {
+          const inStr = request.amountIn.toString();
+          amountInBig = inStr.includes('.')
+            ? BigInt(parseTokenUnits(inStr, tokenInDecimals))
+            : BigInt(inStr);
+        } else {
+          amountInBig = 0n;
+        }
         amountInNum = Number(formatTokenUnits(amountInBig, tokenInDecimals));
         if (amountInNum > MAX_SWAP_AMOUNT_NUM) {
           throw new Error(`Swap amount (${amountInNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);
         }
       } else {
-        amountOutBig = BigInt(request.amountOutRaw || (request as any).amountOut || '0');
+        if (request.amountOutRaw) {
+          amountOutBig = BigInt(request.amountOutRaw);
+        } else if (request.amountOut) {
+          const outStr = request.amountOut.toString();
+          amountOutBig = outStr.includes('.')
+            ? BigInt(parseTokenUnits(outStr, tokenOutDecimals))
+            : BigInt(outStr);
+        } else {
+          amountOutBig = 0n;
+        }
         amountOutNum = Number(formatTokenUnits(amountOutBig, tokenOutDecimals));
         if (amountOutNum > MAX_SWAP_AMOUNT_NUM) {
           throw new Error(`Swap amount (${amountOutNum.toLocaleString()}) exceeds maximum allowed limit of ${MAX_SWAP_AMOUNT_NUM.toLocaleString()}`);

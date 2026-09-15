@@ -1205,6 +1205,13 @@ export const useZenithStore = create<ZenithState>((set, get) => {
           err?.data?.includes('535446')
         ) {
           errMsg = `SafeTransferFrom failed (STF): Insufficient ${quote.request.tokenIn.symbol} balance or token allowance in your connected wallet.`;
+        } else if (
+          errMsg.includes('Too little received') ||
+          errMsg.includes('TOO_LITTLE_RECEIVED') ||
+          errMsg.includes('Slippage limit exceeded') ||
+          err?.revert?.args?.[0] === 'Too little received'
+        ) {
+          errMsg = `Slippage Limit Exceeded (Too little received): On-chain pool output was below your minimum requested pay to user of ${quote.minimumReceivedFormatted} ${quote.request.tokenOut.symbol}. Please increase your slippage tolerance (e.g. 1.0% or 2.0%) or refresh the quote.`;
         }
 
         const isUserRejected =
