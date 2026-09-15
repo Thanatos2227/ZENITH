@@ -1,8 +1,8 @@
-# ZENITH — Trade Beyond Limits
+# ZENITH SWAP — Trade Beyond Limits
 
 <div align="center">
 
-![ZENITH Platform](https://img.shields.io/badge/ZENITH-v4.0.0-00E599?style=for-the-badge&logo=target&logoColor=black)
+![ZENITH SWAP Platform](https://img.shields.io/badge/ZENITH%20SWAP-v4.0.0-00E599?style=for-the-badge&logo=target&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)
 ![Supported Chains](https://img.shields.io/badge/Chains-21%20Networks%20(EVM%20%2B%20SVM)-7C3AED?style=for-the-badge)
 ![Tests](https://img.shields.io/badge/Tests-7%20Passed%20(100%25)-00E599?style=for-the-badge)
@@ -36,7 +36,7 @@
 
 ## 🌟 Overview & Core Principles
 
-**ZENITH** is an institutional-grade, non-custodial decentralized trading platform engineered to provide seamless liquidity aggregation and atomic cross-chain swaps across 21 EVM, L2, L3, and Solana SVM networks.
+**ZENITH SWAP** is an institutional-grade, non-custodial decentralized trading platform engineered to provide seamless liquidity aggregation and atomic cross-chain swaps across 21 EVM, L2, L3, and Solana SVM networks.
 
 - **Non-Custodial Architecture:** Zero private key storage; contracts never hold user balances outside of atomic swap execution.
 - **Dynamic Best Execution Router (EES):** Multi-DEX splitting and scoring based on price impact, gas ratios, bridge latency, and liquidity depth.

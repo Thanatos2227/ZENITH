@@ -183,8 +183,8 @@ export class ExecutionCoordinator {
         const trackingResult = await this.tracker.trackUntilSettled({
           order: activeOrder,
           stateMachine: stateMachine,
-          maxPollDurationMs: 8000,
-          pollIntervalMs: 1500,
+          maxPollDurationMs: (params as any).maxPollDurationMs || 1800000,
+          pollIntervalMs: 2500,
           onStateChange: (state, meta) => {
             if (params.quote.intent) {
               this.intentEngine.updateIntentState(params.quote.intent.orderId, state, {

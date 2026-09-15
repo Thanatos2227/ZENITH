@@ -18,9 +18,10 @@ import {
   validateRecipientAddress,
   validateExecutionTarget
 } from '@zenith/contracts';
-import { calculateCrossChainOutput, isNativeToken } from '../../dex/dexMath';
+import { isNativeToken } from '../../dex/dexMath';
 
 const spokePoolInterface = new Interface(ACROSS_SPOKE_POOL_ABI);
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 export class AcrossProvider implements CrossChainProvider {
   public readonly id: BridgeProtocol = 'ACROSS';
@@ -59,41 +60,69 @@ export class AcrossProvider implements CrossChainProvider {
     const amountInBig = BigInt(request.amountInRaw || (request as any).amountIn || '0');
     if (amountInBig <= 0n) return null;
 
-    const quoteTimestamp = Math.floor(Date.now() / 1000);
-
     const validatedInputToken = validateTokenAddress(request.tokenIn.address, srcChain.id, request.tokenIn.isNative);
     const validatedOutputToken = validateTokenAddress(request.tokenOut.address, dstChain.id, request.tokenOut.isNative);
 
-    let relayerFeeBps = 6n; // 6 bps standard across relayer fee
-    let estTransferTimeSec = 25;
-    let bridgeFeeUSD = 0.50;
+    let destinationAmountBig: bigint | null = null;
+    let quoteTimestampSec = Math.floor(Date.now() / 1000);
+    let fillDeadlineSec = quoteTimestampSec + (request.deadlineSeconds || 1800);
+    let exclusiveRelayer = ZERO_ADDRESS;
+    let estTransferTimeSec = 30;
+    let relayerFeePctStr = '0';
+    let bridgeFeeUSD = 0;
 
-    // Fetch live Across fee from suggested-fees API if available
+    // Fetch authoritative live Across quote from suggested-fees API
     try {
       const url = `https://app.across.to/api/suggested-fees?inputToken=${validatedInputToken}&outputToken=${validatedOutputToken}&originChainId=${srcChain.chainId}&destinationChainId=${dstChain.chainId}&amount=${amountInBig.toString()}`;
-      const resp = await fetch(url, { signal: AbortSignal.timeout(2500) });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.relayFeePct) {
-          const feePctNum = Number(data.relayFeePct) / 1e18;
-          relayerFeeBps = BigInt(Math.max(1, Math.round(feePctNum * 10000)));
-        }
-        if (data.estimatedFillTimeSec) {
-          estTransferTimeSec = data.estimatedFillTimeSec;
-        }
+      const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!resp.ok) {
+        // Across does not support this route or API returned error — fail closed
+        return null;
+      }
+
+      const data = await resp.json();
+      if (data.isAmountTooLow || !data.outputAmount) {
+        return null;
+      }
+
+      destinationAmountBig = BigInt(data.outputAmount);
+      if (destinationAmountBig <= 0n) {
+        return null;
+      }
+
+      if (data.timestamp) {
+        quoteTimestampSec = Number(data.timestamp);
+      }
+      if (data.fillDeadline) {
+        fillDeadlineSec = Number(data.fillDeadline);
+      }
+      if (data.exclusiveRelayer) {
+        exclusiveRelayer = data.exclusiveRelayer;
+      }
+      if (data.estimatedFillTimeSec) {
+        estTransferTimeSec = Number(data.estimatedFillTimeSec);
+      }
+
+      if (data.totalRelayFee?.pct) {
+        const feeNum = Number(data.totalRelayFee.pct) / 1e18;
+        relayerFeePctStr = `${(feeNum * 100).toFixed(4)}%`;
+      } else if (data.relayFeePct) {
+        const feeNum = Number(data.relayFeePct) / 1e18;
+        relayerFeePctStr = `${(feeNum * 100).toFixed(4)}%`;
+      }
+
+      if (data.totalRelayFee?.total) {
+        const feeAmountBig = BigInt(data.totalRelayFee.total);
+        const inDecimals = request.tokenIn.decimals || 18;
+        const feeNum = Number(feeAmountBig) / (10 ** inDecimals);
+        bridgeFeeUSD = request.tokenIn.priceUSD ? Number((feeNum * request.tokenIn.priceUSD).toFixed(4)) : 0;
       }
     } catch {
-      // API timeout/offline: standard verified protocol fee
+      // Across API failed or unreachable — Fail Closed (no synthetic fallback allowed)
+      return null;
     }
 
-    const destinationAmountBig = calculateCrossChainOutput({
-      amountInRaw: amountInBig,
-      tokenIn: request.tokenIn,
-      tokenOut: request.tokenOut,
-      bridgeFeeBps: relayerFeeBps
-    });
-
-    if (destinationAmountBig <= 0n) {
+    if (!destinationAmountBig || destinationAmountBig <= 0n) {
       return null;
     }
 
@@ -103,31 +132,30 @@ export class AcrossProvider implements CrossChainProvider {
     const minDestinationAmountBig = (destinationAmountBig * slippageMultiplier) / 10000n;
 
     const gasEstimateUSD = defaultChainRegistry.getEstimatedGasCostUSD(srcChain.id, 'BRIDGE', request.gasPreset);
-    const targetRecipient = recipient || '0x1234567890123456789012345678901234567890';
-    const fillDeadline = quoteTimestamp + (request.deadlineSeconds || 1800);
-
     const isNative = isNativeToken(request.tokenIn.address) || Boolean(request.tokenIn.isNative);
     const value = isNative ? amountInBig.toString() : '0';
 
     let calldata = '0x';
-    try {
-      const safeRecipient = validateRecipientAddress(targetRecipient, srcChain.id);
-      calldata = spokePoolInterface.encodeFunctionData('depositV3', [
-        safeRecipient.toLowerCase(),
-        safeRecipient.toLowerCase(),
-        validatedInputToken.toLowerCase(),
-        validatedOutputToken.toLowerCase(),
-        amountInBig,
-        minDestinationAmountBig,
-        dstChain.chainId!,
-        '0x0000000000000000000000000000000000000000',
-        quoteTimestamp,
-        fillDeadline,
-        0,
-        '0x'
-      ]);
-    } catch (encErr) {
-      console.warn('[AcrossProvider] Error encoding calldata preview:', encErr);
+    if (recipient) {
+      try {
+        const safeRecipient = validateRecipientAddress(recipient, srcChain.id);
+        calldata = spokePoolInterface.encodeFunctionData('depositV3', [
+          safeRecipient.toLowerCase(),
+          safeRecipient.toLowerCase(),
+          validatedInputToken.toLowerCase(),
+          validatedOutputToken.toLowerCase(),
+          amountInBig,
+          minDestinationAmountBig,
+          dstChain.chainId!,
+          exclusiveRelayer,
+          quoteTimestampSec,
+          fillDeadlineSec,
+          0,
+          '0x'
+        ]);
+      } catch (encErr) {
+        console.warn('[AcrossProvider] Error encoding calldata preview:', encErr);
+      }
     }
 
     return {
@@ -141,16 +169,16 @@ export class AcrossProvider implements CrossChainProvider {
       destinationAmountRaw: destinationAmountBig.toString(),
       minDestinationAmountRaw: minDestinationAmountBig.toString(),
       bridgeFeeUSD,
-      relayerFee: `${(Number(relayerFeeBps) / 100).toFixed(2)}%`,
+      relayerFee: relayerFeePctStr,
       gasEstimateUSD,
-      recipient: targetRecipient,
-      expiration: (quoteTimestamp + 300) * 1000,
+      recipient: recipient || '',
+      expiration: (quoteTimestampSec + 300) * 1000,
       routeIdentifier: `across-${srcChain.id}-${dstChain.id}-${Date.now()}`,
       executionTarget: spokePool,
       calldata,
       value,
       approvalTarget: spokePool,
-      quoteTimestamp: quoteTimestamp * 1000,
+      quoteTimestamp: quoteTimestampSec * 1000,
       estimatedTransferTimeSec: estTransferTimeSec,
       securityRating: 'A+'
     };
@@ -181,7 +209,7 @@ export class AcrossProvider implements CrossChainProvider {
       BigInt(quote.sourceAmountRaw),
       BigInt(quote.minDestinationAmountRaw),
       dstChain.chainId!,
-      '0x0000000000000000000000000000000000000000',
+      ZERO_ADDRESS,
       quoteTimestampSec,
       fillDeadlineSec,
       0,
@@ -194,7 +222,6 @@ export class AcrossProvider implements CrossChainProvider {
       to: spokePool,
       data,
       calldata: data,
-      isExecutable: true,
       value: isNative ? quote.sourceAmountRaw : '0',
       chainId: srcChain.chainId!,
       approvalTarget: spokePool,
@@ -243,7 +270,7 @@ export class AcrossProvider implements CrossChainProvider {
         }
       }
     } catch {
-      // API lookup timeout
+      // API lookup network delay
     }
 
     return {

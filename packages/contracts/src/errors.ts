@@ -235,3 +235,63 @@ export class ProtocolFeeRecipientNotConfiguredError extends ConfigurationError {
     Object.setPrototypeOf(this, ProtocolFeeRecipientNotConfiguredError.prototype);
   }
 }
+
+export class BridgeUnavailableError extends ConfigurationError {
+  constructor(bridge: string, reason = 'Bridge provider is currently unavailable or returned an error.') {
+    super(`Bridge ${bridge} unavailable: ${reason}`, 'BRIDGE_UNAVAILABLE');
+    this.name = 'BridgeUnavailableError';
+    Object.setPrototypeOf(this, BridgeUnavailableError.prototype);
+  }
+}
+
+export class TokenUnsupportedError extends ConfigurationError {
+  constructor(token: string, chainId: string | number, reason = 'Token is unsupported on this route') {
+    super(`Token ${token} on chain ${chainId} is unsupported: ${reason}`, 'TOKEN_UNSUPPORTED');
+    this.name = 'TokenUnsupportedError';
+    Object.setPrototypeOf(this, TokenUnsupportedError.prototype);
+  }
+}
+
+export class ChainUnsupportedError extends ConfigurationError {
+  constructor(chainId: string | number, protocol = 'Protocol') {
+    super(`Chain ${chainId} is unsupported by ${protocol}`, 'CHAIN_UNSUPPORTED');
+    this.name = 'ChainUnsupportedError';
+    Object.setPrototypeOf(this, ChainUnsupportedError.prototype);
+  }
+}
+
+export class QuoteExpiredError extends Error {
+  public readonly code = 'QUOTE_EXPIRED';
+  constructor(message = 'Quote has expired. A fresh quote must be obtained before execution.') {
+    super(message);
+    this.name = 'QuoteExpiredError';
+    Object.setPrototypeOf(this, QuoteExpiredError.prototype);
+  }
+}
+
+export class QuoteInvalidError extends Error {
+  public readonly code = 'QUOTE_INVALID';
+  constructor(message = 'Quote failed validation criteria.') {
+    super(message);
+    this.name = 'QuoteInvalidError';
+    Object.setPrototypeOf(this, QuoteInvalidError.prototype);
+  }
+}
+
+export class InvalidRecipientError extends Error {
+  public readonly code = 'INVALID_RECIPIENT';
+  constructor(message = 'Recipient address is invalid or not provided.') {
+    super(message);
+    this.name = 'InvalidRecipientError';
+    Object.setPrototypeOf(this, InvalidRecipientError.prototype);
+  }
+}
+
+export class InvalidCalldataError extends Error {
+  public readonly code = 'INVALID_CALLDATA';
+  constructor(message = 'Generated execution calldata is invalid or empty ("0x").') {
+    super(message);
+    this.name = 'InvalidCalldataError';
+    Object.setPrototypeOf(this, InvalidCalldataError.prototype);
+  }
+}

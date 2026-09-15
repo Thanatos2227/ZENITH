@@ -68,7 +68,7 @@ export class ZenithRouter {
     const tokenInDecimals = request.tokenIn.decimals !== undefined ? request.tokenIn.decimals : 18;
     const tokenOutDecimals = request.tokenOut.decimals !== undefined ? request.tokenOut.decimals : 18;
 
-    const callerAddress = request.userWalletAddress || (request as any).userAddress || undefined;
+    const callerAddress = request.userWalletAddress || (request as any).userAddress || request.recipientAddress || (request as any).recipient || undefined;
     const targetRecipient = request.recipientAddress || (request as any).recipient || callerAddress || '';
 
     const hasValidPrices = Boolean(
@@ -508,10 +508,10 @@ export class ZenithRouter {
       : (bestRoute.dexQuote?.executionTarget || (sourceChain.executionEnvironment === 'EVM' ? EVMContractRegistry.getPrimaryRouter(sourceChainIdNum) : undefined));
 
     let simulationPreview = undefined;
-    if (routerAddress) {
+    if (routerAddress && callerAddress) {
       simulationPreview = await this.simulationEngine.simulateSwap({
         chainId: request.sourceChainId,
-        userAddress: callerAddress || '0x0000000000000000000000000000000000000001',
+        userAddress: callerAddress,
         routerAddress,
         tokenIn: effectiveTokenIn,
         tokenOut: effectiveTokenOut,

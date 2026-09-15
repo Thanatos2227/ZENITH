@@ -42,49 +42,6 @@ export function scaleTokenUnits(amount: bigint, fromDecimals: number, toDecimals
   }
 }
 
-/**
- * Cross-chain output amount calculation considering bridge fee, relative asset exchange rate, and decimal differences.
- * If tokenIn and tokenOut are the same asset (e.g. USDC -> USDC), exchange rate is 1:1 minus bridge fee.
- * If tokenIn and tokenOut are different assets with known prices (e.g. POL -> USDC), the price ratio is applied.
- */
-export function calculateCrossChainOutput(params: {
-  amountInRaw: bigint;
-  tokenIn: Token;
-  tokenOut: Token;
-  bridgeFeeBps: bigint;
-}): bigint {
-  const { amountInRaw, tokenIn, tokenOut, bridgeFeeBps } = params;
-  if (amountInRaw <= 0n) return 0n;
-
-  const feeAmountRaw = (amountInRaw * bridgeFeeBps) / 10000n;
-  const netInBig = amountInRaw - feeAmountRaw;
-
-  const tokenInDecimals = tokenIn.decimals !== undefined ? tokenIn.decimals : 18;
-  const tokenOutDecimals = tokenOut.decimals !== undefined ? tokenOut.decimals : 18;
-
-  const symIn = (tokenIn.symbol || '').toUpperCase().replace(/^W/, '');
-  const symOut = (tokenOut.symbol || '').toUpperCase().replace(/^W/, '');
-  const isSameAsset = symIn === symOut || (
-    (symIn === 'USDC' || symIn === 'USDT' || symIn === 'DAI') &&
-    (symOut === 'USDC' || symOut === 'USDT' || symOut === 'DAI')
-  );
-
-  if (isSameAsset || !tokenIn.priceUSD || !tokenOut.priceUSD || tokenIn.priceUSD <= 0 || tokenOut.priceUSD <= 0) {
-    return scaleTokenUnits(netInBig, tokenInDecimals, tokenOutDecimals);
-  }
-
-  // Cross-asset swap: apply exchange rate via fixed-point BigInt arithmetic (8 decimal precision)
-  const priceInFixed = BigInt(Math.round(tokenIn.priceUSD * 100000000));
-  const priceOutFixed = BigInt(Math.round(tokenOut.priceUSD * 100000000));
-
-  if (priceOutFixed <= 0n) {
-    return scaleTokenUnits(netInBig, tokenInDecimals, tokenOutDecimals);
-  }
-
-  const convertedAmountIn = (netInBig * priceInFixed) / priceOutFixed;
-  const result = scaleTokenUnits(convertedAmountIn, tokenInDecimals, tokenOutDecimals);
-  return result <= 0n ? 1n : result;
-}
 
 export interface PoolReserves {
   token0: string;

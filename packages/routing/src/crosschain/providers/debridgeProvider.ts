@@ -18,7 +18,7 @@ import {
   validateRecipientAddress,
   validateExecutionTarget
 } from '@zenith/contracts';
-import { calculateCrossChainOutput, isNativeToken } from '../../dex/dexMath';
+import { isNativeToken } from '../../dex/dexMath';
 
 const dlnInterface = new Interface(DEBRIDGE_DLN_SOURCE_ABI);
 
@@ -64,35 +64,57 @@ export class DeBridgeProvider implements CrossChainProvider {
     const validatedInputToken = validateTokenAddress(request.tokenIn.address, srcChain.id, request.tokenIn.isNative);
     const validatedOutputToken = validateTokenAddress(request.tokenOut.address, dstChain.id, request.tokenOut.isNative);
 
-    let dlnFeeBps = 4n; // 4 bps deBridge DLN protocol fee
+    let destinationAmountBig: bigint | null = null;
     let estTransferTimeSec = 15;
-    let bridgeFeeUSD = 0.50;
+    let bridgeFeeUSD = 0;
+    let relayerFee = '0.04%';
 
-    // Try fetching live deBridge DLN API quote if available
+    // Fetch authoritative live deBridge DLN API quote
     try {
-      const url = `https://api.dln.debridge.finance/v1.0/dln/order/quote?srcChainId=${srcChain.chainId}&srcChainTokenIn=${validatedInputToken}&srcChainTokenInAmount=${amountInBig.toString()}&dstChainId=${dstChain.chainId}&dstChainTokenOut=${validatedOutputToken}&prependOperatingExpense=true`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(2500) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.estimation?.costsDetails?.find((c: any) => c.name === 'OperatingExpense')?.amount) {
-          bridgeFeeUSD = Number(data.estimation.costsDetails[0].amount) || 0.50;
-        }
-        if (data.estimation?.recommendedEstimatedFillTimeSec) {
-          estTransferTimeSec = data.estimation.recommendedEstimatedFillTimeSec;
+      const url = `https://dln.debridge.finance/v1.0/dln/order/quote?srcChainId=${srcChain.chainId}&srcChainTokenIn=${validatedInputToken}&srcChainTokenInAmount=${amountInBig.toString()}&dstChainId=${dstChain.chainId}&dstChainTokenOut=${validatedOutputToken}&prependOperatingExpense=true`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) {
+        // deBridge DLN does not support this route or API returned error — fail closed
+        return null;
+      }
+
+      const data = await res.json();
+      const outAmountStr = data.estimation?.dstChainTokenOut?.recommendedAmount || data.estimation?.dstChainTokenOut?.amount;
+      if (!outAmountStr) {
+        return null;
+      }
+
+      destinationAmountBig = BigInt(outAmountStr);
+      if (destinationAmountBig <= 0n) {
+        return null;
+      }
+
+      if (data.estimation?.costsDetails) {
+        const opCost = data.estimation.costsDetails.find((c: any) => c.name === 'OperatingExpense');
+        if (opCost?.amount) {
+          bridgeFeeUSD = Number(opCost.amount) || 0;
         }
       }
+
+      if (data.order?.approximateFulfillmentDelay) {
+        estTransferTimeSec = Number(data.order.approximateFulfillmentDelay);
+      } else if (data.estimation?.recommendedEstimatedFillTimeSec) {
+        estTransferTimeSec = Number(data.estimation.recommendedEstimatedFillTimeSec);
+      }
+
+      if (data.protocolFeeApproximateUsdValue) {
+        bridgeFeeUSD += Number(data.protocolFeeApproximateUsdValue) || 0;
+      }
+
+      if (data.estimation?.percentFee) {
+        relayerFee = `${Number(data.estimation.percentFee).toFixed(4)}%`;
+      }
     } catch {
-      // API timeout/offline: standard verified protocol fee
+      // API timeout/offline: Fail closed (no synthetic fallback allowed)
+      return null;
     }
 
-    const destinationAmountBig = calculateCrossChainOutput({
-      amountInRaw: amountInBig,
-      tokenIn: request.tokenIn,
-      tokenOut: request.tokenOut,
-      bridgeFeeBps: dlnFeeBps
-    });
-
-    if (destinationAmountBig <= 0n) {
+    if (!destinationAmountBig || destinationAmountBig <= 0n) {
       return null;
     }
 
@@ -102,37 +124,37 @@ export class DeBridgeProvider implements CrossChainProvider {
     const minDestinationAmountBig = (destinationAmountBig * slippageMultiplier) / 10000n;
 
     const gasEstimateUSD = defaultChainRegistry.getEstimatedGasCostUSD(srcChain.id, 'BRIDGE', request.gasPreset);
-    const targetRecipient = recipient || '0x1234567890123456789012345678901234567890';
-
     const isNative = isNativeToken(request.tokenIn.address) || Boolean(request.tokenIn.isNative);
     const value = isNative ? amountInBig.toString() : '0';
 
     let calldata = '0x';
-    try {
-      const safeUser = validateEvmAddress(targetRecipient, 'User Address');
-      const safeRecipient = validateRecipientAddress(targetRecipient, srcChain.id);
-      const abiCoder = AbiCoder.defaultAbiCoder();
+    if (recipient) {
+      try {
+        const safeUser = validateEvmAddress(recipient, 'User Address');
+        const safeRecipient = validateRecipientAddress(recipient, srcChain.id);
+        const abiCoder = AbiCoder.defaultAbiCoder();
 
-      const orderCreation = {
-        giveTokenAddress: validatedInputToken.toLowerCase(),
-        giveAmount: amountInBig,
-        takeTokenAddress: abiCoder.encode(['address'], [validatedOutputToken.toLowerCase()]),
-        takeAmount: minDestinationAmountBig,
-        takeChainId: dstChain.chainId!,
-        receiverAddress: abiCoder.encode(['address'], [safeRecipient.toLowerCase()]),
-        allowedTaker: '0x',
-        allowedCancelBeneficiary: abiCoder.encode(['address'], [safeUser.toLowerCase()]),
-        externalCall: '0x'
-      };
+        const orderCreation = {
+          giveTokenAddress: validatedInputToken.toLowerCase(),
+          giveAmount: amountInBig,
+          takeTokenAddress: abiCoder.encode(['address'], [validatedOutputToken.toLowerCase()]),
+          takeAmount: minDestinationAmountBig,
+          takeChainId: dstChain.chainId!,
+          receiverAddress: abiCoder.encode(['address'], [safeRecipient.toLowerCase()]),
+          allowedTaker: '0x',
+          allowedCancelBeneficiary: abiCoder.encode(['address'], [safeUser.toLowerCase()]),
+          externalCall: '0x'
+        };
 
-      calldata = dlnInterface.encodeFunctionData('createOrder', [
-        orderCreation,
-        '0x',
-        0,
-        '0x'
-      ]);
-    } catch (encErr) {
-      console.warn('[DeBridgeProvider] Error encoding calldata preview:', encErr);
+        calldata = dlnInterface.encodeFunctionData('createOrder', [
+          orderCreation,
+          '0x',
+          0,
+          '0x'
+        ]);
+      } catch (encErr) {
+        console.warn('[DeBridgeProvider] Error encoding calldata preview:', encErr);
+      }
     }
 
     return {
@@ -145,10 +167,10 @@ export class DeBridgeProvider implements CrossChainProvider {
       sourceAmountRaw: amountInBig.toString(),
       destinationAmountRaw: destinationAmountBig.toString(),
       minDestinationAmountRaw: minDestinationAmountBig.toString(),
-      bridgeFeeUSD,
-      relayerFee: '0.04%',
+      bridgeFeeUSD: Number(bridgeFeeUSD.toFixed(4)),
+      relayerFee,
       gasEstimateUSD,
-      recipient: targetRecipient,
+      recipient: recipient || '',
       expiration: (quoteTimestamp + 300) * 1000,
       routeIdentifier: `debridge-${srcChain.id}-${dstChain.id}-${Date.now()}`,
       executionTarget: sourceContract,
@@ -201,7 +223,6 @@ export class DeBridgeProvider implements CrossChainProvider {
       to: sourceContract,
       data,
       calldata: data,
-      isExecutable: true,
       value: isNative ? quote.sourceAmountRaw : '0',
       chainId: srcChain.chainId!,
       approvalTarget: sourceContract,
@@ -212,13 +233,13 @@ export class DeBridgeProvider implements CrossChainProvider {
 
   public async getStatus(sourceTxHash: string, _quote: CrossChainQuote): Promise<CrossChainStatus> {
     try {
-      const url = `https://api.dln.debridge.finance/v1.0/dln/tx/${sourceTxHash}/order-ids`;
+      const url = `https://dln.debridge.finance/v1.0/dln/tx/${sourceTxHash}/order-ids`;
       const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
       if (res.ok) {
         const orderIds = await res.json();
         const orderId = orderIds?.[0];
         if (orderId) {
-          const statusRes = await fetch(`https://api.dln.debridge.finance/v1.0/dln/order/${orderId}/status`);
+          const statusRes = await fetch(`https://dln.debridge.finance/v1.0/dln/order/${orderId}/status`);
           if (statusRes.ok) {
             const statusData = await statusRes.json();
             if (statusData.state === 'Fulfilled') {
@@ -245,7 +266,7 @@ export class DeBridgeProvider implements CrossChainProvider {
         }
       }
     } catch {
-      // deBridge query fallback
+      // deBridge network lookup delay
     }
 
     return {

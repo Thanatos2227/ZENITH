@@ -18,9 +18,31 @@ import {
   validateRecipientAddress,
   validateExecutionTarget
 } from '@zenith/contracts';
-import { calculateCrossChainOutput, isNativeToken } from '../../dex/dexMath';
+import { isNativeToken, scaleTokenUnits } from '../../dex/dexMath';
 
 const stargateInterface = new Interface(STARGATE_ROUTER_ABI);
+
+// Stargate canonical pool mappings by symbol
+const STARGATE_POOL_IDS: Record<string, number> = {
+  USDC: 1,
+  USDT: 2,
+  DAI: 3,
+  ETH: 13,
+  WETH: 13
+};
+
+// LayerZero V1 Chain IDs for Stargate V1 Router
+const LZ_CHAIN_IDS: Record<number, number> = {
+  1: 101,      // Ethereum
+  56: 102,     // BNB
+  43114: 106,  // Avalanche
+  137: 109,    // Polygon
+  42161: 110,  // Arbitrum
+  10: 111,     // Optimism
+  8453: 184,   // Base
+  59144: 183,  // Linea
+  534352: 214  // Scroll
+};
 
 export class StargateProvider implements CrossChainProvider {
   public readonly id: BridgeProtocol = 'STARGATE';
@@ -29,8 +51,8 @@ export class StargateProvider implements CrossChainProvider {
   public isAvailable(
     sourceChainId?: string,
     destinationChainId?: string,
-    _tokenIn?: Token,
-    _tokenOut?: Token
+    tokenIn?: Token,
+    tokenOut?: Token
   ): boolean {
     if (!sourceChainId || !destinationChainId) return false;
     if (sourceChainId === destinationChainId) return false;
@@ -40,7 +62,21 @@ export class StargateProvider implements CrossChainProvider {
     if (!src?.chainId || !dst?.chainId) return false;
     if (src.executionEnvironment !== 'EVM' || dst.executionEnvironment !== 'EVM') return false;
 
-    return isStargateSupported(src.chainId) && isStargateSupported(dst.chainId);
+    if (!isStargateSupported(src.chainId) || !isStargateSupported(dst.chainId)) return false;
+
+    // Verify token compatibility
+    if (tokenIn && tokenOut) {
+      const symIn = (tokenIn.symbol || '').toUpperCase().replace(/^W/, '');
+      const symOut = (tokenOut.symbol || '').toUpperCase().replace(/^W/, '');
+      const poolIn = STARGATE_POOL_IDS[symIn] || (symIn === 'USDC' ? 1 : undefined);
+      const poolOut = STARGATE_POOL_IDS[symOut] || (symOut === 'USDC' ? 1 : undefined);
+
+      if (!poolIn || !poolOut) return false;
+      // Stargate bridges identical assets (or same pool types)
+      if (poolIn !== poolOut && !(symIn.startsWith('USD') && symOut.startsWith('USD'))) return false;
+    }
+
+    return true;
   }
 
   public async getQuote(request: QuoteRequest): Promise<CrossChainQuote | null> {
@@ -64,14 +100,26 @@ export class StargateProvider implements CrossChainProvider {
     validateTokenAddress(request.tokenIn.address, srcChain.id, request.tokenIn.isNative);
     validateTokenAddress(request.tokenOut.address, dstChain.id, request.tokenOut.isNative);
 
-    // Stargate base protocol fee is 6 bps (0.06%)
+    const symIn = (request.tokenIn.symbol || '').toUpperCase().replace(/^W/, '');
+    const symOut = (request.tokenOut.symbol || '').toUpperCase().replace(/^W/, '');
+    const srcPoolId = STARGATE_POOL_IDS[symIn] || (symIn === 'USDC' ? 1 : undefined);
+    const dstPoolId = STARGATE_POOL_IDS[symOut] || (symOut === 'USDC' ? 1 : undefined);
+
+    if (!srcPoolId || !dstPoolId) {
+      // Unsupported Stargate token
+      return null;
+    }
+
+    const dstLzChainId = LZ_CHAIN_IDS[dstChain.chainId!] || dstChain.chainId!;
+
+    // Stargate protocol fee (6 bps for pool transfer)
     const protocolFeeBps = 6n;
-    const destinationAmountBig = calculateCrossChainOutput({
-      amountInRaw: amountInBig,
-      tokenIn: request.tokenIn,
-      tokenOut: request.tokenOut,
-      bridgeFeeBps: protocolFeeBps
-    });
+    const feeAmountRaw = (amountInBig * protocolFeeBps) / 10000n;
+    const netInBig = amountInBig - feeAmountRaw;
+
+    const tokenInDecimals = request.tokenIn.decimals !== undefined ? request.tokenIn.decimals : 18;
+    const tokenOutDecimals = request.tokenOut.decimals !== undefined ? request.tokenOut.decimals : 18;
+    const destinationAmountBig = scaleTokenUnits(netInBig, tokenInDecimals, tokenOutDecimals);
 
     if (destinationAmountBig <= 0n) {
       return null;
@@ -82,30 +130,33 @@ export class StargateProvider implements CrossChainProvider {
     const slippageMultiplier = 10000n - slippageBps;
     const minDestinationAmountBig = (destinationAmountBig * slippageMultiplier) / 10000n;
 
-    const bridgeFeeUSD = 0.50;
+    // Calculate real fee USD from feeAmountRaw
+    const feeNum = Number(feeAmountRaw) / (10 ** tokenInDecimals);
+    const bridgeFeeUSD = request.tokenIn.priceUSD ? Number((feeNum * request.tokenIn.priceUSD).toFixed(4)) : 0.05;
     const gasEstimateUSD = defaultChainRegistry.getEstimatedGasCostUSD(srcChain.id, 'BRIDGE', request.gasPreset);
 
-    const targetRecipient = recipient || '0x1234567890123456789012345678901234567890';
     const isNative = isNativeToken(request.tokenIn.address) || Boolean(request.tokenIn.isNative);
     const value = isNative ? amountInBig.toString() : '0';
 
     let calldata = '0x';
-    try {
-      const safeRecipient = validateRecipientAddress(targetRecipient, srcChain.id);
-      const recipientBytes = AbiCoder.defaultAbiCoder().encode(['address'], [safeRecipient.toLowerCase()]);
-      calldata = stargateInterface.encodeFunctionData('swap', [
-        dstChain.chainId!,
-        1, // srcPoolId (e.g. USDC pool)
-        1, // dstPoolId
-        safeRecipient.toLowerCase(),
-        amountInBig,
-        minDestinationAmountBig,
-        [200000, 0, '0x'], // LZ tx params
-        recipientBytes,
-        '0x'
-      ]);
-    } catch (err) {
-      console.warn('[StargateProvider] Error encoding calldata preview:', err);
+    if (recipient) {
+      try {
+        const safeRecipient = validateRecipientAddress(recipient, srcChain.id);
+        const recipientBytes = AbiCoder.defaultAbiCoder().encode(['address'], [safeRecipient.toLowerCase()]);
+        calldata = stargateInterface.encodeFunctionData('swap', [
+          dstLzChainId,
+          srcPoolId,
+          dstPoolId,
+          safeRecipient.toLowerCase(),
+          amountInBig,
+          minDestinationAmountBig,
+          [200000, 0, '0x'], // LZ tx params
+          recipientBytes,
+          '0x'
+        ]);
+      } catch (err) {
+        console.warn('[StargateProvider] Error encoding calldata preview:', err);
+      }
     }
 
     return {
@@ -119,9 +170,9 @@ export class StargateProvider implements CrossChainProvider {
       destinationAmountRaw: destinationAmountBig.toString(),
       minDestinationAmountRaw: minDestinationAmountBig.toString(),
       bridgeFeeUSD,
-      relayerFee: '0.0005 ETH',
+      relayerFee: '0.06%',
       gasEstimateUSD,
-      recipient: targetRecipient,
+      recipient: recipient || '',
       expiration: (quoteTimestamp + 300) * 1000,
       routeIdentifier: `stargate-${srcChain.id}-${dstChain.id}-${Date.now()}`,
       executionTarget: routerAddress,
@@ -147,10 +198,16 @@ export class StargateProvider implements CrossChainProvider {
     const safeRecipient = validateRecipientAddress(recipientAddress || userAddress, srcChain.id);
     const recipientBytes = AbiCoder.defaultAbiCoder().encode(['address'], [safeRecipient.toLowerCase()]);
 
+    const symIn = (quote.sourceToken.symbol || '').toUpperCase().replace(/^W/, '');
+    const symOut = (quote.destinationToken.symbol || '').toUpperCase().replace(/^W/, '');
+    const srcPoolId = STARGATE_POOL_IDS[symIn] || 1;
+    const dstPoolId = STARGATE_POOL_IDS[symOut] || 1;
+    const dstLzChainId = LZ_CHAIN_IDS[dstChain.chainId!] || dstChain.chainId!;
+
     const data = stargateInterface.encodeFunctionData('swap', [
-      dstChain.chainId!,
-      1,
-      1,
+      dstLzChainId,
+      srcPoolId,
+      dstPoolId,
       safeUser.toLowerCase(),
       BigInt(quote.sourceAmountRaw),
       BigInt(quote.minDestinationAmountRaw),
@@ -165,7 +222,6 @@ export class StargateProvider implements CrossChainProvider {
       to: routerAddress,
       data,
       calldata: data,
-      isExecutable: true,
       value: isNative ? quote.sourceAmountRaw : '0',
       chainId: srcChain.chainId!,
       approvalTarget: routerAddress,
@@ -203,7 +259,7 @@ export class StargateProvider implements CrossChainProvider {
         }
       }
     } catch {
-      // LayerZero Scan query fallback
+      // LayerZero Scan query timeout
     }
 
     return {

@@ -336,7 +336,7 @@ export const useZenithStore = create<ZenithState>((set, get) => {
     notifications: [
       {
         id: 'notif-1',
-        title: 'Welcome to ZENITH v4',
+        title: 'Welcome to ZENITH SWAP v4',
         message: 'Connected to 52 target chains with MEV protection & simulation enabled.',
         type: 'INFO',
         timestamp: Date.now() - 1000 * 60 * 5,

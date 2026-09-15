@@ -18,7 +18,7 @@
 
 ## 2. §73 Accessibility Specification (WCAG 2.1 AA)
 
-| Requirement | Implementation in ZENITH | Compliance Status |
+| Requirement | Implementation in ZENITH SWAP | Compliance Status |
 | :--- | :--- | :--- |
 | **Contrast Ratios** | Primary text `#F8FAFC` on `#080B11` yields **15.8:1** (exceeds AAA target 7.0:1) | ✅ Passed |
 | **Keyboard Navigation** | Complete tab index and focus rings across Confirm Sheet, Token Picker, Chain Switcher | ✅ Passed |

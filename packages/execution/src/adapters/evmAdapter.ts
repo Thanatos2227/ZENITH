@@ -5,7 +5,8 @@ import {
   CANONICAL_NATIVE_ADDRESS,
   validateEvmAddress,
   validateExecutionTarget,
-  validateTokenAddress
+  validateTokenAddress,
+  InvalidCalldataError
 } from '@zenith/contracts';
 import { defaultDEXAggregator, defaultCrossChainAggregator, isNativeToken } from '@zenith/routing';
 
@@ -91,7 +92,7 @@ export class EVMExecutionAdapter {
       }
 
       if (!ccExecution || !ccExecution.data || ccExecution.data === '0x') {
-        throw new Error('Failed to generate executable calldata for cross-chain transaction');
+        throw new InvalidCalldataError('Failed to generate executable calldata for cross-chain transaction');
       }
 
       executionTo = validateExecutionTarget(ccExecution.to, quote.request.sourceChainId);
@@ -115,7 +116,7 @@ export class EVMExecutionAdapter {
       }
 
       if (!dexExecution || !dexExecution.data || dexExecution.data === '0x') {
-        throw new Error('Failed to generate executable calldata for DEX swap');
+        throw new InvalidCalldataError('Failed to generate executable calldata for DEX swap');
       }
 
       executionTo = validateExecutionTarget(dexExecution.to, quote.request.sourceChainId);
@@ -144,27 +145,47 @@ export class EVMExecutionAdapter {
       }
     }
 
+    // Define the single authoritative transaction payload
+    const authoritativeTx = {
+      to: executionTo,
+      data: executionData,
+      value: executionValue,
+      from: validatedUser
+    };
+
     // Pre-flight simulation on the exact transaction
+    params.onStatusChange?.('SIMULATING');
     try {
       if (typeof signer.estimateGas === 'function') {
         await signer.estimateGas({
-          to: executionTo,
-          data: executionData,
-          value: executionValue
+          to: authoritativeTx.to,
+          data: authoritativeTx.data,
+          value: authoritativeTx.value
         });
       }
     } catch (simErr: any) {
       console.warn('[EVMAdapter] Pre-flight gas estimation note:', simErr?.message || simErr);
     }
 
-    params.onStatusChange?.('SIGNING');
-
-    // Send the authoritative executable transaction
-    const tx = await signer.sendTransaction({
+    // Enforce transaction consistency before signing
+    const submissionTx = {
       to: executionTo,
       data: executionData,
       value: executionValue
-    });
+    };
+
+    if (
+      submissionTx.to.toLowerCase() !== authoritativeTx.to.toLowerCase() ||
+      submissionTx.data !== authoritativeTx.data ||
+      submissionTx.value !== authoritativeTx.value
+    ) {
+      throw new Error('Transaction inconsistency detected between simulation payload and submission payload');
+    }
+
+    params.onStatusChange?.('SIGNING');
+
+    // Send the authoritative executable transaction
+    const tx = await signer.sendTransaction(submissionTx);
 
     const txHash = tx.hash;
     params.onStatusChange?.('SUBMITTING', txHash);

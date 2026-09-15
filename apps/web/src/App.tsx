@@ -71,7 +71,7 @@ export const App: React.FC = () => {
           </div>
 
           <p className="text-[11px] text-slate-500 font-mono">
-            ZENITH v4.0.0 — Trade Beyond Limits.
+            ZENITH SWAP v4.0.0 — Trade Beyond Limits.
           </p>
         </div>
       </footer>

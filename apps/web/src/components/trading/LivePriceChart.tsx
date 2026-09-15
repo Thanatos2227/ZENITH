@@ -458,7 +458,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({ tokenIn, tokenOu
               : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
             }`}>
             <Activity className={`w-3.5 h-3.5 ${!isOnline ? 'text-rose-400' : 'text-cyan-400'}`} />
-            <span className="font-mono">{!isOnline ? 'Feed Paused (Offline)' : 'Zenith Live • 1m'}</span>
+            <span className="font-mono">{!isOnline ? 'Feed Paused (Offline)' : 'Zenith Swap Live • 1m'}</span>
           </div>
 
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">

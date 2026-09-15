@@ -1,18 +1,18 @@
-# ZENITH Architecture Specification (v4.0)
+# ZENITH SWAP Architecture Specification (v4.0)
 
-**Product:** ZENITH  
-**Tagline:** **ZENITH — Trade Beyond Limits.**  
+**Product:** ZENITH SWAP  
+**Tagline:** **ZENITH SWAP — Trade Beyond Limits.**  
 **Status:** Universal Multi-Chain Decentralized Trading & Execution Platform
 
 ---
 
 ## 1. System Topology & Universal Tier System
 
-ZENITH is engineered as a non-custodial, universal on-chain trading and execution layer connecting 52+ distinct blockchain networks across EVM, Solana SVM, Move, Cosmos/IBC, Substrate, UTXO, XRPL, Stellar, TON, and ICP ecosystems.
+ZENITH SWAP is engineered as a non-custodial, universal on-chain trading and execution layer connecting 52+ distinct blockchain networks across EVM, Solana SVM, Move, Cosmos/IBC, Substrate, UTXO, XRPL, Stellar, TON, and ICP ecosystems.
 
 ```
                                   +---------------------------------+
-                                  |       ZENITH UI Client          |
+                                  |     ZENITH SWAP UI Client       |
                                   |   (Simple Mode / Pro Mode)      |
                                   +----------------+----------------+
                                                    |

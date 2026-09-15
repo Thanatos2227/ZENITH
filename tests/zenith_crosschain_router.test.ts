@@ -62,9 +62,9 @@ test('Zenith Cross-Chain Router: End-to-End Cross-Chain Quote & Routing', async 
 });
 
 test('Zenith Cross-Chain Router: Signer Requirement Enforcement', async () => {
-  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'polygon' && t.isNative)!;
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'polygon' && t.symbol === 'USDC')!;
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'USDC')!;
-  const user = '0xd2206B1A832104F5E6cEBebBf1C2920fDba4Af88';
+  const user = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
 
   assert.ok(tokenIn);
   assert.ok(tokenOut);
@@ -74,7 +74,7 @@ test('Zenith Cross-Chain Router: Signer Requirement Enforcement', async () => {
     destinationChainId: 'arbitrum',
     tokenIn,
     tokenOut,
-    amountInRaw: '1000000000000000000', // 1 POL
+    amountInRaw: '100000000', // 100 USDC
     recipient: user,
     slippageTolerancePercent: 0.5
   });
@@ -102,16 +102,16 @@ test('Zenith Cross-Chain Router: Signer Requirement Enforcement', async () => {
 });
 
 test('Zenith Cross-Chain Router: Mock Signer Execution Flow', async () => {
-  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'polygon' && t.isNative)!;
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'polygon' && t.symbol === 'USDC')!;
   const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'USDC')!;
-  const user = '0xd2206B1A832104F5E6cEBebBf1C2920fDba4Af88';
+  const user = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
 
   const quote = await defaultZenithRouter.getQuote({
     sourceChainId: 'polygon',
     destinationChainId: 'arbitrum',
     tokenIn,
     tokenOut,
-    amountInRaw: '1000000000000000000', // 1 POL
+    amountInRaw: '100000000', // 100 USDC
     recipient: user,
     slippageTolerancePercent: 0.5
   });
@@ -125,6 +125,7 @@ test('Zenith Cross-Chain Router: Mock Signer Execution Flow', async () => {
   // Create a realistic mock signer for unit testing
   const mockSigner = {
     getAddress: async () => user,
+    estimateGas: async () => 150000n,
     sendTransaction: async (_tx: any) => ({
       hash: '0xabc1230000000000000000000000000000000000000000000000000000000001',
       wait: async () => ({
@@ -136,7 +137,7 @@ test('Zenith Cross-Chain Router: Mock Signer Execution Flow', async () => {
       })
     }),
     provider: {
-      call: async () => '0x',
+      call: async () => '0x0000000000000000000000000000000000000000000000000000000005f5e100',
       estimateGas: async () => BigInt(150000),
       getFeeData: async () => ({ gasPrice: BigInt(30000000000) }),
       getTransactionReceipt: async (hash: string) => ({
@@ -165,5 +166,28 @@ test('Zenith Cross-Chain Router: Mock Signer Execution Flow', async () => {
   assert.ok(receipt.txHash.startsWith('0x'));
   assert.ok(receipt.bridgeDetails);
   assert.ok(stepStatuses.includes('COMPLETED'));
+});
+
+test('Zenith Cross-Chain Router: Direct Unsupported Pair Fails Closed', async () => {
+  const tokenIn = DEFAULT_TOKENS.find((t) => t.chainId === 'polygon' && t.isNative)!; // POL
+  const tokenOut = DEFAULT_TOKENS.find((t) => t.chainId === 'arbitrum' && t.symbol === 'USDT')!;
+  const user = '0x8ba1f109551bD432803012645Ac136ddd64DBA72';
+
+  // Direct bridge for POL -> USDT is not supported by bridges directly
+  // Router must fail closed with CROSS_CHAIN_QUOTE_UNAVAILABLE
+  await assert.rejects(
+    async () => {
+      await defaultZenithRouter.getQuote({
+        sourceChainId: 'polygon',
+        destinationChainId: 'arbitrum',
+        tokenIn,
+        tokenOut,
+        amountInRaw: '1000000000000000000', // 1 POL
+        recipient: user,
+        slippageTolerancePercent: 0.5
+      });
+    },
+    /CROSS_CHAIN_QUOTE_UNAVAILABLE|No valid cross-chain bridge quote available/
+  );
 });
 
